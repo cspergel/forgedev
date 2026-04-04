@@ -89,11 +89,9 @@ function evaluate(input) {
 
   if (bounceCount >= 3) {
     // Escalate to user — too many bounces, stop hook is not helping
-    // Auto-mark as built so review command can accept it
+    // Do NOT auto-complete — leave status as "building" so the user can decide
+    // Clear stop_hook_active to prevent re-entry issues
     try {
-      state.nodes[activeNodeId].status = "built";
-      state.nodes[activeNodeId].last_build_completed = new Date().toISOString();
-      state.active_node = null;
       state.stop_hook_active = false;
       state.last_updated = new Date().toISOString();
       fs.writeFileSync(statePath, JSON.stringify(state, null, 2), "utf-8");
@@ -101,7 +99,10 @@ function evaluate(input) {
 
     process.stderr.write(
       `ForgePlan Stop: Node "${activeNodeId}" has bounced ${bounceCount} times without resolving all criteria. ` +
-      `Build force-completed. Run /forgeplan:review ${activeNodeId} to see what's still unmet.\n`
+      `Escalating to user. The build is still in progress — you can:\n` +
+      `  - Continue working on unmet criteria manually\n` +
+      `  - Run /forgeplan:recover ${activeNodeId} to reset or force-complete\n` +
+      `  - Run /forgeplan:review ${activeNodeId} after manually marking as built\n`
     );
     return { block: false };
   }
