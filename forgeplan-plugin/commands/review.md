@@ -23,6 +23,7 @@ Audit the specified node's implementation against its spec.
 
 **Read** `.forgeplan/state.json`, then **update** (do not overwrite) these fields:
 - Set `active_node` to `{"node": "[node-id]", "status": "reviewing", "started_at": "[ISO timestamp]"}`
+- Set `nodes.[node-id].status` to `"reviewing"`
 - Set `last_updated` to current ISO timestamp
 - Preserve all other existing fields
 

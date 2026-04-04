@@ -20,6 +20,7 @@ Reopen a completed node for modification and analyze change impact.
 
 **Read** `.forgeplan/state.json`, then **update** (do not overwrite) these fields:
 - Set `active_node` to `{"node": "[node-id]", "status": "revising", "started_at": "[ISO timestamp]"}`
+- Set `nodes.[node-id].status` to `"revising"`
 - Set `last_updated` to current ISO timestamp
 - Preserve all other existing fields
 

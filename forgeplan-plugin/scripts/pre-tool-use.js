@@ -146,10 +146,11 @@ function evaluate(input) {
     };
   }
 
-  // Revising: allow specific .forgeplan/ paths, specs, manifest, shared types
+  // Revising: allow active node's spec, manifest, state, shared types
   if (activeStatus === "revising") {
+    const activeNodeId_ = state.active_node.node;
     if (
-      relPath.startsWith(".forgeplan/specs/") ||
+      relPath === `.forgeplan/specs/${activeNodeId_}.yaml` ||
       relPath === ".forgeplan/manifest.yaml" ||
       relPath === ".forgeplan/state.json" ||
       relPath === "src/shared/types/index.ts"

@@ -106,43 +106,55 @@ function processHook(input) {
       fileAction = "edited";
     } else {
       // Write tool: determine if this is a new file or overwrite of existing
-      // Check three sources (any match = pre-existing):
-      //   1. Manifest files list (any node)
-      //   2. Git tracking (file was committed/staged before this build)
-      //   3. None found = genuinely new
+      // Check sources in order (any match = pre-existing):
+      //   1. Pre-build snapshot (most reliable — set at build start)
+      //   2. Manifest files list (any node)
+      //   3. Git tracking (committed/staged)
+      //   4. None found = genuinely new
       let preExisting = false;
 
-      // Source 1: manifest files list
-      try {
-        const yaml = require(path.join(__dirname, "..", "node_modules", "js-yaml"));
-        const mText = fs.readFileSync(manifestPath, "utf-8");
-        const mData = yaml.load(mText);
-        if (mData.nodes) {
-          for (const [nid, ndata] of Object.entries(mData.nodes)) {
-            if ((ndata.files || []).includes(relPath)) {
-              preExisting = true;
-              break;
-            }
-          }
-        }
-      } catch {
-        // Can't check manifest — continue to git check
+      // Source 1: pre-build file snapshot (set by /forgeplan:build setup)
+      const preBuildFiles = state.nodes[activeNodeId].pre_build_files || [];
+      const absRelPath = path.join(cwd, relPath);
+      if (preBuildFiles.some((f) => {
+        // Normalize for comparison
+        const normF = f.replace(/\\/g, "/");
+        const normRel = relPath.replace(/\\/g, "/");
+        return normF === normRel || normF.endsWith("/" + normRel) || normF === absRelPath;
+      })) {
+        preExisting = true;
       }
 
-      // Source 2: git tracking (file existed in repo before this build)
+      // Source 2: manifest files list
+      if (!preExisting) {
+        try {
+          const yaml = require(path.join(__dirname, "..", "node_modules", "js-yaml"));
+          const mText = fs.readFileSync(manifestPath, "utf-8");
+          const mData = yaml.load(mText);
+          if (mData.nodes) {
+            for (const [nid, ndata] of Object.entries(mData.nodes)) {
+              if ((ndata.files || []).includes(relPath)) {
+                preExisting = true;
+                break;
+              }
+            }
+          }
+        } catch {
+          // Can't check manifest
+        }
+      }
+
+      // Source 3: git tracking
       if (!preExisting) {
         try {
           const { execSync } = require("child_process");
-          // git ls-files returns the path if tracked, empty if not
           const result = execSync(
             `git ls-files "${relPath}"`,
             { cwd, encoding: "utf-8", timeout: 3000, stdio: ["pipe", "pipe", "pipe"] }
           ).trim();
-          if (result.length > 0) {
-            preExisting = true;
-          }
+          if (result.length > 0) preExisting = true;
         } catch {
-          // Git not available or not a repo — fall through
+          // Git not available
         }
       }
 

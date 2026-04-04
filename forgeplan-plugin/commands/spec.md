@@ -32,9 +32,10 @@ Generate a detailed node spec for the specified node(s).
    - **Failure modes:** What are the likely bugs that could ship? (At least 1 required — this guides the reviewer)
    - **Interfaces:** For each connection, what is the contract? What direction (read/write, outbound, inbound)?
 5. Write the complete spec to `.forgeplan/specs/[node-id].yaml` using ALL 11 fields from the node spec schema
-6. Run validation: `node "${CLAUDE_PLUGIN_ROOT}/scripts/validate-manifest.js" .forgeplan/manifest.yaml`
-7. Update the node's status to `"specced"` in `.forgeplan/state.json`
-8. Present a summary of the spec and confirm with the user
+6. Run spec validation: `node "${CLAUDE_PLUGIN_ROOT}/scripts/validate-spec.js" .forgeplan/specs/[node-id].yaml`
+7. Run manifest validation: `node "${CLAUDE_PLUGIN_ROOT}/scripts/validate-manifest.js" .forgeplan/manifest.yaml`
+8. Update the node's status to `"specced"` in `.forgeplan/state.json`
+9. Present a summary of the spec and confirm with the user
 
 ## All Nodes Mode (`/forgeplan:spec --all`)
 

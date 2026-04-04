@@ -30,9 +30,16 @@ Build the specified node following its spec with layered enforcement:
 1. Read the manifest and the target node's spec
 2. Read specs for all nodes this node interfaces with (for contract context)
 3. Read shared model definitions from the manifest
-4. **Read** `.forgeplan/state.json`, then **update** (do not overwrite) these fields:
+4. **Snapshot existing files** in the node's `file_scope` directory before building starts. This enables PostToolUse to distinguish genuinely new files from pre-existing ones:
+   ```bash
+   find [file_scope_directory] -type f 2>/dev/null
+   ```
+5. **Read** `.forgeplan/state.json`, then **update** (do not overwrite) these fields:
    - Set `active_node` to `{"node": "[node-id]", "status": "building", "started_at": "[ISO timestamp]"}`
    - Set `nodes.[node-id].status` to `"building"`
+   - Set `nodes.[node-id].pre_build_files` to the list of files from the snapshot above
+   - Set `nodes.[node-id].files_created` to `[]`
+   - Set `nodes.[node-id].files_modified` to `[]`
    - Set `last_updated` to current ISO timestamp
    - Preserve all other existing fields (`session_id`, `nodes`, `stop_hook_active`, `discovery_complete`)
 

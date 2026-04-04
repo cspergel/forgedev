@@ -41,14 +41,19 @@
         "properties": {
           "status": {
             "type": "string",
-            "enum": ["pending", "specced", "building", "built", "reviewed", "revised"],
-            "description": "Current node status"
+            "enum": ["pending", "specced", "building", "built", "reviewing", "reviewed", "revising", "revised"],
+            "description": "Current node status (reviewing/revising are transient in-progress states)"
           },
           "bounce_count": {
             "type": "integer",
             "minimum": 0,
             "default": 0,
             "description": "Number of times Stop hook has bounced this node back. Escalates to user at >= 3."
+          },
+          "pre_build_files": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Snapshot of files in the node's file_scope directory at build start. Used by PostToolUse to distinguish new files from pre-existing ones. Set by /forgeplan:build setup."
           },
           "files_created": {
             "type": "array",

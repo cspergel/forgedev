@@ -53,8 +53,12 @@ function main() {
     }
   }
 
-  if (!manifest.nodes) {
-    console.error("Manifest has no nodes.");
+  if (!manifest.nodes || typeof manifest.nodes !== "object" || Object.keys(manifest.nodes).length === 0) {
+    const result = {
+      type: "error",
+      message: "ERROR: Manifest has no nodes defined. Run /forgeplan:discover first.",
+    };
+    console.log(JSON.stringify(result, null, 2));
     process.exit(1);
   }
 
