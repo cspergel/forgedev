@@ -22,6 +22,7 @@ Audit the specified node's implementation against its spec.
 ## Setup
 
 **Read** `.forgeplan/state.json`, then **update** (do not overwrite) these fields:
+- Set `nodes.[node-id].previous_status` to the node's current status (e.g., `"built"` or `"reviewed"`) — this is used by recovery SKIP to restore the correct state
 - Set `active_node` to `{"node": "[node-id]", "status": "reviewing", "started_at": "[ISO timestamp]"}`
 - Set `nodes.[node-id].status` to `"reviewing"`
 - Set `last_updated` to current ISO timestamp
@@ -64,4 +65,9 @@ Write the review report to `.forgeplan/reviews/[node-id].md` using the structure
 ### Recommendation: APPROVE | REQUEST CHANGES ([count] failures: [list])
 ```
 
-Update node status to "reviewed" in state.json and clear `active_node` to `null`.
+Update state.json:
+- Set `nodes.[node-id].status` to `"reviewed"`
+- Set `nodes.[node-id].last_review` to `".forgeplan/reviews/[node-id].md"`
+- Clear `nodes.[node-id].previous_status` to `null`
+- Clear `active_node` to `null`
+- Set `last_updated` to current ISO timestamp

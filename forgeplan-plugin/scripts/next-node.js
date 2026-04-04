@@ -104,8 +104,38 @@ function main() {
   }
 
   // --- Priority 2: Nodes needing rebuild after revision ---
-  // (nodes flagged in revision_history of other nodes)
-  // For now, skip this — revision tracking is Sprint 3
+  const needsRebuild = [];
+  for (const id of nodeIds) {
+    const ns = nodeStates[id];
+    if (!ns || !ns.revision_history) continue;
+    for (const rev of ns.revision_history) {
+      if (Array.isArray(rev.affected_nodes)) {
+        for (const affected of rev.affected_nodes) {
+          if (
+            nodeIds.includes(affected) &&
+            !needsRebuild.includes(affected) &&
+            !stuck.includes(affected)
+          ) {
+            const affectedState = nodeStates[affected];
+            // Only flag if the affected node was previously completed but hasn't been rebuilt
+            if (affectedState && ["built", "reviewed"].includes(affectedState.status)) {
+              needsRebuild.push(affected);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  if (needsRebuild.length > 0) {
+    const result = {
+      type: "rebuild_needed",
+      nodes: needsRebuild,
+      message: `${needsRebuild.length} node(s) need rebuilding after revision: ${needsRebuild.join(", ")}. Run /forgeplan:build for each.`,
+    };
+    console.log(JSON.stringify(result, null, 2));
+    process.exit(0);
+  }
 
   // --- Priority 3: Dependency-order next eligible node ---
   const completedStatuses = ["built", "reviewed", "revised"];

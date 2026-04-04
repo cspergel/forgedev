@@ -41,13 +41,16 @@ function main() {
     process.exit(2);
   }
 
-  // Load manifest for cross-validation if available
+  // Load manifest for cross-validation
   let manifest = null;
   if (fs.existsSync(manifestPath)) {
     try {
       manifest = yaml.load(fs.readFileSync(manifestPath, "utf-8"));
-    } catch {
-      // Can't load manifest — skip cross-validation
+    } catch (err) {
+      console.error(
+        `Warning: Could not parse manifest at ${manifestPath}: ${err.message}. ` +
+        `Skipping manifest cross-validation — spec-only checks still apply.`
+      );
     }
   }
 
@@ -91,6 +94,32 @@ function validateSpec(spec, manifest) {
       errors.push(`Missing required field: ${field}`);
     } else if (!Array.isArray(spec[field])) {
       errors.push(`${field}: must be an array (got ${typeof spec[field]})`);
+    }
+  }
+
+  // Validate inputs entry shapes
+  if (Array.isArray(spec.inputs)) {
+    for (let i = 0; i < spec.inputs.length; i++) {
+      const inp = spec.inputs[i];
+      if (typeof inp !== "object" || inp === null || Array.isArray(inp)) {
+        errors.push(`inputs[${i}]: must be an object with name and type fields`);
+      } else {
+        if (!inp.name) errors.push(`inputs[${i}]: missing name`);
+        if (!inp.type) errors.push(`inputs[${i}]: missing type`);
+      }
+    }
+  }
+
+  // Validate outputs entry shapes
+  if (Array.isArray(spec.outputs)) {
+    for (let i = 0; i < spec.outputs.length; i++) {
+      const out = spec.outputs[i];
+      if (typeof out !== "object" || out === null || Array.isArray(out)) {
+        errors.push(`outputs[${i}]: must be an object with name and type fields`);
+      } else {
+        if (!out.name) errors.push(`outputs[${i}]: missing name`);
+        if (!out.type) errors.push(`outputs[${i}]: missing type`);
+      }
     }
   }
 

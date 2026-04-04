@@ -30,6 +30,21 @@ function validateManifest(manifest) {
   const errors = [];
   const warnings = [];
 
+  // --- 0. Required top-level sections ---
+  if (!manifest.project || typeof manifest.project !== "object") {
+    errors.push("Manifest missing required 'project' section.");
+  } else {
+    if (!manifest.project.name) errors.push("project.name is required.");
+  }
+
+  if (manifest.shared_models !== undefined && typeof manifest.shared_models !== "object") {
+    errors.push("shared_models must be an object/map if present.");
+  }
+
+  if (manifest.validation !== undefined && typeof manifest.validation !== "object") {
+    errors.push("validation must be an object if present.");
+  }
+
   if (!manifest.nodes || typeof manifest.nodes !== "object") {
     errors.push("Manifest has no 'nodes' section.");
     return { errors, warnings };
@@ -63,7 +78,7 @@ function validateManifest(manifest) {
       }
     }
     if (node.type && !validNodeTypes.includes(node.type)) {
-      warnings.push(`Node "${nodeId}": type "${node.type}" is not a standard type (${validNodeTypes.join(", ")}).`);
+      errors.push(`Node "${nodeId}": invalid type "${node.type}" — must be one of: ${validNodeTypes.join(", ")}.`);
     }
     if (node.status && !validStatuses.includes(node.status)) {
       errors.push(`Node "${nodeId}": invalid status "${node.status}".`);
@@ -224,20 +239,26 @@ function traceCycle(nodes, cycleNodes) {
 /**
  * Check if two file scope globs might overlap.
  *
- * Strategy: generate representative test paths from each glob and check
- * if either glob matches paths the other would claim. Uses minimatch for
- * proper glob semantics — no prefix-based fallback.
+ * Strategy: extract concrete path segments from both globs, then generate
+ * cross-product test paths that combine segments from each. Tests these
+ * against both globs via minimatch. This catches intersections that
+ * single-glob expansion misses (e.g., wildcard directory patterns).
  */
 function scopesOverlap(scopeA, scopeB) {
   const norm = (s) => s.replace(/\\/g, "/");
   const a = norm(scopeA);
   const b = norm(scopeB);
 
-  // Generate test paths from both globs
-  const testPaths = generateTestPaths(a).concat(generateTestPaths(b));
+  // Generate test paths from each glob individually
+  const pathsA = generateTestPaths(a);
+  const pathsB = generateTestPaths(b);
 
-  // Check if any generated path matches BOTH globs
-  for (const tp of testPaths) {
+  // Also generate cross-product paths using segments from both globs
+  const crossPaths = generateCrossPaths(a, b);
+
+  const allPaths = [...pathsA, ...pathsB, ...crossPaths];
+
+  for (const tp of allPaths) {
     if (minimatch(tp, a) && minimatch(tp, b)) {
       return true;
     }
@@ -247,9 +268,41 @@ function scopesOverlap(scopeA, scopeB) {
 }
 
 /**
+ * Generate cross-product test paths by extracting concrete segments from
+ * both globs and combining them. This catches intersections where each
+ * glob contributes different literal segments to the matching path.
+ */
+function generateCrossPaths(globA, globB) {
+  const paths = [];
+
+  // Extract literal segments (non-wildcard parts) from each glob
+  const segsA = globA.split("/").filter((s) => !s.includes("*"));
+  const segsB = globB.split("/").filter((s) => !s.includes("*"));
+
+  // For each literal segment in A, try substituting it into B's wildcards and vice versa
+  const expandWith = (glob, literals) => {
+    const results = [];
+    for (const lit of literals) {
+      // Replace * with each literal
+      let expanded = glob.replace(/\*\*/g, lit).replace(/\*/g, lit);
+      results.push(expanded);
+      results.push(expanded + "/file.ts");
+      // Also try the literal as a path segment within **
+      expanded = glob.replace(/\*\*/g, lit + "/sub").replace(/\*/g, lit);
+      results.push(expanded);
+    }
+    return results;
+  };
+
+  paths.push(...expandWith(globA, segsB));
+  paths.push(...expandWith(globB, segsA));
+
+  return paths;
+}
+
+/**
  * Generate representative file paths that a glob would match.
- * Expands wildcards into multiple concrete variants to maximize
- * overlap detection coverage.
+ * Expands wildcards into multiple concrete variants.
  */
 function generateTestPaths(glob) {
   const norm = glob.replace(/\\/g, "/");

@@ -44,6 +44,10 @@
             "enum": ["pending", "specced", "building", "built", "reviewing", "reviewed", "revising", "revised"],
             "description": "Current node status (reviewing/revising are transient in-progress states)"
           },
+          "previous_status": {
+            "type": ["string", "null"],
+            "description": "Status before the current transient operation (reviewing/revising). Used by recovery SKIP to restore the correct state. Set by review/revise commands before changing status."
+          },
           "bounce_count": {
             "type": "integer",
             "minimum": 0,

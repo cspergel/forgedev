@@ -28,6 +28,12 @@ Based on the JSON `type` field:
 Run /forgeplan:recover to fix these before proceeding.
 ```
 
+### type: "rebuild_needed"
+```
+⚠ [count] node(s) need rebuilding after revision: [list]
+Run /forgeplan:build [node] for each affected node.
+```
+
 ### type: "recommendation"
 ```
 === Next Node ===
