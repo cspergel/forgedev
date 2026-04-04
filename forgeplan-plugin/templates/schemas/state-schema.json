@@ -53,7 +53,12 @@
           "files_created": {
             "type": "array",
             "items": { "type": "string" },
-            "description": "Files created during build (auto-populated by PostToolUse)"
+            "description": "Files created via Write tool during build (safe to delete on reset). Auto-populated by PostToolUse."
+          },
+          "files_modified": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Pre-existing files modified via Edit tool during build (NOT safe to delete — need manual revert on reset). Auto-populated by PostToolUse."
           },
           "last_review": {
             "type": ["string", "null"],

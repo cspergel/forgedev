@@ -113,20 +113,25 @@ function evaluate(input) {
 
   const activeStatus = state.active_node.status;
 
-  // .forgeplan/ bookkeeping is always allowed regardless of operation type
-  if (relPath.startsWith(".forgeplan/")) {
-    return { block: false };
-  }
-
-  // Reviewing: only allow writes to .forgeplan/ (already handled above)
-  // The reviewer must NOT touch implementation code
+  // Reviewing: restrict to review reports and state only
   if (activeStatus === "reviewing") {
+    if (
+      relPath.startsWith(".forgeplan/reviews/") ||
+      relPath === ".forgeplan/state.json"
+    ) {
+      return { block: false };
+    }
     return {
       block: true,
       message:
-        `BLOCKED: During review, only .forgeplan/ files (reviews, state) can be written. ` +
-        `File "${relPath}" is implementation code. The reviewer must not modify code — flag issues for the Builder.`,
+        `BLOCKED: During review, only .forgeplan/reviews/ and .forgeplan/state.json can be written. ` +
+        `File "${relPath}" is outside the reviewer's write boundary.`,
     };
+  }
+
+  // .forgeplan/ bookkeeping is allowed for building and revising
+  if (relPath.startsWith(".forgeplan/")) {
+    return { block: false };
   }
 
   // Revising: allow .forgeplan/ (handled above), shared types regen, and spec/manifest edits
@@ -323,17 +328,29 @@ function evaluate(input) {
 function evaluateBash(toolInput, cwd) {
   const command = toolInput.command || "";
 
-  // Patterns that indicate file creation/modification
+  // Patterns that indicate file creation/modification — Unix AND PowerShell
   const fileWritePatterns = [
+    // Unix
     /\b(?:cat|echo|printf)\s.*?>\s*/,  // redirections: echo > file, cat > file
     /\btee\s/,                          // tee file
     /\bcp\s/,                           // cp source dest
     /\bmv\s/,                           // mv source dest
-    /\bmkdir\s/,                        // mkdir (not file write but structure creation)
+    /\bmkdir\s/,                        // mkdir
     /\btouch\s/,                        // touch file
     /\bsed\s+-i/,                       // sed -i (in-place edit)
     /\bawk\s.*-i/,                      // awk in-place
     />\s*[^\s|&;]/,                     // any stdout redirection to a file
+    // PowerShell
+    /\bSet-Content\b/i,                 // Set-Content path 'content'
+    /\bAdd-Content\b/i,                 // Add-Content path 'content'
+    /\bOut-File\b/i,                    // ... | Out-File path
+    /\bNew-Item\b/i,                    // New-Item path -ItemType File
+    /\bCopy-Item\b/i,                   // Copy-Item src dest
+    /\bMove-Item\b/i,                   // Move-Item src dest
+    /\bRename-Item\b/i,                 // Rename-Item src dest
+    /\b\[System\.IO\.File\]::Write/i,   // .NET file write
+    /\bsc\s/,                           // sc alias for Set-Content
+    /\bni\s/,                           // ni alias for New-Item
   ];
 
   const isFileWrite = fileWritePatterns.some((p) => p.test(command));
@@ -342,7 +359,7 @@ function evaluateBash(toolInput, cwd) {
     return { block: false };
   }
 
-  // Check for active build
+  // Check for any active ForgePlan operation
   const forgePlanDir = path.join(cwd, ".forgeplan");
   const statePath = path.join(forgePlanDir, "state.json");
 
@@ -357,16 +374,23 @@ function evaluateBash(toolInput, cwd) {
     return { block: false };
   }
 
-  if (!state.active_node || state.active_node.status !== "building") {
+  if (!state.active_node) {
     return { block: false };
   }
 
-  // During active build, warn about Bash file writes — they bypass enforcement
+  const activeStatus = state.active_node.status;
+  const inProgressStatuses = ["building", "reviewing", "revising"];
+
+  if (!inProgressStatuses.includes(activeStatus)) {
+    return { block: false };
+  }
+
+  // During any active operation, block Bash file writes — they bypass enforcement
   return {
     block: true,
     message:
       `BLOCKED: Bash command appears to write files ("${command.substring(0, 80)}..."). ` +
-      `During an active build, use the Write or Edit tool instead of Bash for file operations. ` +
+      `During an active ${activeStatus} operation, use the Write or Edit tool instead of Bash. ` +
       `This ensures file scope enforcement, shared model guards, and file registration work correctly.`,
   };
 }
