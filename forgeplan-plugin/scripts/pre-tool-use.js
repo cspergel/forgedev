@@ -179,7 +179,16 @@ function evaluate(input) {
   const activeScope = activeNode.file_scope;
 
   // --- Check 2: Does the file match the active node's file_scope? ---
-  if (activeScope && !minimatch(relPath, activeScope)) {
+  if (!activeScope) {
+    return {
+      block: true,
+      message:
+        `BLOCKED: Node "${activeNodeId}" has no file_scope defined in the manifest. ` +
+        `Every node must have a file_scope for enforcement to work. Fix the manifest.`,
+    };
+  }
+
+  if (!minimatch(relPath, activeScope)) {
     // Check if it matches ANY other node's scope
     const otherNode = findOwningNode(manifest.nodes, relPath, activeNodeId);
     if (otherNode) {
@@ -195,7 +204,7 @@ function evaluate(input) {
       block: true,
       message:
         `BLOCKED: File "${relPath}" is outside the active node's file_scope "${activeScope}". ` +
-        `Only write files within the active node's territory, or to exempt paths (.forgeplan/, src/shared/types/).`,
+        `Only write files within the active node's territory, or to exempt paths (.forgeplan/, src/shared/types/index.ts).`,
     };
   }
 
