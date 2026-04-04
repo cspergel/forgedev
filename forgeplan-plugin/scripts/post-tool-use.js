@@ -105,8 +105,14 @@ function processHook(input) {
       targetList = "files_modified";
       fileAction = "edited";
     } else {
-      // Write tool: check manifest BEFORE we register the file
+      // Write tool: determine if this is a new file or overwrite of existing
+      // Check three sources (any match = pre-existing):
+      //   1. Manifest files list (any node)
+      //   2. Git tracking (file was committed/staged before this build)
+      //   3. None found = genuinely new
       let preExisting = false;
+
+      // Source 1: manifest files list
       try {
         const yaml = require(path.join(__dirname, "..", "node_modules", "js-yaml"));
         const mText = fs.readFileSync(manifestPath, "utf-8");
@@ -120,8 +126,26 @@ function processHook(input) {
           }
         }
       } catch {
-        // Can't check — assume new file (won't accidentally delete unknowns)
+        // Can't check manifest — continue to git check
       }
+
+      // Source 2: git tracking (file existed in repo before this build)
+      if (!preExisting) {
+        try {
+          const { execSync } = require("child_process");
+          // git ls-files returns the path if tracked, empty if not
+          const result = execSync(
+            `git ls-files "${relPath}"`,
+            { cwd, encoding: "utf-8", timeout: 3000, stdio: ["pipe", "pipe", "pipe"] }
+          ).trim();
+          if (result.length > 0) {
+            preExisting = true;
+          }
+        } catch {
+          // Git not available or not a repo — fall through
+        }
+      }
+
       if (preExisting) {
         targetList = "files_modified";
         fileAction = "overwrote";

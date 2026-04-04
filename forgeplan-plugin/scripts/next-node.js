@@ -27,7 +27,17 @@ function main() {
   }
 
   const yaml = require(path.join(__dirname, "..", "node_modules", "js-yaml"));
-  const manifest = yaml.load(fs.readFileSync(manifestPath, "utf-8"));
+  let manifest;
+  try {
+    manifest = yaml.load(fs.readFileSync(manifestPath, "utf-8"));
+  } catch (err) {
+    const result = {
+      type: "error",
+      message: `ERROR: .forgeplan/manifest.yaml could not be parsed: ${err.message}. Fix the manifest before proceeding.`,
+    };
+    console.log(JSON.stringify(result, null, 2));
+    process.exit(1);
+  }
 
   let state = { nodes: {} };
   if (fs.existsSync(statePath)) {
