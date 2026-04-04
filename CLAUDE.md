@@ -58,7 +58,12 @@ Hardened through 14 cross-model review rounds (Claude + Codex). Key hardening:
 
 Most deliverables were implemented during Sprint 1/2 hardening (review, revise, recover, session-start, conversation logging). Sprint 3 added the Stop hook — the last enforcement gate. All 7 deliverables verified against plan.
 
-### Sprint 4: Integration and BYOK (NEXT)
+### Sprint 4: Integration and BYOK (COMPLETE)
+**Goal:** Multi-node projects complete the full lifecycle. Cross-model review works. **DONE.**
+
+Deliverables: cross-model-review.js (MCP/CLI/API modes, 3 providers, env var resolution, fetch-based), BYOK config with strict/advisory modes, integrate-check.js with fault-side ID, status-report.js with dependency graph, SaaS starter + internal dashboard blueprints, README.
+
+### Sprint 5: Dogfood and Ship (NEXT)
 ### Sprint 4: Integration and BYOK
 ### Sprint 5: Dogfood and Ship
 ### Sprint 6: Autonomous Iterative Sweep
