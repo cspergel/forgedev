@@ -23,9 +23,9 @@ First, create the `.forgeplan/` directory structure if it doesn't exist:
 └── reviews/
 ```
 
-Then copy the ForgePlan CLAUDE.md into the project root (if one doesn't already exist):
-- Source: `${CLAUDE_PLUGIN_ROOT}/templates/forgeplan-claude.md`
-- Destination: `CLAUDE.md` in the project root (merge with existing if present)
+Then set up the ForgePlan CLAUDE.md in the project root:
+- If no `CLAUDE.md` exists: copy `${CLAUDE_PLUGIN_ROOT}/templates/forgeplan-claude.md` to `CLAUDE.md`
+- If a `CLAUDE.md` already exists: append the ForgePlan section under a `# ForgePlan Project` heading at the end, but only if it doesn't already contain that heading
 
 Also append the `.forgeplan/state.json` exclusion from `${CLAUDE_PLUGIN_ROOT}/templates/forgeplan-gitignore` to the project's `.gitignore` if not already present.
 

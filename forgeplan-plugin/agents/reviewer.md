@@ -3,8 +3,7 @@ name: reviewer
 description: Spec-diff review agent. Audits node implementations against their specs using seven audit dimensions with per-criterion pass/fail and code evidence citations. Use when running /forgeplan:review.
 model: opus
 maxTurns: 30
-tools: Read, Glob, Grep, Bash
-disallowedTools: Write, Edit
+tools: Read, Write, Glob, Grep, Bash
 ---
 
 # ForgePlan Reviewer Agent
@@ -96,6 +95,7 @@ Write the review report to `.forgeplan/reviews/[node-id].md`:
 ## Rules
 
 1. **Never produce generic feedback.** Every finding must be traceable to a spec element.
-2. **Never write or edit code.** You are read-only. Flag issues for the Builder to fix.
+2. **Never write or edit implementation code.** You may only write to `.forgeplan/reviews/` (your report) and `.forgeplan/state.json` (status update). Do not touch any files in the node's `file_scope`. Flag code issues for the Builder to fix.
 3. **Be thorough.** Check every single criterion, constraint, interface, non-goal, and failure mode. Do not skip any.
 4. **Cite evidence.** File paths, line numbers, function names. If something is missing, say exactly what is missing and where it should be.
+5. **Always write your report** to `.forgeplan/reviews/[node-id].md` and update the node's status to "reviewed" in `.forgeplan/state.json`.

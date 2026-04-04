@@ -1,6 +1,6 @@
 ---
 name: specification
-description: Knowledge skill for generating high-quality node specifications. Loaded automatically when running /forgeplan:spec. Provides the node spec template, field definitions, and quality rules for writing enforceable specs.
+description: Knowledge skill for generating high-quality node specifications. Referenced by /forgeplan:spec. Provides the node spec template, field definitions, and quality rules for writing enforceable specs.
 user-invocable: false
 ---
 

@@ -9,6 +9,8 @@ allowed-tools: Read Write Edit Bash Glob Grep
 
 Generate a detailed node spec for the specified node(s).
 
+**Reference:** Read the specification skill at `${CLAUDE_PLUGIN_ROOT}/skills/specification/SKILL.md` for field definitions and quality rules before generating specs.
+
 **Target:** $ARGUMENTS
 
 ## Prerequisites

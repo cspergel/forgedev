@@ -40,7 +40,10 @@ Choose [1/2/3]:
 
 ## Reset
 
-- Remove all files in the node's file_scope that were created during this build (check state.json files_created)
+- Identify files to remove using two sources (in priority order):
+  1. `state.json` → `nodes.[node].files_created` (if PostToolUse hook has been populating this — available from Sprint 2)
+  2. **Fallback:** scan the node's `file_scope` glob from the manifest for all files with `// @forgeplan-node: [node-id]` anchor comments — these are ForgePlan-generated files safe to remove
+- Present the file list to the user for confirmation before deleting
 - Reset node status to "specced" in state.json
 - Clear active_node in state.json
 

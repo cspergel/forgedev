@@ -2,7 +2,7 @@
 description: Audit a built node against its spec using the seven-dimension review format. Produces a structured pass/fail report with code evidence citations.
 user-invocable: true
 argument-hint: "[node-id]"
-allowed-tools: Read Glob Grep Bash
+allowed-tools: Read Write Glob Grep Bash
 agent: reviewer
 context: fork
 ---
