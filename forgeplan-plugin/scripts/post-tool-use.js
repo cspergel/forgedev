@@ -55,8 +55,8 @@ function processHook(input) {
   // Skip .forgeplan/ files — don't register bookkeeping as node files
   if (relPath.startsWith(".forgeplan/")) return;
 
-  // Skip shared types — tracked separately
-  if (relPath.startsWith("src/shared/types/")) return;
+  // Skip the canonical shared types file — tracked separately
+  if (relPath === "src/shared/types/index.ts") return;
 
   const forgePlanDir = path.join(cwd, ".forgeplan");
   const statePath = path.join(forgePlanDir, "state.json");

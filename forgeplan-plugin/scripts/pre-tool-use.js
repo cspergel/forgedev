@@ -122,14 +122,14 @@ function evaluate(input) {
     return { block: false };
   }
 
-  // Shared types module — conditionally exempt
-  // During /forgeplan:build: only allow CREATION (file doesn't exist yet), not modification
-  // During /forgeplan:revise: always allow (revise regenerates shared types on model changes)
-  if (relPath.startsWith("src/shared/types/")) {
+  // Shared types module — only src/shared/types/index.ts is exempt (the ONE canonical file)
+  // Any other file under src/shared/types/ is NOT exempt and must fall within a node's file_scope
+  if (relPath === "src/shared/types/index.ts") {
     if (state.active_node.status === "revising") {
+      // /forgeplan:revise can always regenerate shared types after manifest changes
       return { block: false };
     }
-    // During build: only allow if the file doesn't exist yet
+    // During build: only allow CREATION (file doesn't exist yet), not modification
     const sharedTypesAbs = path.join(cwd, relPath);
     if (!fs.existsSync(sharedTypesAbs)) {
       return { block: false };
@@ -137,17 +137,20 @@ function evaluate(input) {
     return {
       block: true,
       message:
-        `BLOCKED: src/shared/types/ already exists and cannot be modified during /forgeplan:build. ` +
-        `Only /forgeplan:revise can regenerate the shared types module after manifest changes. ` +
+        `BLOCKED: src/shared/types/index.ts already exists and cannot be modified during /forgeplan:build. ` +
+        `Only /forgeplan:revise can regenerate it after manifest changes. ` +
         `Import from the existing module instead.`,
     };
   }
 
   // --- Load manifest ---
   if (!fs.existsSync(manifestPath)) {
-    // No manifest during active build is suspicious — warn but allow
-    // (the manifest should exist if state.json has an active node)
-    return { block: false };
+    return {
+      block: true,
+      message:
+        `BLOCKED: .forgeplan/manifest.yaml not found but a build is active for "${activeNodeId}". ` +
+        `The manifest is required for file scope enforcement. Run /forgeplan:discover to create it.`,
+    };
   }
 
   let manifest;
@@ -164,7 +167,12 @@ function evaluate(input) {
   }
 
   if (!manifest.nodes || !manifest.nodes[activeNodeId]) {
-    return { block: false };
+    return {
+      block: true,
+      message:
+        `BLOCKED: Manifest has no nodes section or no entry for active node "${activeNodeId}". ` +
+        `Enforcement cannot verify file scope boundaries. Fix the manifest to proceed.`,
+    };
   }
 
   const activeNode = manifest.nodes[activeNodeId];
