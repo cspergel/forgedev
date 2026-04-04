@@ -22,7 +22,11 @@ function main() {
   const statePath = path.join(forgePlanDir, "state.json");
 
   if (!fs.existsSync(manifestPath)) {
-    console.error("No manifest found. Run /forgeplan:discover first.");
+    const result = {
+      type: "error",
+      message: "ERROR: No manifest found at .forgeplan/manifest.yaml. Run /forgeplan:discover first.",
+    };
+    console.log(JSON.stringify(result, null, 2));
     process.exit(1);
   }
 

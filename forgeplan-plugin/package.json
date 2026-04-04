@@ -6,7 +6,9 @@
   "license": "MIT",
   "private": true,
   "scripts": {
-    "validate": "node scripts/validate-manifest.js"
+    "validate": "node scripts/validate-manifest.js",
+    "validate:manifest": "node scripts/validate-manifest.js",
+    "validate:spec": "node scripts/validate-spec.js"
   },
   "dependencies": {
     "js-yaml": "^4.1.0",

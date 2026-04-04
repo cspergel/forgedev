@@ -50,6 +50,32 @@ function validateManifest(manifest) {
     );
   }
 
+  // --- 1b. Required Per-Node Fields ---
+  const requiredNodeFields = ["name", "type", "status", "file_scope", "spec"];
+  const validNodeTypes = ["service", "frontend", "database", "storage", "integration"];
+  const validStatuses = ["pending", "specced", "building", "built", "reviewing", "reviewed", "revising", "revised"];
+
+  for (const nodeId of nodeIds) {
+    const node = manifest.nodes[nodeId];
+    for (const field of requiredNodeFields) {
+      if (!node[field]) {
+        errors.push(`Node "${nodeId}": missing required field "${field}".`);
+      }
+    }
+    if (node.type && !validNodeTypes.includes(node.type)) {
+      warnings.push(`Node "${nodeId}": type "${node.type}" is not a standard type (${validNodeTypes.join(", ")}).`);
+    }
+    if (node.status && !validStatuses.includes(node.status)) {
+      errors.push(`Node "${nodeId}": invalid status "${node.status}".`);
+    }
+    if (!Array.isArray(node.files)) {
+      // files can start empty but must be an array
+      if (node.files !== undefined && !Array.isArray(node.files)) {
+        errors.push(`Node "${nodeId}": "files" must be an array.`);
+      }
+    }
+  }
+
   // --- 2. Orphan Node Detection ---
   for (const nodeId of nodeIds) {
     const node = manifest.nodes[nodeId];
