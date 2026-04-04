@@ -8,40 +8,66 @@ allowed-tools: Read Glob Grep Bash
 
 Verify all cross-node interfaces are correctly implemented.
 
-## Prerequisites
-
-- All nodes should be in "built" or "reviewed" status for a complete check
-- Can run partial checks on completed nodes
-
 ## Process
 
-For each interface defined in any node's spec:
+1. Run the deterministic integration checker:
+```bash
+node "${CLAUDE_PLUGIN_ROOT}/scripts/integrate-check.js"
+```
 
-1. Read the interface contract from the source node's spec
-2. Read the corresponding interface from the target node's spec
-3. Verify both sides implement the contract:
-   - Does the source node export what it claims?
-   - Does the target node import and use it correctly?
-   - Do the data types match (especially shared model usage)?
-   - Is the directional type (read/write, outbound, inbound) respected?
+2. Parse the JSON output and present results to the user.
 
-4. For each mismatch, identify the fault side:
-   - **Source fault** — the source doesn't export what its spec promises
-   - **Target fault** — the target doesn't import correctly
-   - **Spec fault** — the specs disagree on the contract
-   - **Both** — neither side implements the contract
+3. For any FAIL or WARN results, perform deeper LLM-assisted analysis:
+   - Read the actual implementation files for both sides of the interface
+   - Verify the source node exports what its spec promises
+   - Verify the target node imports and uses it correctly
+   - Check shared model types match between nodes
 
-## Output
+## Output Formatting
 
+Based on the JSON `verdict` field:
+
+### verdict: "PASS"
 ```
 === Integration Report ===
-
-[PASS] auth → database: User persistence via Supabase Auth
-[PASS] auth → api: JWT token injection for protected routes
-[FAIL] auth → frontend-login: Auth context with login/logout/register
-       Fault: TARGET — frontend-login does not import AuthContext from auth module
-       Fix: Update frontend-login to import { AuthContext } from 'src/auth/context'
-
-Summary: [passed]/[total] interfaces verified
-Recommendation: [PASS | FAIL with remediation steps]
+All [total] interfaces verified.
+[list each with PASS status and brief detail]
 ```
+
+### verdict: "PASS_WITH_WARNINGS"
+```
+=== Integration Report ===
+[passed] passed, [warned] warnings.
+[list PASS interfaces]
+[list WARN interfaces with remediation]
+```
+
+### verdict: "FAIL"
+```
+=== Integration Report ===
+[failed] FAILED, [passed] passed, [pending] pending.
+
+FAILURES:
+[For each FAIL]:
+  [source] → [target] ([type]): FAIL
+  Contract: [contract]
+  Fault: [SOURCE | TARGET | SPEC | BOTH]
+  Detail: [what's wrong]
+  Fix: [specific remediation]
+```
+
+### verdict: "INCOMPLETE"
+```
+=== Integration Report ===
+Cannot fully verify — [pending] interface(s) pending (nodes not yet built).
+[list pending interfaces]
+[list verified interfaces]
+```
+
+## After Integration
+
+If all interfaces pass, suggest:
+- Running `/forgeplan:status` for a full project overview
+- The project is ready for deployment or further testing
+
+If interfaces fail, suggest specific remediation for each failure based on the fault side.

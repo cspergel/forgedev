@@ -1,0 +1,125 @@
+# ForgePlan Blueprint: Internal Dashboard
+# An internal operations dashboard for monitoring, data management,
+# and team workflows. No public-facing UI.
+#
+# 6 nodes, 2 shared models.
+
+project:
+  name: "Internal Dashboard"
+  description: "An internal operations dashboard for data monitoring, team task management, and reporting."
+  tech_stack:
+    frontend: "React + Tailwind CSS"
+    backend: "Node.js + Express"
+    database: "Supabase (PostgreSQL)"
+    auth: "Supabase Auth"
+    hosting: "Vercel"
+  created_at: ""
+  revision_count: 0
+
+shared_models:
+  User:
+    fields:
+      id: "string (UUID)"
+      email: "string"
+      name: "string"
+      role: "string (enum: admin, viewer, editor)"
+      department: "string (optional)"
+      created_at: "string (ISO 8601)"
+  DataRecord:
+    fields:
+      id: "string (UUID)"
+      type: "string (enum: metric, event, task)"
+      title: "string"
+      value: "string"
+      status: "string (enum: active, archived, flagged)"
+      created_by: "string (UUID → User.id)"
+      created_at: "string (ISO 8601)"
+      updated_at: "string (ISO 8601)"
+
+validation:
+  no_circular_dependencies: true
+  no_orphan_nodes: true
+  no_file_scope_overlaps: true
+
+nodes:
+  database:
+    name: "Database Layer"
+    type: "database"
+    status: "pending"
+    file_scope: "src/database/**"
+    depends_on: []
+    connects_to:
+      - auth
+      - api
+    files: []
+    spec: "specs/database.yaml"
+
+  auth:
+    name: "Authentication (Internal SSO)"
+    type: "service"
+    status: "pending"
+    file_scope: "src/auth/**"
+    depends_on:
+      - database
+    connects_to:
+      - database
+      - api
+      - frontend-login
+    files: []
+    spec: "specs/auth.yaml"
+
+  api:
+    name: "API Layer"
+    type: "service"
+    status: "pending"
+    file_scope: "src/api/**"
+    depends_on:
+      - database
+      - auth
+    connects_to:
+      - database
+      - auth
+      - frontend-overview
+      - frontend-data
+    files: []
+    spec: "specs/api.yaml"
+
+  frontend-login:
+    name: "Login Page"
+    type: "frontend"
+    status: "pending"
+    file_scope: "src/pages/login/**"
+    depends_on:
+      - auth
+    connects_to:
+      - auth
+    files: []
+    spec: "specs/frontend-login.yaml"
+
+  frontend-overview:
+    name: "Dashboard Overview"
+    type: "frontend"
+    status: "pending"
+    file_scope: "src/pages/overview/**"
+    depends_on:
+      - api
+      - auth
+    connects_to:
+      - api
+      - auth
+    files: []
+    spec: "specs/frontend-overview.yaml"
+
+  frontend-data:
+    name: "Data Management View"
+    type: "frontend"
+    status: "pending"
+    file_scope: "src/pages/data/**"
+    depends_on:
+      - api
+      - auth
+    connects_to:
+      - api
+      - auth
+    files: []
+    spec: "specs/frontend-data.yaml"

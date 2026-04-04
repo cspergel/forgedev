@@ -1,0 +1,46 @@
+# ForgePlan Configuration — .forgeplan/config.yaml
+# BYOK (Bring Your Own Key) and review preferences.
+# This file is optional. Without it, all reviews use the native Claude reviewer.
+
+# --- Review Configuration ---
+review:
+  # Mode: how cross-model review is executed
+  # "native" — use Claude Code's built-in reviewer (default, no config needed)
+  # "mcp" — use MCP server for alternate model (recommended for Codex — no API key needed)
+  # "cli" — spawn alternate model's CLI as subprocess (works with any CLI tool)
+  # "api" — direct HTTP API calls (requires api_key)
+  mode: "native"
+
+  # --- MCP Mode Settings ---
+  # Requires: `claude mcp add [server-name]` configured beforehand
+  # mcp_server: "codex"          # MCP server name (as configured in claude mcp)
+
+  # --- CLI Mode Settings ---
+  # cli_command: "codex"          # CLI executable name
+  # cli_args: []                  # Additional CLI arguments
+
+  # --- API Mode Settings ---
+  # provider: "openai"            # openai | google | anthropic
+  # api_key: ""                   # Your API key (or use env var)
+  # model: "gpt-4o"               # Model to use for review
+
+  # --- Common Settings ---
+  # timeout: 120000               # Timeout in ms for cross-model calls (default: 2 minutes)
+
+# --- Enforcement Mode ---
+enforcement:
+  # "strict" — cross-model review must pass before node can advance to "reviewed"
+  #            (blocks the review→reviewed transition until cross-model agrees)
+  # "advisory" — cross-model review runs but results are informational only
+  #              (node advances to "reviewed" regardless of cross-model findings)
+  mode: "advisory"
+
+# --- Model Tiering (Sprint 6) ---
+# Assign different models to different roles for cost optimization.
+# tiering:
+#   architect: "opus"             # Most capable — system design decisions
+#   builder_simple: "sonnet"      # Leaf nodes with narrow specs
+#   builder_complex: "opus"       # Integration nodes with many dependencies
+#   reviewer: "opus"              # Critical analysis
+#   sweep_mechanical: "sonnet"    # Type consistency, import checks
+#   sweep_reasoning: "opus"       # Security audit, architecture review

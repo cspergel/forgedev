@@ -1,0 +1,163 @@
+# ForgePlan Blueprint: SaaS Starter
+# A multi-tenant SaaS application with subscription billing, user management,
+# and a dashboard. Common starting point for B2B tools.
+#
+# 8 nodes, 3 shared models.
+
+project:
+  name: "SaaS Starter"
+  description: "A multi-tenant SaaS application with subscription billing, team management, and a product dashboard."
+  tech_stack:
+    frontend: "React + Tailwind CSS"
+    backend: "Node.js + Express"
+    database: "Supabase (PostgreSQL)"
+    auth: "Supabase Auth"
+    hosting: "Vercel"
+    payments: "Stripe"
+  created_at: ""
+  revision_count: 0
+
+shared_models:
+  User:
+    fields:
+      id: "string (UUID)"
+      email: "string"
+      name: "string"
+      role: "string (enum: owner, admin, member)"
+      org_id: "string (UUID → Organization.id)"
+      created_at: "string (ISO 8601)"
+  Organization:
+    fields:
+      id: "string (UUID)"
+      name: "string"
+      plan: "string (enum: free, starter, pro, enterprise)"
+      stripe_customer_id: "string (optional)"
+      created_at: "string (ISO 8601)"
+  Subscription:
+    fields:
+      id: "string (UUID)"
+      org_id: "string (UUID → Organization.id)"
+      stripe_subscription_id: "string"
+      status: "string (enum: active, past_due, canceled, trialing)"
+      plan: "string (enum: free, starter, pro, enterprise)"
+      current_period_end: "string (ISO 8601)"
+
+validation:
+  no_circular_dependencies: true
+  no_orphan_nodes: true
+  no_file_scope_overlaps: true
+
+nodes:
+  database:
+    name: "Database Layer"
+    type: "database"
+    status: "pending"
+    file_scope: "src/database/**"
+    depends_on: []
+    connects_to:
+      - auth
+      - api
+      - billing
+    files: []
+    spec: "specs/database.yaml"
+
+  auth:
+    name: "Authentication & Authorization"
+    type: "service"
+    status: "pending"
+    file_scope: "src/auth/**"
+    depends_on:
+      - database
+    connects_to:
+      - database
+      - api
+      - frontend-login
+      - frontend-dashboard
+    files: []
+    spec: "specs/auth.yaml"
+
+  billing:
+    name: "Billing & Subscriptions"
+    type: "integration"
+    status: "pending"
+    file_scope: "src/billing/**"
+    depends_on:
+      - database
+    connects_to:
+      - database
+      - api
+      - frontend-billing
+    files: []
+    spec: "specs/billing.yaml"
+
+  api:
+    name: "API Layer"
+    type: "service"
+    status: "pending"
+    file_scope: "src/api/**"
+    depends_on:
+      - database
+      - auth
+      - billing
+    connects_to:
+      - database
+      - auth
+      - billing
+      - frontend-dashboard
+      - frontend-settings
+    files: []
+    spec: "specs/api.yaml"
+
+  frontend-login:
+    name: "Login & Registration"
+    type: "frontend"
+    status: "pending"
+    file_scope: "src/pages/login/**"
+    depends_on:
+      - auth
+    connects_to:
+      - auth
+    files: []
+    spec: "specs/frontend-login.yaml"
+
+  frontend-dashboard:
+    name: "Product Dashboard"
+    type: "frontend"
+    status: "pending"
+    file_scope: "src/pages/dashboard/**"
+    depends_on:
+      - api
+      - auth
+    connects_to:
+      - api
+      - auth
+    files: []
+    spec: "specs/frontend-dashboard.yaml"
+
+  frontend-billing:
+    name: "Billing & Plans Page"
+    type: "frontend"
+    status: "pending"
+    file_scope: "src/pages/billing/**"
+    depends_on:
+      - api
+      - billing
+    connects_to:
+      - api
+      - billing
+    files: []
+    spec: "specs/frontend-billing.yaml"
+
+  frontend-settings:
+    name: "Team & Account Settings"
+    type: "frontend"
+    status: "pending"
+    file_scope: "src/pages/settings/**"
+    depends_on:
+      - api
+      - auth
+    connects_to:
+      - api
+      - auth
+    files: []
+    spec: "specs/frontend-settings.yaml"
