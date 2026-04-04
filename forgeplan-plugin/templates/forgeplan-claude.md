@@ -4,7 +4,7 @@ This project uses **ForgePlan Core**, an architecture-governed build harness. Th
 
 ## Critical Rules
 
-1. **Always check for an active node** before writing code. Read `.forgeplan/state.json` to see if a node is currently being built.
+1. **Always check for an active operation** before writing code. Read `.forgeplan/state.json` to see if a node is currently being built, reviewed, or revised.
 2. **Never write files outside the active node's `file_scope`** directory. The manifest defines which directories belong to which node. Permitted exceptions depend on the active operation:
    - **Building:** `.forgeplan/conversations/nodes/[node].md`, `.forgeplan/state.json`, and `src/shared/types/index.ts` (creation only)
    - **Reviewing:** `.forgeplan/reviews/[node].md` and `.forgeplan/state.json` only
@@ -30,7 +30,7 @@ Use ForgePlan commands in this order:
 8. `/forgeplan:integrate` — Verify all cross-node interfaces
 9. `/forgeplan:status` — Full project status with dependency visualization
 
-**Note:** Some commands may have limited functionality in early plugin versions.
+**Note:** `/forgeplan:sweep` and `/forgeplan:deep-build` require Sprint 6 (plugin v0.6+).
 
 ## Key Files
 
