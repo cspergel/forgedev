@@ -127,11 +127,44 @@ function processHook(input) {
       state.nodes[activeNodeId].files_modified = [];
     }
 
-    // Write tool = new file creation; Edit tool = modifying existing file
-    const isCreate = toolName === "Write";
-    const targetList = isCreate ? "files_created" : "files_modified";
+    // Determine if this is a new file or a modification of an existing one.
+    // Edit tool always means modifying existing content.
+    // Write tool could be creating OR overwriting — check if the file was
+    // already known (registered in manifest files list or already tracked this build).
+    const alreadyKnown =
+      state.nodes[activeNodeId].files_created.includes(relPath) ||
+      state.nodes[activeNodeId].files_modified.includes(relPath);
 
-    if (!state.nodes[activeNodeId][targetList].includes(relPath)) {
+    let targetList;
+    if (alreadyKnown) {
+      // Already tracked — don't re-classify
+      targetList = null;
+    } else if (toolName === "Edit") {
+      // Edit = always modifying existing content
+      targetList = "files_modified";
+    } else {
+      // Write tool: check if file was in any node's files list before this build
+      // (meaning it existed from a previous build or was pre-existing)
+      let preExisting = false;
+      try {
+        const yaml = require(path.join(__dirname, "..", "node_modules", "js-yaml"));
+        const mText = fs.readFileSync(manifestPath, "utf-8");
+        const mData = yaml.load(mText);
+        if (mData.nodes) {
+          for (const [nid, ndata] of Object.entries(mData.nodes)) {
+            if ((ndata.files || []).includes(relPath) && nid !== activeNodeId) {
+              preExisting = true;
+              break;
+            }
+          }
+        }
+      } catch {
+        // If we can't check, assume new file (safer for reset — won't delete unknowns)
+      }
+      targetList = preExisting ? "files_modified" : "files_created";
+    }
+
+    if (targetList && !state.nodes[activeNodeId][targetList].includes(relPath)) {
       state.nodes[activeNodeId][targetList].push(relPath);
       fs.writeFileSync(statePath, JSON.stringify(state, null, 2), "utf-8");
     }

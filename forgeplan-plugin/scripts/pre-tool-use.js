@@ -348,9 +348,19 @@ function evaluateBash(toolInput, cwd) {
     /\bCopy-Item\b/i,                   // Copy-Item src dest
     /\bMove-Item\b/i,                   // Move-Item src dest
     /\bRename-Item\b/i,                 // Rename-Item src dest
+    /\bRemove-Item\b/i,                 // Remove-Item path (destructive)
+    /\bClear-Content\b/i,              // Clear-Content path (empties file)
+    /\bInvoke-WebRequest\b.*-OutFile/i, // Download to file
     /\b\[System\.IO\.File\]::Write/i,   // .NET file write
+    /\b\[System\.IO\.File\]::Delete/i,  // .NET file delete
+    /\b\[System\.IO\.File\]::AppendAll/i, // .NET file append
     /\bsc\s/,                           // sc alias for Set-Content
     /\bni\s/,                           // ni alias for New-Item
+    /\bdel\s/,                          // del alias for Remove-Item
+    /\bri\s/,                           // ri alias for Remove-Item
+    /\brm\s/,                           // rm (works in both bash and PowerShell)
+    /\brmdir\s/,                        // rmdir
+    /\bunlink\s/,                       // unlink
   ];
 
   const isFileWrite = fileWritePatterns.some((p) => p.test(command));
