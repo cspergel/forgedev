@@ -358,7 +358,10 @@ function parseReviewResponse(text) {
 }
 
 if (require.main === module) {
-  main();
+  main().catch((err) => {
+    console.error(`ForgePlan cross-model review failed: ${err.message}`);
+    process.exit(2);
+  });
 } else {
   module.exports = { assembleReviewPrompt, parseReviewResponse, collectNodeFiles };
 }

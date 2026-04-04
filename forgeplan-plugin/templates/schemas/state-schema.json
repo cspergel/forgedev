@@ -81,7 +81,11 @@
           },
           "last_review": {
             "type": ["string", "null"],
-            "description": "Path to most recent review report, or null"
+            "description": "Path to most recent native review report, or null"
+          },
+          "last_crossmodel_review": {
+            "type": ["string", "null"],
+            "description": "Path to most recent cross-model review report, or null. Only set when BYOK cross-model review is configured in config.yaml."
           },
           "revision_history": {
             "type": "array",
