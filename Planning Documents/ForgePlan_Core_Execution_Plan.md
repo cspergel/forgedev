@@ -188,7 +188,7 @@ depends_on:
 
 ## Commands — What Ships
 
-Nine commands. Each maps to a clear user action.
+Nine commands ship in Sprints 1–5. Two additional commands ship in Sprint 6. Each maps to a clear user action.
 
 | Command | What It Does |
 |---------|-------------|
@@ -197,10 +197,12 @@ Nine commands. Each maps to a clear user action.
 | `/forgeplan:build [node]` | Set active node. Inject spec + interfaces + shared models. Builder agent generates code with anchor comments. Hooks enforce compliance. |
 | `/forgeplan:review [node]` | Audit against seven dimensions (spec compliance, interfaces, security, patterns, anchor comments, non-goal violations, failure mode coverage). Native agent or cross-model via BYOK. Structured pass/fail report. |
 | `/forgeplan:revise [node]` | Reopen completed node. Analyze change impact (internal vs interface). Flag affected nodes. |
-| `/forgeplan:next` | Dependency-aware next node recommendation. Surfaces stuck/crashed nodes. |
+| `/forgeplan:next` | Dependency-aware next node recommendation. Surfaces stuck/crashed nodes. Surfaces nodes needing rebuild after revision. |
 | `/forgeplan:status` | Full project status with text-based dependency graph visualization. |
 | `/forgeplan:integrate` | Cross-node interface verification. Identifies which side is at fault. Recommends remediation. |
 | `/forgeplan:recover` | Detect and handle crashed builds. Resume, reset, or flag for manual review. |
+| `/forgeplan:sweep` | *Sprint 6.* Claude's parallel agents sweep the codebase, fix findings, then the alternate model (Codex/Gemini via MCP, CLI subprocess, or API) cross-checks the fixes AND re-sweeps for issues Claude missed. Alternates until two consecutive clean passes from the alternate model. |
+| `/forgeplan:deep-build` | *Sprint 6.* Full autonomous sequence: build all nodes → node review → integrate → Claude sweep → Claude fix → cross-model verification → fix → re-verify → done. User walks away, comes back to a finished, cross-model-certified codebase. |
 
 ---
 
@@ -388,7 +390,7 @@ The success metric — "fewer broken references, fewer duplicate types, and fewe
 
 ---
 
-## Sprint Plan — 10 Weeks
+## Sprint Plan — 14 Weeks
 
 ### Sprint 1: Foundation (Weeks 1–2)
 
@@ -493,6 +495,35 @@ Compare the same modification done in vanilla Claude Code. **This is the proof p
 
 **Exit criteria:** Measurable improvement on the success metric. Change propagation test passes. At least one complete project built with the plugin that demonstrates fewer broken references, fewer duplicate types, and fewer abandoned stubs than the same project built without it.
 
+### Sprint 6: Autonomous Iterative Sweep — The Cross-Model Self-Improving Loop (Weeks 11–14)
+
+**Goal:** Build the autonomous multi-agent codebase review system that alternates between models — Claude builds and fixes, a different model (Codex/GPT/Gemini) reviews the fixes AND sweeps the full codebase for new issues — iterating until the alternate model returns clean on two consecutive passes.
+
+**Why this exists:** Node-level review (Sprints 3–4) catches issues within a single node's spec boundaries. `/forgeplan:integrate` (Sprint 4) catches interface contract mismatches. But neither catches cross-cutting bugs that only emerge when the full codebase runs together — type drift in usage, import chain issues, inconsistent error handling, race conditions at node boundaries. These are the bugs that cause 4–15 manual review cycles. This sprint eliminates that loop.
+
+**Three-Level Review Architecture:**
+- **Level 1 (existing):** Node review — spec-scoped, same model, per acceptance criteria
+- **Level 2 (new):** Claude codebase sweep — 6 parallel agents (auth/security, type consistency, error handling, database, API contracts, imports) scan full codebase
+- **Level 3 (new):** Cross-model verification — alternate model verifies Claude's fixes AND independently sweeps for issues Claude missed
+
+**Deliverables (Weeks 11–12):**
+- Six Claude sweep agent definitions with specialized system prompts
+- `/forgeplan:sweep` command spawning parallel subagents, merging findings into `.forgeplan/sweeps/sweep-[timestamp].md`
+- Claude auto-fix cycle: group findings by node, fix with scope enforcement, re-review modified nodes
+- Sweep-fix mode for cross-node modifications with explicit logging
+- Cross-check report format at `.forgeplan/sweeps/crosscheck-[timestamp].md`
+
+**Deliverables (Weeks 13–14):**
+- `cross-model-bridge.js` with three-mode support: MCP mode (recommended, existing subscription), CLI subprocess mode, and API mode
+- Alternate model parallel agent orchestration: fix verification agents (scoped to modified files) + full codebase sweep agents (entire codebase)
+- The alternating fix cycle: Claude fix → cross-check → Claude fix → re-cross-check → repeat until two consecutive clean passes
+- `/forgeplan:deep-build` command chaining the full autonomous sequence: build → node review → integrate → Claude sweep → fix → cross-check → fix → re-check → final report
+- Deep build report at `.forgeplan/deep-build-report.md` with findings tracked by source model
+
+**Test:** Run `/forgeplan:sweep` on a codebase with planted bugs. Verify Claude's agents find their issues. Fix. Run cross-check — verify it catches at least one issue Claude missed. Run `/forgeplan:deep-build` end-to-end on the client portal. Verify two consecutive clean cross-model passes and documented findings by source.
+
+**Exit criteria:** `/forgeplan:deep-build` runs autonomously on the client portal. Codex certifies clean on two consecutive passes. Deep build report shows cross-model review caught issues single-model review missed. Total autonomous build time under 90 minutes.
+
 ---
 
 ## What Is Deferred (Not Cut)
@@ -535,8 +566,8 @@ That's day one through day three. If the discovery flow produces a good manifest
 
 ## Relationship to the Grand Vision
 
-This execution plan is **Sprint 1 through Sprint 5 of Section 17** in the concept document. Everything in Sections 1–16 and 18–23 of the concept document remains the long-term product direction. The concept document is the north star. This document is the first set of directions to get on the road.
+This execution plan is **Sprint 1 through Sprint 6 of Section 17** in the concept document. Sprints 1–5 deliver the architecture-governed build harness. Sprint 6 delivers the autonomous iterative sweep system — the self-improving review loop that turns ForgePlan from a build tool into an autonomous quality engineering platform. Everything in Sections 1–16 and 18–23 of the concept document remains the long-term product direction. The concept document is the north star. This document is the first set of directions to get on the road.
 
-When the plugin proves the four things, the next document will be: **ForgePlan Workstation — Standalone Application Build Plan**, covering the Tauri shell, React Flow canvas, Monaco integration, and the visual rendering of the `.forgeplan/` directory that developers have already been building in their terminals.
+When the plugin proves the four things, the next document will be: **ForgePlan Workstation — Standalone Application Build Plan**, covering the Tauri shell, React Flow canvas, Monaco integration, and the visual rendering of the `.forgeplan/` directory that developers have already been building in their terminals. The `/forgeplan:deep-build` autonomous loop becomes the "Deep Build" premium feature in the visual workstation — the user clicks a button, walks away, and comes back to a fully built, fully reviewed, fully swept application.
 
 The vision is intact. The build starts now.
