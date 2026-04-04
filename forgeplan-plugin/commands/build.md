@@ -35,6 +35,7 @@ Build the specified node following its spec with layered enforcement:
    - Set `active_node` to `{"node": "[node-id]", "status": "building", "started_at": "[ISO timestamp]"}`
    - Set `nodes.[node-id].status` to `"building"`
    - Set `nodes.[node-id].pre_build_files` to the list of files from the snapshot above
+   - Set `nodes.[node-id].bounce_count` to `0`
    - Set `nodes.[node-id].files_created` to `[]`
    - Set `nodes.[node-id].files_modified` to `[]`
    - Set `last_updated` to current ISO timestamp

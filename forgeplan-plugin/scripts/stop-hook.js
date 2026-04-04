@@ -89,9 +89,19 @@ function evaluate(input) {
 
   if (bounceCount >= 3) {
     // Escalate to user — too many bounces, stop hook is not helping
+    // Auto-mark as built so review command can accept it
+    try {
+      state.nodes[activeNodeId].status = "built";
+      state.nodes[activeNodeId].last_build_completed = new Date().toISOString();
+      state.active_node = null;
+      state.stop_hook_active = false;
+      state.last_updated = new Date().toISOString();
+      fs.writeFileSync(statePath, JSON.stringify(state, null, 2), "utf-8");
+    } catch { /* best effort */ }
+
     process.stderr.write(
-      `ForgePlan Stop: Node "${activeNodeId}" has bounced ${bounceCount} times. ` +
-      `Escalating to user — review the node manually with /forgeplan:review ${activeNodeId}\n`
+      `ForgePlan Stop: Node "${activeNodeId}" has bounced ${bounceCount} times without resolving all criteria. ` +
+      `Build force-completed. Run /forgeplan:review ${activeNodeId} to see what's still unmet.\n`
     );
     return { block: false };
   }
