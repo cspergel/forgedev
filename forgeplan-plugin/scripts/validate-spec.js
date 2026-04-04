@@ -93,7 +93,7 @@ function validateSpec(spec) {
       if (!ac.description) warnings.push(`acceptance_criteria[${i}] (${ac.id || "?"}): missing description`);
     }
     if (spec.acceptance_criteria.length === 0) {
-      warnings.push("acceptance_criteria is empty — node has no testable assertions");
+      errors.push("acceptance_criteria must have at least 1 entry — build, review, and Stop hook all depend on concrete criteria");
     }
   }
 
@@ -101,7 +101,14 @@ function validateSpec(spec) {
     for (let i = 0; i < spec.interfaces.length; i++) {
       const iface = spec.interfaces[i];
       if (!iface.target_node) errors.push(`interfaces[${i}]: missing target_node`);
-      if (!iface.type) errors.push(`interfaces[${i}]: missing type (read/write|outbound|inbound)`);
+      if (!iface.type) {
+        errors.push(`interfaces[${i}]: missing type (read/write|outbound|inbound)`);
+      } else {
+        const validTypes = ["read/write", "outbound", "inbound"];
+        if (!validTypes.includes(iface.type)) {
+          errors.push(`interfaces[${i}]: invalid type "${iface.type}" — must be one of: ${validTypes.join(", ")}`);
+        }
+      }
       if (!iface.contract) errors.push(`interfaces[${i}]: missing contract`);
     }
   }

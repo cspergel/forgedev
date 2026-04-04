@@ -57,4 +57,4 @@ Progress: [completed]/[total] nodes complete
 ```
 ERROR: [message]
 ```
-This occurs when `.forgeplan/state.json` is corrupted or unreadable. Present the error message and suggest fixing or deleting state.json.
+This occurs when `.forgeplan/state.json` is corrupted, `.forgeplan/manifest.yaml` is corrupted, or the manifest has no nodes defined. Present the error message and suggest the appropriate fix.
