@@ -113,8 +113,8 @@ function validateSpec(spec, manifest) {
       } else {
         if (!inp.name) errors.push(`inputs[${i}]: missing name`);
         if (!inp.type) errors.push(`inputs[${i}]: missing type`);
-        if (inp.required === undefined) warnings.push(`inputs[${i}] (${inp.name || "?"}): missing "required" field`);
-        if (!inp.validation) warnings.push(`inputs[${i}] (${inp.name || "?"}): missing "validation" rule`);
+        if (inp.required === undefined) errors.push(`inputs[${i}] (${inp.name || "?"}): missing "required" field`);
+        if (!inp.validation) errors.push(`inputs[${i}] (${inp.name || "?"}): missing "validation" rule`);
       }
     }
   }
@@ -143,7 +143,11 @@ function validateSpec(spec, manifest) {
   if (Array.isArray(spec.acceptance_criteria)) {
     for (let i = 0; i < spec.acceptance_criteria.length; i++) {
       const ac = spec.acceptance_criteria[i];
-      if (!ac.id) errors.push(`acceptance_criteria[${i}]: missing id`);
+      if (!ac.id) {
+        errors.push(`acceptance_criteria[${i}]: missing id`);
+      } else if (!/^AC\d+$/.test(ac.id)) {
+        errors.push(`acceptance_criteria[${i}]: id "${ac.id}" must match format AC[number] (e.g., AC1, AC2)`);
+      }
       if (!ac.test) errors.push(`acceptance_criteria[${i}] (${ac.id || "?"}): missing test field`);
       if (!ac.description) warnings.push(`acceptance_criteria[${i}] (${ac.id || "?"}): missing description`);
     }

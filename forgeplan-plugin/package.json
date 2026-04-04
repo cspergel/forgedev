@@ -6,7 +6,7 @@
   "license": "MIT",
   "private": true,
   "scripts": {
-    "validate": "node scripts/validate-manifest.js",
+    "validate": "echo 'Usage: node scripts/validate-manifest.js <manifest.yaml>' && echo '       node scripts/validate-spec.js <spec.yaml> [manifest.yaml]'",
     "validate:manifest": "node scripts/validate-manifest.js",
     "validate:spec": "node scripts/validate-spec.js"
   },

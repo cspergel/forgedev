@@ -58,8 +58,8 @@ Status: revising (started [timestamp])
 
 Options:
   1. RESUME  — Restart the revision (re-read spec changes and continue)
-  2. ROLLBACK — Revert spec/manifest changes made during this revision (if git available)
-  3. ACCEPT  — Keep current spec/manifest state and mark revision complete
+  2. ROLLBACK — Revert spec, manifest, AND src/shared/types/index.ts changes made during this revision (use git checkout if available)
+  3. ACCEPT  — Keep current spec/manifest/shared-types state and mark revision complete
 
 Choose [1/2/3]:
 ```
