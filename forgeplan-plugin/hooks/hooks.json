@@ -45,6 +45,21 @@
           }
         ]
       }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/stop-hook.js\""
+          },
+          {
+            "type": "prompt",
+            "prompt": "BUILD COMPLETION CHECK — A build is in progress. Before you can finish, you must verify the acceptance criteria.\n\n1. Read .forgeplan/state.json to get the active node ID.\n2. Read the node's spec at .forgeplan/specs/[node-id].yaml.\n3. For EACH acceptance criterion (AC1, AC2, etc.), evaluate whether it is met:\n   - Read the criterion's 'description' and 'test' field.\n   - Search the node's file_scope for the implementation.\n   - Check if a corresponding test exists.\n   - Verdict: PASS or FAIL with brief evidence.\n4. For EACH failure_mode in the spec, check if defensive code exists.\n5. After evaluation, update .forgeplan/state.json: set stop_hook_active to false.\n\nIf ALL acceptance criteria PASS and all failure modes are handled:\n   - Update nodes.[node-id].status to 'built'\n   - Set nodes.[node-id].last_build_completed to current ISO timestamp\n   - Clear active_node to null\n   - Report: 'BUILD COMPLETE: All [count] acceptance criteria passed.'\n\nIf ANY criteria FAIL:\n   - List each failing criterion with its ID, description, and what's missing\n   - Do NOT update status or clear active_node\n   - Continue working to address the unmet criteria\n   - Report: 'UNMET CRITERIA: [list of AC IDs]. Continuing to fix...'"
+          }
+        ]
+      }
     ]
   }
 }

@@ -13,7 +13,7 @@ Build the specified node following its spec with layered enforcement:
 - **PreToolUse hook** — deterministic file scope blocking + shared model guard, then LLM spec compliance check
 - **PostToolUse hook** — auto-registers files and logs changes
 - **Builder agent directive** — constraint enforcement via prompt
-- **Stop hook** — acceptance criteria evaluation (Sprint 3)
+- **Stop hook** — Layer 1: bounce counter + loop prevention. Layer 2: LLM evaluates all acceptance criteria by ID, checks failure modes. Bounces back with unmet criteria until all pass or 3 bounces reached.
 
 **Target node:** $ARGUMENTS
 
