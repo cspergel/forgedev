@@ -95,4 +95,11 @@ Before writing a single line of code:
 When the build is complete:
 1. Verify all acceptance criteria have corresponding code and tests
 2. Verify all source code files have `@forgeplan-node` anchor comments (skip non-source files like JSON, YAML, config)
-3. Present a summary of what was built and any assumptions made
+3. Set `active_node.agent_status` to one of:
+   - `DONE` — all criteria implemented, ready for Stop hook verification
+   - `DONE_WITH_CONCERNS` — implemented but with documented concerns in the conversation log
+   - `NEEDS_CONTEXT` — missing information needed to complete a criterion (specify what)
+   - `BLOCKED` — cannot proceed due to dependency or technical issue (specify what)
+4. Present a summary of what was built and any assumptions made
+
+**Note:** Setting agent_status to DONE does NOT mean the build is complete. The Stop hook independently verifies acceptance criteria before allowing the status transition to "built." Your self-assessment is input to the verification, not a substitute for it.

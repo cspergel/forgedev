@@ -58,9 +58,8 @@ If yes, ForgePlan Core works. If no, the harness needs redesign before the stand
 ```
 .forgeplan/
 ├── manifest.yaml              # Central command file — the spider web
-├── config.yaml                # BYOK and preferences (optional)
-├── state.json                 # Ephemeral session state (includes sweep_state for Sprint 6)
-├── deep-build-report.md       # Sprint 6: final deep-build certification report
+├── config.yaml                # Cross-model settings, preferences (optional)
+├── state.json                 # Ephemeral session state
 ├── specs/
 │   ├── database.yaml
 │   ├── auth.yaml
@@ -74,12 +73,9 @@ If yes, ForgePlan Core works. If no, the harness needs redesign before the stand
 │   └── nodes/
 │       ├── auth.md            # Build decisions per node
 │       └── api.md
-├── reviews/
-│   ├── auth.md                # Structured review reports
-│   └── api.md
-└── sweeps/                    # Sprint 6: codebase sweep outputs
-    ├── sweep-[timestamp].md   # Claude sweep findings
-    └── crosscheck-[timestamp].md  # Cross-model verification findings
+└── reviews/
+    ├── auth.md                # Structured review reports
+    └── api.md
 ```
 
 This directory is the product. Everything else is interface.
@@ -199,14 +195,14 @@ Nine commands ship in Sprints 1–5. Two additional commands ship in Sprint 6. E
 | `/forgeplan:discover` | Guided conversation → manifest + skeleton specs. Text-based architecture summaries after each addition. Validates for cycles, orphans, scope overlaps. |
 | `/forgeplan:spec [node\|--all]` | Generate detailed node spec. `--all` generates in dependency order. User reviews and edits in natural language. |
 | `/forgeplan:build [node]` | Set active node. Inject spec + interfaces + shared models. Builder agent generates code with anchor comments. Hooks enforce compliance. |
-| `/forgeplan:review [node]` | Audit against seven dimensions (spec compliance, interfaces, security, patterns, anchor comments, non-goal violations, failure mode coverage). Native agent or cross-model via BYOK. Structured pass/fail report. |
+| `/forgeplan:review [node]` | Audit against seven dimensions (spec compliance, interfaces, security, patterns, anchor comments, non-goal violations, failure mode coverage). Native Claude agent, or cross-model via CLI subprocess (uses existing Codex/Gemini subscription, no API key needed) or API mode. Structured pass/fail report. |
 | `/forgeplan:revise [node]` | Reopen completed node. Analyze change impact (internal vs interface). Flag affected nodes. |
-| `/forgeplan:next` | Dependency-aware next node recommendation. Surfaces stuck/crashed nodes. Surfaces nodes needing rebuild after revision. |
+| `/forgeplan:next` | Dependency-aware next node recommendation. Surfaces stuck/crashed nodes. |
 | `/forgeplan:status` | Full project status with text-based dependency graph visualization. |
 | `/forgeplan:integrate` | Cross-node interface verification. Identifies which side is at fault. Recommends remediation. |
-| `/forgeplan:recover` | Detect and handle crashed builds, interrupted sweeps, and interrupted deep-builds. Resume, restart pass, reset, abort, or flag for manual review. |
-| `/forgeplan:sweep` | *Sprint 6.* Claude's parallel agents sweep the codebase, fix findings (node-scoped enforcement active during fixes), then the alternate model (Codex/Gemini via MCP, CLI subprocess, or API) cross-checks the fixes AND re-sweeps for issues Claude missed. Re-integrates after each fix cycle. Alternates until two consecutive clean passes from the alternate model. |
-| `/forgeplan:deep-build` | *Sprint 6.* Full autonomous sequence: build all → node review → integrate → Claude sweep → fix → re-integrate → cross-check → fix → re-integrate → repeat → final integrate → report. Tracks `sweep_state` for crash recovery. User walks away, comes back to a finished, cross-model-certified codebase. |
+| `/forgeplan:recover` | Detect and handle crashed builds. Resume, reset, or flag for manual review. |
+| `/forgeplan:sweep` | *Sprint 6.* Claude's parallel agents sweep the codebase, fix findings, then the alternate model (Codex/Gemini via CLI subprocess or API) cross-checks the fixes AND re-sweeps for issues Claude missed. Alternates until two consecutive clean passes from the alternate model. |
+| `/forgeplan:deep-build` | *Sprint 6.* Full autonomous sequence: build all nodes → node review → integrate → Claude sweep → Claude fix → cross-model verification → fix → re-verify → done. User walks away, comes back to a finished, cross-model-certified codebase. No extra API keys needed if using CLI mode. |
 
 ---
 
@@ -253,9 +249,6 @@ Deterministic only:
 Deterministic only:
 - Read manifest. Flag any nodes stuck in `building` status.
 - Inject warning message if found.
-- **Sprint 6 addition:** Also check for `sweep_state` in state.json. If `sweep_state.operation` is non-null, a sweep or deep-build was interrupted. Inject warning with recovery instructions.
-
-**Note:** Sprint 6 extends PreToolUse with sweep-mode enforcement (node-scoped fix mode + sweep analysis mode) and PostToolUse with sweep-mode file tracking. See "Sprint 6: Operational Model" for full specification.
 
 ---
 
@@ -320,7 +313,31 @@ This prevents "silent bad builds" where a technically complete spec produces inc
 
 7. **Failure mode coverage** — for EACH failure_mode: does the implementation handle it? Cite the defensive code or flag its absence.
 
-**Cross-model implementation:** When BYOK configures a different provider, the `cross-model-review.js` script handles the API call, prompt assembly, response parsing, error handling, and retry logic. When BYOK is not configured, the review runs as a native Claude Code subagent.
+**Cross-model implementation (three modes):** The system supports three modes for running the alternate model, configured in `config.yaml`:
+
+- **MCP mode (recommended):** If the user has Codex configured as an MCP server (`claude mcp add codex -- codex mcp-server`), the system uses structured MCP tool calls to communicate with the alternate model. This is the cleanest integration — structured request/response, no output parsing, runs within the Claude Code session. Uses the user's existing OpenAI subscription. This pattern is validated by the [Auto-claude-code-research-in-sleep](https://github.com/wanshuiyin/Auto-claude-code-research-in-sleep) project, which uses the same Codex MCP approach for autonomous cross-model review loops.
+- **CLI mode (no extra keys needed):** If the user has Codex CLI, Gemini CLI, or another AI coding agent installed but not configured as MCP, the system spawns it as a child process, feeds the review prompt via stdin or temp file, and captures the output. Uses existing subscriptions, no API keys required. Slightly less reliable than MCP due to output parsing.
+- **API mode (for power users / autonomous runs):** For overnight deep-build runs where reliability matters more than cost, the system makes direct API calls to OpenAI, Google, or Anthropic endpoints. Requires an API key with credits loaded but produces the most structured, reliable responses.
+
+```
+# .forgeplan/config.yaml
+cross_model:
+  provider: codex-mcp         # Options: codex-mcp, codex-cli, openai-api, gemini-cli, gemini-api
+  # codex-mcp: uses Codex as MCP server (recommended — structured tool calls, existing subscription)
+  #   Setup: claude mcp add codex -- codex mcp-server
+  # codex-cli: spawns local Codex CLI as subprocess, uses existing subscription
+  # openai-api: direct API calls, requires api_key below
+  # gemini-cli: spawns local Gemini CLI, uses existing subscription
+  # gemini-api: direct API calls to Google, requires api_key below
+  api_key: ${OPENAI_API_KEY}  # Only needed for *-api modes
+  
+preferences:
+  auto_review: true           # Automatically trigger review after build
+  strict_mode: true           # PreToolUse hook denies all spec violations
+  conversation_logging: true  # Save all build conversations
+```
+
+The pitch: "If you have Claude Code and any other AI coding tool installed, ForgePlan can make them review each other's work automatically. No extra API keys required."
 
 **Output format** (at `.forgeplan/reviews/[node].md`):
 
@@ -369,12 +386,19 @@ Not everything needs to be polished in the first pass. The build has two layers:
 - At least one `/forgeplan:revise` cycle that changes a shared model field and correctly propagates to dependent nodes — this is the killer proof
 
 **Nice-to-Have (product polish — important but not thesis-critical):**
-- Full BYOK multi-provider configuration with cross-model-review.js
+- Full cross-model configuration with `cross-model-bridge.js` (MCP mode for Codex, CLI mode for other tools, API mode for power users)
 - Multiple blueprint templates beyond client portal
 - `/forgeplan:recover` crash recovery (can be tested manually by resetting state.json)
 - `/forgeplan:integrate` full system verification (can be done manually by reviewing interfaces)
 - Broader hardening of PreToolUse Layer 2 prompt quality across edge cases
 - `/forgeplan:status` text-based dependency visualization
+
+**Sprint 6 Proof (autonomous loop — the premium differentiator):**
+- `/forgeplan:sweep` with parallel agents finds real cross-cutting bugs that per-node review missed
+- Auto-fix cycle resolves findings without human intervention
+- Two consecutive clean sweep passes achieved on the client portal project
+- `/forgeplan:deep-build` runs the full autonomous sequence end-to-end without human intervention
+- Self-improvement demonstrated: sweep of ForgePlan's own codebase produces fixes that improve the tool itself
 
 The sprints below are sequenced to deliver the "must work" items first. Every sprint test validates a must-work capability.
 
@@ -397,7 +421,7 @@ The success metric — "fewer broken references, fewer duplicate types, and fewe
 
 ---
 
-## Sprint Plan — 14 Weeks
+## Sprint Plan — 14 Weeks (6 Sprints)
 
 ### Sprint 1: Foundation (Weeks 1–2)
 
@@ -446,19 +470,19 @@ The success metric — "fewer broken references, fewer duplicate types, and fewe
 
 **Test:** Build and review `auth` node. Verify review report cites specific files for each criterion pass/fail. Intentionally leave AC3 (session persistence) unmet — verify Stop hook bounces with "AC3: FAIL" message. Kill the terminal mid-build — verify SessionStart detects the stuck node on next launch. Revise the `auth` spec to change an interface — verify connected nodes are flagged.
 
-### Sprint 4: Integration and BYOK (Weeks 7–8)
+### Sprint 4: Integration and Cross-Model Review (Weeks 7–8)
 
 **Goal:** Multi-node projects complete the full lifecycle. Cross-model review works.
 
 **Deliverables:**
-- `cross-model-review.js` script (OpenAI, Google, Anthropic API support)
-- BYOK `config.yaml` with strict/non-strict mode
+- `cross-model-bridge.js` script with three-mode support: MCP mode (uses Codex as MCP server via `claude mcp add codex` — structured tool calls, cleanest integration, existing subscription), CLI subprocess mode (spawns Codex CLI / Gemini CLI as child process — existing subscriptions, no API key), and API mode (direct HTTP calls — requires API key, most reliable for autonomous runs)
+- `config.yaml` schema with `cross_model.provider` setting (codex-mcp, codex-cli, openai-api, gemini-cli, gemini-api), strict/non-strict mode, auto-review preference
 - `/forgeplan:integrate` command with fault-side identification and remediation guidance
 - `/forgeplan:status` command with text-based dependency visualization
 - Remaining blueprint templates (SaaS starter, internal dashboard)
 - Documentation and README
 
-**Test:** Build the complete 7-node client portal using the plugin. Run `/forgeplan:integrate` and verify all interfaces pass. Configure BYOK with a different reviewer model and confirm cross-model review produces a valid report.
+**Test:** Build the complete 7-node client portal using the plugin. Run `/forgeplan:integrate` and verify all interfaces pass. Configure cross-model review in MCP mode (codex-mcp) — verify structured MCP tool calls work with no API key. Test CLI mode as fallback. If API key available, test API mode. Compare output quality and reliability across all three modes.
 
 ### Sprint 5: Dogfood and Ship (Weeks 9–10)
 
@@ -504,148 +528,276 @@ Compare the same modification done in vanilla Claude Code. **This is the proof p
 
 ### Sprint 6: Autonomous Iterative Sweep — The Cross-Model Self-Improving Loop (Weeks 11–14)
 
-**Goal:** Build the autonomous multi-agent codebase review system that alternates between models — Claude builds and fixes, a different model (Codex/GPT/Gemini) reviews the fixes AND sweeps the full codebase for new issues — iterating until the alternate model returns clean on two consecutive passes.
+**Goal:** Build the autonomous multi-agent codebase review system that alternates between models — Claude builds and fixes, a different model (Codex/GPT) reviews the fixes AND sweeps the full codebase for new issues — iterating until the alternate model returns clean on two consecutive passes.
 
-**Why this exists:** Node-level review (Sprints 3–4) catches issues within a single node's spec boundaries. `/forgeplan:integrate` (Sprint 4) catches interface contract mismatches. But neither catches cross-cutting bugs that only emerge when the full codebase runs together — type drift in usage, import chain issues, inconsistent error handling, race conditions at node boundaries. These are the bugs that cause 4–15 manual review cycles. This sprint eliminates that loop.
+**Why this exists:** Node-level review (Sprints 3–4) catches issues within a single node's spec boundaries. `/forgeplan:integrate` (Sprint 4) catches interface contract mismatches at the architectural level. But neither catches the class of bugs that only emerge when the full codebase is running together — cross-cutting concerns, subtle type drift in usage (not definition), import chain issues, inconsistent error handling patterns, race conditions at node boundaries, and performance problems that span multiple layers. These are the bugs that cause fifteen-loop manual review cycles. This sprint eliminates that loop.
 
-**Three-Level Review Architecture:**
-- **Level 1 (existing):** Node review — spec-scoped, native agent or cross-model via BYOK (Sprint 4), per acceptance criteria
-- **Level 2 (new):** Claude codebase sweep — 6 parallel agents (auth/security, type consistency, error handling, database, API contracts, imports) scan full codebase for cross-cutting issues that node-scoped review cannot see
-- **Level 3 (new):** Cross-model verification — alternate model verifies Claude's fixes AND independently sweeps for issues Claude missed
+**The critical insight:** Same-model review has systematic blind spots. A model is less likely to catch its own mistakes on re-review. The power of this system comes from the **alternating cross-model loop**: Claude writes and fixes, a different model audits. The alternate model finds things Claude missed because it has different training biases, different attention patterns, and different failure modes. The exit condition is that the *alternate model* — the one that didn't write the code — returns clean. That's a much stronger guarantee than same-model verification.
 
-#### Operational Model — Sweep/Deep-Build State and Enforcement
+#### 6.1 Three-Level Review Architecture
 
-Sprint 6 introduces two new operation modes that operate outside the existing node-scoped state machine. These require explicit state tracking, enforcement rules, and recovery semantics — the same first-class treatment given to building, reviewing, and revising in Sprints 2–3.
+The system operates at three distinct levels that compound on each other:
 
-**New state: `sweep_state` in state.json**
+**Level 1: Node Review (already built).** Spec-scoped. Checks each node against its acceptance criteria, constraints, failure modes, and interfaces. Catches issues within a node's boundaries. Runs via `/forgeplan:review [node]`. Same model that built the node.
 
-A new top-level object alongside `active_node`. When a sweep or deep-build is running, `active_node` is null (no single node is being built), but `sweep_state` is populated:
+**Level 2: Same-Model Codebase Sweep.** Cross-cutting, full-codebase analysis using Claude's six parallel sweep agents. Not scoped to any single node. Catches obvious cross-node issues: type drift, inconsistent patterns, import problems, API mismatches. This is the "first pass" that cleans up what Claude can see about its own code before handing off to a different model.
 
-```json
-{
-  "sweep_state": {
-    "operation": "sweeping | deep-building",
-    "started_at": "ISO 8601",
-    "current_phase": "claude-sweep | claude-fix | cross-check | cross-fix | integrate | finalizing",
-    "pass_number": 1,
-    "current_model": "claude | codex | gemini | gpt",
-    "fixing_node": "auth | null",
-    "consecutive_clean_passes": 0,
-    "max_passes": 10,
-    "findings": {
-      "pending": [
-        { "id": "F1", "source_model": "claude", "node": "auth", "category": "type-consistency", "description": "...", "pass_found": 1 }
-      ],
-      "resolved": [
-        { "id": "F0", "source_model": "codex", "node": "api", "category": "imports", "resolved_by": "claude", "resolved_pass": 2 }
-      ]
-    },
-    "modified_files_by_pass": {
-      "1": ["src/auth/middleware.ts", "src/shared/types/index.ts"],
-      "2": ["src/api/routes.ts"]
-    },
-    "integration_results": {
-      "last_run": "ISO 8601 | null",
-      "passed": true,
-      "failures": []
-    }
-  }
-}
+**Level 3: Cross-Model Verification.** The alternate model (Codex, GPT, Gemini — configured in `config.yaml`) performs two jobs simultaneously via multiple parallel agents: **(A)** a Fix Verifier agent reviews every fix Claude made in Level 2 — did the fix actually resolve the finding, or did it introduce a new problem? **(B)** multiple Fresh Sweep agents independently scan the entire codebase looking for issues that Claude's blind spots missed entirely. The alternate model can run in CLI mode (spawning the user's existing Codex/Gemini CLI installation — no API key needed) or API mode (direct API calls for more structured responses).
+
+Level 1 catches spec violations. Level 2 catches cross-cutting bugs within Claude's capability. Level 3 catches what Claude can't see about its own code. Fixes from Level 3 go back to Claude for fixing (Level 2). Claude fixes them. Level 3 re-verifies the fixes AND re-sweeps. This alternation continues until Level 3 returns clean on two consecutive passes.
+
+The exit condition is specifically that the **alternate model** returns clean — not the model that wrote and fixed the code. This is the difference between "I checked my own homework" and "someone else checked my homework."
+
+#### 6.2 The Cross-Model Alternating Sweep
+
+The sweep is not a single-model process. The core mechanism is an **alternating loop between two different LLM providers** — the same pattern you're doing manually today between Claude and Codex, but automated.
+
+**Why alternating matters:** Same-model review has blind spots. Claude will consistently miss certain categories of issues that Codex catches, and vice versa. A single-model sweep that runs ten passes will keep missing the same things on every pass. Alternating models means each pass catches issues the previous model was blind to. The codebase converges toward clean faster because two different sets of eyes are checking the work.
+
+**The alternating cycle:**
+
+1. **Claude Sweep** — Claude's parallel agents (six specialized subagents) scan the entire codebase. Findings collected into a sweep report.
+2. **Claude Fix** — Claude's Builder agent fixes all findings from the Claude sweep.
+3. **Codex Cross-Check** — The codebase is sent to the alternate model via the configured mode. In MCP mode (recommended), `cross-model-bridge.js` uses structured MCP tool calls to Codex — the cleanest integration with the user's existing subscription. In CLI mode, it spawns Codex CLI as a subprocess. In API mode, it makes direct API calls. Either way, Codex spawns its own parallel agents with two distinct jobs:
+   - **Fix Verification Agents:** Review *only* the files Claude modified in step 2. Did Claude's fixes actually resolve the findings? Did the fixes introduce new problems?
+   - **Full Codebase Sweep Agents:** Independently scan the *entire* codebase looking for issues Claude's sweep missed entirely. Different model, different blind spots, different findings.
+4. **Claude Fix** — Claude's Builder fixes all findings from Codex's cross-check (both fix verification failures and new codebase findings).
+5. **Codex Re-Cross-Check** — Codex verifies Claude's latest fixes AND sweeps the full codebase again.
+6. **Repeat steps 4–5** until Codex returns clean on *both* fix verification and full codebase sweep for two consecutive passes.
+
+**The exit condition is Codex saying "clean" twice in a row** — not Claude. The model that *didn't* write the code and *didn't* fix the bugs is the one that certifies the codebase. That's a much stronger guarantee than self-certification.
+
+#### 6.3 Claude's Parallel Sweep Agents (Step 1)
+
+Each sweep agent is a Claude Code subagent (using the Task tool) with a focused system prompt and a specific audit scope. They run in parallel — not sequentially — because their concerns are independent. A full sweep with six agents running in parallel takes roughly the same time as a single agent doing one review.
+
+**Agent 1: Auth & Security Sweep**
+- Scope: every file in the codebase
+- Focus: session handling gaps, token expiration edge cases, role leakage across route boundaries, exposed secrets or API keys, missing input validation on user-facing endpoints, CORS configuration, CSP headers
+- System prompt: "You are a security auditor. Review the entire codebase for authentication and authorization vulnerabilities. For each finding, cite the exact file, line, and the specific vulnerability. Do not report style issues or opinions — only concrete security risks."
+
+**Agent 2: Type Consistency Sweep**
+- Scope: all type definitions, interfaces, imports, and function signatures
+- Focus: shared model usage drift (field accessed that doesn't exist on the canonical type, type assertion bypassing the shared model, local type that shadows a shared model name without matching its structure), inconsistent nullable handling across nodes
+- System prompt: "You are a type system auditor. Verify that every usage of shared model types matches the canonical definition in the manifest. Check for local redefinitions, missing fields, extra fields, incorrect types, and any type assertions that bypass the shared model structure. For each finding, cite the file, the expected type, and the actual usage."
+
+**Agent 3: Error Handling Sweep**
+- Scope: all try/catch blocks, error returns, error boundaries, API error responses
+- Focus: inconsistent error formats across nodes (one node returns `{error: "message"}`, another returns `{code: 401, detail: "message"}`), uncaught promise rejections, missing error boundaries in React components, silent failures where errors are caught but not logged or surfaced
+- System prompt: "You are an error handling auditor. Review the entire codebase for inconsistent error patterns, uncaught exceptions, silent failures, and missing error boundaries. Every API endpoint should return errors in the same format. Every async operation should have error handling. For each finding, cite the file and the specific inconsistency."
+
+**Agent 4: Database & Query Sweep**
+- Scope: all database queries, migrations, schema definitions
+- Focus: N+1 query patterns, missing indexes on frequently queried columns, queries that don't match the schema (referencing columns that don't exist or using wrong types), missing migration files for schema changes, raw SQL injection risks in dynamic queries
+- System prompt: "You are a database auditor. Review all database interactions for performance issues, schema mismatches, missing migrations, and injection risks. For each finding, cite the query, the file, and the specific issue."
+
+**Agent 5: API Contract Sweep**
+- Scope: all API routes, all frontend API calls, all middleware
+- Focus: frontend calling an endpoint that doesn't exist, endpoint returning a shape that doesn't match what the frontend destructures, middleware applied inconsistently across routes that should have the same protection, API versioning inconsistencies
+- System prompt: "You are an API contract auditor. For every frontend API call, verify the corresponding backend endpoint exists, accepts the parameters being sent, and returns the shape being destructured. For every protected route, verify the auth middleware is applied. For each finding, cite both the frontend call and the backend endpoint."
+
+**Agent 6: Import & Dependency Sweep**
+- Scope: all import statements, package.json, module resolution
+- Focus: circular import chains that span multiple files, unused imports, missing dependencies (imported but not in package.json), duplicate utility functions that should be shared, dead code (exported functions that nothing imports)
+- System prompt: "You are a dependency auditor. Trace all import chains for circular dependencies. Identify unused imports, missing package dependencies, duplicate utility functions, and dead code. For each finding, cite the specific import chain or unused export."
+
+#### 6.4 The Sweep Report Format
+
+Each agent produces a structured findings list. These are merged into a unified sweep report at `.forgeplan/sweeps/sweep-[timestamp].md`:
+
+```
+## Codebase Sweep — Pass 1
+### Timestamp: 2026-05-15T14:30:00Z
+### Agents: 6 parallel | Duration: 3m 42s
+
+### Auth & Security (Agent 1)
+- FINDING-S1: src/api/routes/documents.ts:47 — upload endpoint missing file type validation. Accepts any file extension. Risk: malicious file upload.
+- FINDING-S2: src/auth/middleware.ts:12 — JWT expiration set to 30 days. Recommend 24 hours with refresh token.
+- Total: 2 findings
+
+### Type Consistency (Agent 2)
+- FINDING-T1: src/api/handlers/user.ts:23 — accesses user.phone but User shared model does not define phone field. Will throw at runtime.
+- Total: 1 finding
+
+### Error Handling (Agent 3)
+- FINDING-E1: src/api/routes/auth.ts:34 — returns {error: "invalid"} but src/api/routes/documents.ts:56 returns {message: "not found", status: 404}. Inconsistent error format.
+- FINDING-E2: src/pages/dashboard.tsx:89 — async fetch in useEffect with no error handling. Silent failure on network error.
+- Total: 2 findings
+
+### Database & Query (Agent 4)
+- No findings
+
+### API Contract (Agent 5)
+- FINDING-A1: src/pages/accountant-view.tsx:34 — calls GET /api/clients but no such endpoint exists. Only GET /api/users with role filter.
+- Total: 1 finding
+
+### Import & Dependency (Agent 6)
+- FINDING-I1: Circular import: src/lib/auth.ts → src/lib/api.ts → src/hooks/useAuth.ts → src/lib/auth.ts
+- FINDING-I2: src/utils/formatDate.ts is exported but never imported anywhere. Dead code.
+- Total: 2 findings
+
+### Summary
+- Total findings: 8
+- Critical (blocks deployment): 2 (FINDING-S1, FINDING-A1)
+- Warning (should fix): 4 (FINDING-S2, FINDING-T1, FINDING-E1, FINDING-E2)
+- Minor (cleanup): 2 (FINDING-I1, FINDING-I2)
+- Status: REQUIRES FIXES — proceeding to auto-fix cycle
 ```
 
-**`active_node.status` enum update:** Add `"sweeping"` to the enum in `state-schema.json`. This status is used when the sweep is fixing a specific node — `active_node` is set to that node with status `"sweeping"` while the fix is in progress, then cleared when the fix for that node completes. This reuses the existing node-scoped enforcement for individual fixes. The distinction between sweep and deep-build is tracked by `sweep_state.operation`, not by `active_node.status` — there is no need for a separate `"deep-building"` status since the enforcement behavior is identical.
+#### 6.5 Codex Cross-Check Agents (Steps 3 and 5)
 
-**PreToolUse enforcement during sweep/deep-build:**
+After Claude fixes its own sweep findings, the codebase is sent to the alternate model for cross-checking. In MCP mode (recommended), `cross-model-bridge.js` uses structured MCP tool calls — cleanest integration, existing subscription, no API key. In CLI mode, it spawns Codex CLI as a child process. In API mode, it makes direct API calls. Either way, the alternate model spawns its own parallel agents with two distinct responsibilities:
 
-When `sweep_state` is active, PreToolUse operates in one of two modes:
+**Fix Verification Agents (scoped to modified files only):**
 
-1. **Node-scoped fix mode** (`sweep_state.fixing_node` is set, `active_node` is set with status `"sweeping"`): Existing node-scoped enforcement applies — writes restricted to that node's `file_scope`, shared model guard active. This is the same deterministic enforcement used during normal builds. The only addition: writes to `.forgeplan/sweeps/` and `.forgeplan/state.json` are always allowed. **Exception for shared types:** Unlike normal builds, sweep fixes MAY modify `src/shared/types/index.ts` if the finding specifically involves shared type inconsistency (e.g., type-consistency category findings). This is because sweep fixes play the role of both builder and reviser — they must be able to fix whatever the sweep found. The shared model redefinition guard still applies (no local redefinitions), but the canonical shared types file is writable during sweep fixes.
+These agents receive the list of files Claude modified during the fix cycle and the original findings those fixes were meant to address. They verify:
+- Did the fix actually resolve the original finding? (Not just suppress it — actually fix the root cause.)
+- Did the fix introduce any new issues in the modified files?
+- Is the fix consistent with the patterns used elsewhere in the codebase?
 
-2. **Sweep analysis mode** (`sweep_state.fixing_node` is null, `active_node` is null): Only `.forgeplan/sweeps/`, `.forgeplan/deep-build-report.md`, and `.forgeplan/state.json` are writable. No project source files can be written — analysis is read-only until a finding is assigned to a node for fixing.
+This is fast because it's scoped to only the changed files, not the whole codebase.
 
-This preserves the node-boundary enforcement that is the core of ForgePlan's value even during autonomous cross-codebase operations. Sweep agents cannot scatter fixes across the codebase without going through the node-scoped gate.
+**Full Codebase Sweep Agents (entire codebase, fresh eyes):**
 
-**PostToolUse behavior during sweep/deep-build:**
+These are Codex's equivalent of Claude's six parallel agents — but running on a different model with different blind spots. They can be organized by the same concern areas (security, types, errors, database, API, imports) or Codex can take its own approach to organizing the review. The key is that they scan the *entire* codebase independently, not just the files Claude touched. This catches the class of issues that Claude consistently misses regardless of how many passes it runs.
 
-PostToolUse currently only activates when `active_node.status === "building"`. During sweep fixes (`active_node.status === "sweeping"`), PostToolUse must also activate with the same behavior — auto-register files in the manifest, log changes to conversation files, and classify files as created vs. modified. Additionally, every file written during a sweep fix is appended to `sweep_state.modified_files_by_pass[current_pass]`. This dual tracking (node-level in manifest + pass-level in sweep_state) ensures both the manifest stays accurate and the sweep has a complete picture of what each pass touched.
+Codex's findings are collected into a cross-check report at `.forgeplan/sweeps/crosscheck-[timestamp].md` with the same structured format as Claude's sweep report, plus a section for fix verification results:
 
-**Deep-build "build all" orchestration:**
+```
+## Cross-Check Report — Codex Pass 1
+### Fix Verification (12 files reviewed)
+- FIX-S1 (file validation): VERIFIED — fix correctly validates file extensions
+- FIX-A1 (missing endpoint): VERIFIED — endpoint added, matches frontend call
+- FIX-E1 (error format): PARTIAL — auth routes fixed but documents route still inconsistent
+- Total: 2 verified, 1 partial
 
-The deep-build sequence begins with "build all nodes." This is not a new parallel build mechanism — it is a sequential loop that reuses the existing `/forgeplan:build` → `/forgeplan:review` → `/forgeplan:next` pipeline. The deep-build orchestrator iterates: call `/forgeplan:next` to get the recommended node, run `/forgeplan:build` on it, run `/forgeplan:review` on it, repeat until `/forgeplan:next` returns `type: "complete"`. All existing enforcement (PreToolUse, PostToolUse, Builder agent) applies exactly as in manual builds. The only difference is that the orchestrator drives the loop instead of the user.
+### New Codebase Findings
+- XFINDING-1: src/auth/oauth.ts:67 — Google OAuth callback does not validate state parameter. CSRF risk.
+- XFINDING-2: src/api/middleware/auth.ts:23 — JWT verification uses HS256 but Supabase issues RS256 tokens. Will reject valid tokens.
+- XFINDING-3: src/pages/dashboard.tsx:112 — document list fetched on every render, no caching or deduplication. Performance issue.
+- Total: 3 new findings (Claude missed these on all passes)
 
-**Re-integration gate:**
+### Summary
+- Fix verification: 2 clean, 1 needs rework
+- New findings: 3
+- Status: REQUIRES FIXES — returning to Claude for remediation
+```
 
-`/forgeplan:integrate` runs at three points in the deep-build sequence, not one:
-1. **After initial node builds and reviews** — baseline integration check (existing behavior)
-2. **After each Claude fix cycle** — verify fixes haven't broken cross-node contracts
-3. **As the final certification gate** — must pass before the deep-build can declare clean
+#### 6.6 The Complete Alternating Fix Cycle
 
-Updated deep-build sequence: `build all → node review → **integrate** → Claude sweep → Claude fix → **re-integrate** → cross-check → cross-fix → **re-integrate** → repeat until 2 consecutive clean passes → **final integrate** → report`
+The full cycle after Claude's initial sweep:
 
-**Agent Design Principles (adopted from superpowers patterns):**
+1. **Claude fixes its own sweep findings.** Grouped by node. PreToolUse enforcement active. Cross-node fixes use sweep-fix mode with explicit logging. Modified nodes get a quick Level 1 spec re-review to catch regressions.
 
-These principles apply to ALL agents in ForgePlan, but are especially critical for Sprint 6's autonomous operations:
+2. **Codex cross-checks.** Fix verification agents review modified files. Full codebase sweep agents scan everything. Cross-check report generated.
 
-1. **Fresh Agent on Fix, Not Same Agent Retry.** When a review finds issues and the builder must fix them, spawn a NEW builder agent with the original spec + review findings + current code. Do not have the same agent that produced the bug try to fix it — it will get stuck in its own reasoning loop. This applies to the build→review→rebuild cycle, to sweep fix iterations, and to cross-model remediation cycles.
+3. **Claude fixes Codex's findings.** Both the partial fix verifications and the new findings Codex discovered. Same node-scoped fix process with logging.
 
-2. **Don't Trust the Builder.** The Reviewer must independently verify everything by reading actual code. The Builder's self-report ("AC1 is implemented in login.ts") is input to the review, not a substitute for verification. The Reviewer reads login.ts and compares against the spec line-by-line.
+4. **Codex re-cross-checks.** Verifies Claude's latest fixes resolved Codex's findings. Sweeps the full codebase again — because Claude's fixes for Codex's findings might have introduced something new.
 
-3. **Structured Agent Status Protocol.** Agents report completion using a fixed enum (`DONE`, `DONE_WITH_CONCERNS`, `NEEDS_CONTEXT`, `BLOCKED`) instead of free-text claims. The orchestrator switch-cases on this enum for deterministic flow control. Status transitions (e.g., "building" → "built") are gated on independent verification, not on the agent setting `DONE`.
+5. **Repeat steps 3–4** until Codex returns: all fix verifications VERIFIED, zero new codebase findings, on two consecutive passes.
 
-4. **Scoped Context Per Agent.** Each agent receives ONLY the context it needs — its node spec, adjacent interface contracts, and relevant shared model definitions. Full project context is not injected. This prevents cross-contamination, reduces token usage, and makes parallel dispatch safe.
+**Why two consecutive clean Codex passes:** The first clean pass means Codex found nothing. But Claude's fixes from the previous cycle might have introduced subtle issues that only become visible on re-analysis. The second clean pass confirms stability — the codebase was clean, it was re-examined, and it's still clean. Two consecutive clean passes from the model that didn't write the code is the strongest automated quality guarantee possible.
 
-5. **Model Tiering by Complexity.** Simple leaf nodes with narrow specs → cheaper/faster model. Complex integration nodes with many dependencies → most capable model. The sweep agents can be tiered too: type consistency checks (mechanical, pattern-matching) → cheaper model; security audit (reasoning-heavy) → most capable model.
+**Typical cycle count:** Based on the manual workflow pattern (4–15 loops), the automated version should converge in 2–4 full alternating cycles for a well-specced project, because the specs prevent the structural problems that cause high loop counts. The spec eliminates ambiguity upfront, so most findings are surface-level issues (missing validation, inconsistent patterns) rather than architectural problems that cascade.
 
-6. **Adversarial Prompt Testing Before Deployment.** Before Sprint 6 goes live, run pressure scenarios against builder and reviewer prompts. Test: Does the builder deviate from spec under time pressure? Does the reviewer rubber-stamp when given a "looks complete" preamble? Document failure modes and add explicit counters to prompts.
+#### 6.7 The Autonomous Loop: `/forgeplan:deep-build`
 
-If re-integration fails after a fix cycle, the integration failures become new findings in the sweep, and the loop continues. This prevents the stale-integration problem where sweep fixes silently break contracts validated earlier.
+The full autonomous sequence, combining everything from Sprints 1–6:
 
-#### Recovery and Resumability
+```
+/forgeplan:deep-build
 
-Sweep and deep-build are the longest-running autonomous operations in ForgePlan. Crash recovery is not optional.
+Step 1: Build all pending nodes (dependency order)
+  └─ For each node:
+     ├─ Pre-build spec challenge (identify ambiguities)
+     ├─ Builder generates code with anchor comments
+     ├─ PreToolUse enforces spec on every write
+     ├─ Stop hook verifies acceptance criteria
+     └─ Status → review
 
-**Crash detection:** `SessionStart` hook checks for `sweep_state` in addition to `active_node`. If `sweep_state` exists with a non-null `operation`, a sweep or deep-build was interrupted.
+Step 2: Review all built nodes (per-node, Level 1)
+  └─ For each node:
+     ├─ Reviewer audits 7 dimensions with spec-diff
+     ├─ FAIL items → Builder fixes → re-review
+     └─ Status → complete
 
-**`/forgeplan:recover` behavior for sweep/deep-build:**
+Step 3: Integration check
+  └─ /forgeplan:integrate
+     ├─ Verify interface contracts
+     ├─ Verify shared model consistency
+     └─ Fix any mismatches
 
-When recovery detects an interrupted sweep or deep-build, it offers three options:
+Step 4: Claude codebase sweep (parallel agents)
+  └─ 6 agents run in parallel
+     ├─ Findings collected into sweep report
+     └─ Claude Builder fixes all findings
 
-1. **Resume from last completed pass** — Restores `sweep_state`, re-reads the sweep/crosscheck reports already on disk, and continues from `pass_number`. Findings already marked resolved stay resolved. The current pass is re-run from scratch (since partial fix state within a pass is not recoverable).
+Step 5: Codex cross-check (parallel agents)
+  └─ Fix verification agents → review Claude's fixes
+  └─ Full codebase sweep agents → find what Claude missed
+     ├─ Cross-check report generated
+     └─ Claude Builder fixes all Codex findings
 
-2. **Restart current pass** — Keeps all state from prior passes but re-runs the interrupted pass from the beginning. Useful when the crash happened mid-fix and the codebase may be in a partially-modified state for the current pass.
+Step 6: Codex re-cross-check
+  └─ Verify latest fixes + full codebase re-sweep
+     ├─ If findings → Claude fixes → Codex re-checks (repeat)
+     └─ If clean → one more Codex pass (stability confirmation)
+        └─ If clean → DONE (two consecutive Codex-clean passes)
 
-3. **Abort to pre-sweep state** — Resets `sweep_state` to null. All nodes retain their current status (built/reviewed). Sweep reports remain on disk for reference but the autonomous loop is terminated. User can re-run `/forgeplan:sweep` or `/forgeplan:deep-build` manually.
+Step 7: Final report
+  └─ .forgeplan/deep-build-report.md
+     ├─ Total build time
+     ├─ Nodes built: 7
+     ├─ Node review cycles per node
+     ├─ Claude sweep passes: 1
+     ├─ Codex cross-check passes: 3 (2 clean)
+     ├─ Total findings found and fixed: 15
+     ├─ Findings by source: Claude sweep: 8, Codex cross-check: 7
+     ├─ Final state: ALL PASS (certified by cross-model verification)
+     └─ Codebase ready for deployment
+```
 
-**State persistence:** `sweep_state` is written to `state.json` after every significant transition: phase change, pass increment, finding resolution, integration result. This ensures recovery has an accurate snapshot even if the crash happens between operations.
+The user runs `/forgeplan:deep-build`, walks away, and comes back to a fully built, fully reviewed, fully cross-model-verified codebase with a complete audit trail. Every finding and fix is documented. The exit condition is objective: two consecutive clean cross-check passes from the alternate model, with all node-level reviews passing.
 
-**Pass limit safety:** `max_passes` defaults to 10. If the loop reaches `max_passes` without achieving two consecutive clean passes, it halts and produces a report with all unresolved findings. This prevents infinite autonomous loops.
+The deep build report explicitly tracks findings by source model — showing how many issues Claude caught versus how many Codex caught. Over time, this data reveals each model's blind spots and can inform which model is assigned to which sweep agent role for optimal coverage.
 
-#### Deliverables (Weeks 11–12)
+#### 6.8 Self-Improvement: Pointing the Loop at Itself
 
-- `sweep_state` schema additions to `state-schema.json`
-- PreToolUse sweep-mode enforcement (node-scoped fix mode + sweep analysis mode)
-- SessionStart sweep/deep-build crash detection
-- `/forgeplan:recover` sweep/deep-build resume/restart/abort options
-- Six Claude sweep agent definitions with specialized system prompts (categories: auth-security, type-consistency, error-handling, database, api-contracts, imports)
-- `/forgeplan:sweep` command spawning parallel subagents, merging findings into `.forgeplan/sweeps/sweep-[timestamp].md`
-- Claude auto-fix cycle: group findings by node, fix with scope enforcement (reusing node-scoped PreToolUse), re-review modified nodes
-- PostToolUse sweep-mode activation (file registration + pass-level modified-file tracking)
-- `next-node.js` sweep awareness: add `"sweeping"` to stuck status detection, return "sweep in progress" when `sweep_state` is active
-- `validate-manifest.js` status list update: add `"sweeping"` to valid node statuses
-- `/forgeplan:integrate` sweep-mode prerequisite: verify no node is currently in `"sweeping"` status before running integration checks
-- Cross-check report format at `.forgeplan/sweeps/crosscheck-[timestamp].md`
+When the sweep system is used to build and review ForgePlan's own codebase, a compounding cross-model improvement cycle emerges:
 
-#### Deliverables (Weeks 13–14)
+- Codex's cross-check reviews the PreToolUse hook code. It finds an edge case where the shared model guard doesn't catch type aliases — something Claude missed because Claude wrote the code. The Builder fixes it. The improved PreToolUse hook catches more issues in future builds, which means fewer findings reach the sweep phase.
+- Codex's cross-check reviews Claude's sweep agent prompts. It finds that Agent 3 (Error Handling) is producing vague findings that make auto-fixing imprecise. The prompt is tightened. The improved Agent 3 produces more specific findings on the next sweep, which means the Builder fixes them more accurately, which means fewer re-sweep cycles.
+- Codex catches an issue in the `cross-model-bridge.js` script itself that Claude consistently missed. The fix makes Codex cross-checks more reliable, which means the alternating loop converges faster.
+- The deep-build report tracks findings by source model across multiple builds. Over time, a pattern emerges: Claude consistently misses CSRF-related issues but catches type drift reliably, while Codex catches CSRF but misses circular imports. This data is used to refine both models' sweep agent prompts, making each subsequent build cleaner at every level.
 
-- Extend `cross-model-review.js` (Sprint 4) into `cross-model-bridge.js` — same script, expanded with sweep orchestration capabilities. Three-mode support: MCP mode (recommended, existing subscription), CLI subprocess mode, and API mode. The Sprint 4 single-node review functionality is preserved as a subset.
-- Alternate model parallel agent orchestration: fix verification agents (scoped to modified files) + full codebase sweep agents (entire codebase)
-- The alternating fix cycle: Claude fix → **re-integrate** → cross-check → Claude fix → **re-integrate** → re-cross-check → repeat until two consecutive clean passes
-- `/forgeplan:deep-build` command chaining the full autonomous sequence: build all → node review → integrate → Claude sweep → fix → re-integrate → cross-check → fix → re-integrate → repeat → final integrate → report
-- Deep build report at `.forgeplan/deep-build-report.md` with findings tracked by source model, pass number, and resolution status
+Each pass through the loop improves the quality of the tools doing the reviewing, which improves the quality of the reviews, which improves the quality of the code, which reduces the number of cycles needed. And because the improvement is driven by cross-model feedback — each model exposing the other's blind spots — the convergence is faster than any single-model self-improvement loop could achieve. The system doesn't just get cleaner. It gets faster at getting clean.
 
-**Test:** Run `/forgeplan:sweep` on a codebase with planted bugs. Verify Claude's agents find their issues. Fix. Verify re-integration runs after fixes. Run cross-check — verify it catches at least one issue Claude missed. Kill the terminal mid-sweep — verify `/forgeplan:recover` detects the interrupted sweep and offers resume/restart/abort. Run `/forgeplan:deep-build` end-to-end on the client portal. Verify two consecutive clean cross-model passes, re-integration at each gate, and documented findings by source.
+#### 6.9 Sprint 6 Deliverables
 
-**Exit criteria:** `/forgeplan:deep-build` runs autonomously on the client portal. Codex certifies clean on two consecutive passes. Deep build report shows cross-model review caught issues single-model review missed. Re-integration passes at every gate point. Recovery from mid-sweep crash works correctly. Total autonomous build time under 90 minutes.
+**Weeks 11–12:**
+- Six Claude sweep agent definitions with specialized system prompts
+- `/forgeplan:sweep` command that spawns Claude's parallel subagents and merges findings into unified sweep report
+- Sweep report format and `.forgeplan/sweeps/` directory structure
+- Claude auto-fix cycle: group findings by node, fix with scope enforcement, re-review modified nodes
+- Sweep-fix mode for cross-node modifications with explicit logging
+- Cross-check report format for Codex responses at `.forgeplan/sweeps/crosscheck-[timestamp].md`
+
+**Weeks 13–14: Deep Build + Cross-Model Integration + Dogfood**
+- Codex cross-check integration via `cross-model-bridge.js` with three-mode support: MCP mode (structured tool calls via `claude mcp add codex` — recommended, cleanest, existing subscription), CLI subprocess mode (spawns Codex CLI, existing subscription), and API mode (direct API calls, requires key). MCP mode is the recommended default for Codex specifically; CLI mode is the fallback for other models.
+- Codex parallel agent orchestration: fix verification agents (scoped to modified files) and full codebase sweep agents (entire codebase) running simultaneously via the alternate model
+- The alternating fix cycle: Claude fix → Codex cross-check → Claude fix → Codex re-cross-check → repeat until two consecutive clean Codex passes
+- `/forgeplan:deep-build` command that chains the full sequence: build → node review → integrate → Claude sweep → Claude fix → Codex cross-check → Claude fix → Codex re-cross-check → until clean → final report
+- Deep build report generation at `.forgeplan/deep-build-report.md` with findings tracked by source model
+- Test all three modes for cross-model review. Verify MCP mode works with zero API key configuration and produces structured responses.
+- Dogfood: run `/forgeplan:deep-build` on the client portal project using MCP mode (codex-mcp). Measure alternating cycle count. Compare findings caught by Claude vs Codex.
+- Dogfood: run `/forgeplan:deep-build` on ForgePlan's own codebase. Document self-improvement findings.
+
+**Test:** Run `/forgeplan:sweep` on a codebase with known planted bugs. Verify Claude's agents find their respective issues. Fix them. Run Codex cross-check — verify it catches at least one issue Claude missed (plant a subtle bug that Claude's prompt isn't tuned for). Fix it. Run Codex again — verify clean. Run Codex a third time (stability pass) — verify still clean. Run `/forgeplan:deep-build` end-to-end on the client portal. Verify the final report shows two consecutive clean Codex passes and documents all findings by source model.
+
+**Exit criteria:** `/forgeplan:deep-build` runs autonomously on the client portal project. Completes without human intervention. Codex certifies the codebase clean on two consecutive passes. Deep build report shows findings from both models, demonstrating that cross-model review caught issues single-model review missed. Total autonomous build time for the 7-node client portal is under 90 minutes.
+
+**Success metric:** Compare the deep-build output to the Sprint 5 manual build output. Measure: does the cross-model alternating loop catch issues the manual process missed? Is the final codebase quality equal or better? How many alternating cycles were needed? Does the cycle count decrease when running deep-build on subsequent projects (convergence improvement)?
 
 ---
 

@@ -58,6 +58,15 @@ When the build is complete:
 4. Set `last_updated` to current ISO timestamp
 5. Suggest running `/forgeplan:review [node-id]` next
 
-## Re-Build After Review
+## Verification-Gated Status Transition
 
-If `/forgeplan:review` issues REQUEST CHANGES, the user can re-run `/forgeplan:build [node-id]` to address the failures. The build command accepts `"reviewed"` status as a valid entry point. The cycle is: specced → building → built → reviewed → building → built → reviewed (until APPROVE). Similarly after revision: revised → building → built.
+The node status does NOT advance to "built" based on the Builder's self-report. The Stop hook independently evaluates acceptance criteria before allowing the transition. The Builder agent sets `active_node.agent_status` to `DONE` when it believes work is complete, but the actual `nodes.[id].status` transition to "built" only happens after the Stop hook's Layer 2 verification passes.
+
+## Re-Build After Review (Fresh Agent Pattern)
+
+If `/forgeplan:review` issues REQUEST CHANGES, re-run `/forgeplan:build [node-id]`. Each re-build spawns a **fresh Builder agent** with:
+- The original node spec (not the previous agent's interpretation)
+- The current code (as-is on disk)
+- The specific review findings to address
+
+This fresh-agent pattern prevents the Builder from getting stuck in its own reasoning loop. The cycle is: specced → building → built → reviewed → building → built → reviewed (until APPROVE). Similarly after revision: revised → building → built.

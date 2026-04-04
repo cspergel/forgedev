@@ -26,6 +26,11 @@
           "enum": ["building", "reviewing", "revising"],
           "description": "What operation is in progress"
         },
+        "agent_status": {
+          "type": "string",
+          "enum": ["WORKING", "DONE", "DONE_WITH_CONCERNS", "NEEDS_CONTEXT", "BLOCKED"],
+          "description": "Structured agent status. WORKING=in progress, DONE=complete, DONE_WITH_CONCERNS=complete with caveats, NEEDS_CONTEXT=missing info, BLOCKED=cannot proceed. Agents must set this instead of free-text status claims."
+        },
         "started_at": {
           "type": "string",
           "format": "date-time"
