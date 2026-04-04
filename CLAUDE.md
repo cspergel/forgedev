@@ -42,26 +42,23 @@ ForgeDev/
 ### Sprint 1: Foundation (COMPLETE)
 **Goal:** User can run `/forgeplan:discover` and produce a validated manifest with shared models. **DONE.**
 
-### Sprint 2: Build Harness (CURRENT)
-**Goal:** A user can spec and build a single node with hook enforcement.
+### Sprint 2: Build Harness (COMPLETE)
+**Goal:** A user can spec and build a single node with hook enforcement. **DONE.**
 
-**Deliverables:**
-- [x] /forgeplan:spec command fleshed out with --all flag, quality gates, dependency ordering
-- [x] PreToolUse hook — Layer 1 deterministic (file scope blocking, cross-node guard, shared model redefinition guard)
-- [x] PostToolUse hook — file registration in manifest + state, conversation logging
-- [x] /forgeplan:next command with deterministic dependency graph traversal script
-- [x] All hooks wired in hooks.json (SessionStart, PreToolUse, PostToolUse)
-- [ ] Code review against execution plan
+Hardened through 14 cross-model review rounds (Claude + Codex). Key hardening:
+- Fail-closed enforcement (corrupted state/manifest blocks operations)
+- Whitelist-based Bash gate (blocks all non-read commands during active operations)
+- Per-operation write boundaries (build, review, revise each have distinct allowed paths)
+- Pre-build file snapshot for safe reset classification
+- Spec validator with manifest cross-checking and strict field shapes
+- Revision→rebuild pipeline wired into /forgeplan:next
 
-**Sprint 2 Test:** Spec and build the database node for client portal. Verify PreToolUse blocks writes outside file_scope. Verify PreToolUse blocks a local User type redefinition. Verify anchor comments are generated. Verify /forgeplan:next correctly recommends auth after database is complete.
-
-**Note:** Stop hook is Sprint 3 (execution plan line 432), not Sprint 2.
-
-### Sprint 3: Review and Recovery
+### Sprint 3: Review and Recovery (NEXT)
 ### Sprint 4: Integration and BYOK
 ### Sprint 5: Dogfood and Ship
+### Sprint 6: Autonomous Iterative Sweep
 
-## Nine Commands
+## Eleven Commands
 
 | Command | Sprint | Description |
 |---------|--------|-------------|
@@ -74,6 +71,8 @@ ForgeDev/
 | `/forgeplan:status` | 4 | Full project status visualization |
 | `/forgeplan:integrate` | 4 | Cross-node interface verification |
 | `/forgeplan:recover` | 3 | Crash recovery |
+| `/forgeplan:sweep` | 6 | Parallel codebase sweep + cross-model verification |
+| `/forgeplan:deep-build` | 6 | Full autonomous build→review→sweep→cross-check pipeline |
 
 ## Three Agents
 
