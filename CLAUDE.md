@@ -48,9 +48,9 @@ ForgeDev/
 - [x] Node spec schema with ALL fields (inputs, outputs, shared_dependencies, data_models, interfaces w/ type, acceptance_criteria w/ id+test, constraints, non_goals, failure_modes, file_scope, depends_on)
 - [x] validate-manifest script (cycle detection, orphan check, scope overlap)
 - [x] state.json schema
-- [ ] /forgeplan:discover command + Architect agent
+- [x] /forgeplan:discover command + Architect agent
 - [x] Client portal blueprint template
-- [ ] All remaining command/agent stubs
+- [x] All remaining command/agent stubs (9 commands, 3 agents)
 
 **Sprint 1 Test:** Run /forgeplan:discover, describe the client portal, get a 7-node manifest with 2 shared models, validated with no cycles and no scope overlaps.
 

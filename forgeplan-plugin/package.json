@@ -1,0 +1,14 @@
+{
+  "name": "forgeplan-plugin",
+  "version": "0.1.0",
+  "description": "ForgePlan Core — Architecture-governed AI build harness for Claude Code",
+  "author": "Craig Spergel DO, Dpl. ABOM, CMD",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "validate": "node scripts/validate-manifest.js"
+  },
+  "dependencies": {
+    "js-yaml": "^4.1.0"
+  }
+}
