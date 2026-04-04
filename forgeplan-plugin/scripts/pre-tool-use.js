@@ -1,0 +1,250 @@
+#!/usr/bin/env node
+
+/**
+ * pre-tool-use.js — ForgePlan Core PreToolUse Hook
+ *
+ * Runs before every Write/Edit tool call during a build.
+ * Two-layer enforcement:
+ *   Layer 1 — Deterministic (instant, no tokens): file scope, cross-node, shared model guard
+ *   Layer 2 — LLM-mediated (only if Layer 1 passes): spec compliance, non_goals
+ *
+ * Input: JSON on stdin with tool_name and tool_input
+ * Output:
+ *   Exit 0 — allow the operation
+ *   Exit 2 — block the operation (stderr message shown to Claude)
+ *
+ * Layer 2 uses a "prompt" hook type, so this script only handles Layer 1.
+ * Layer 2 is defined as a separate prompt hook in hooks.json.
+ */
+
+const fs = require("fs");
+const path = require("path");
+// Resolve minimatch relative to this script's location (plugin dir), not cwd
+const { minimatch } = require(path.join(__dirname, "..", "node_modules", "minimatch"));
+
+// Read stdin
+let inputData = "";
+process.stdin.setEncoding("utf-8");
+process.stdin.on("data", (chunk) => {
+  inputData += chunk;
+});
+
+process.stdin.on("end", () => {
+  try {
+    const input = JSON.parse(inputData);
+    const result = evaluate(input);
+    if (result.block) {
+      process.stderr.write(result.message + "\n");
+      process.exit(2);
+    }
+    process.exit(0);
+  } catch (err) {
+    // On error, allow the operation (fail open) but warn
+    process.stderr.write(
+      `ForgePlan PreToolUse warning: ${err.message}\n`
+    );
+    process.exit(0);
+  }
+});
+
+function evaluate(input) {
+  const cwd = input.cwd || process.cwd();
+  const toolName = input.tool_name;
+  const toolInput = input.tool_input || {};
+
+  // Only enforce on Write and Edit tools
+  if (toolName !== "Write" && toolName !== "Edit") {
+    return { block: false };
+  }
+
+  const filePath = toolInput.file_path;
+  if (!filePath) {
+    return { block: false };
+  }
+
+  // Normalize the file path to be relative to cwd
+  const absPath = path.isAbsolute(filePath)
+    ? filePath
+    : path.join(cwd, filePath);
+  const relPath = path
+    .relative(cwd, absPath)
+    .replace(/\\/g, "/");
+
+  // --- Load state and manifest ---
+  const forgePlanDir = path.join(cwd, ".forgeplan");
+  const statePath = path.join(forgePlanDir, "state.json");
+  const manifestPath = path.join(forgePlanDir, "manifest.yaml");
+
+  // If no .forgeplan directory, skip enforcement
+  if (!fs.existsSync(forgePlanDir)) {
+    return { block: false };
+  }
+
+  // If no state.json, skip enforcement
+  if (!fs.existsSync(statePath)) {
+    return { block: false };
+  }
+
+  let state;
+  try {
+    state = JSON.parse(fs.readFileSync(statePath, "utf-8"));
+  } catch {
+    return { block: false };
+  }
+
+  // --- Check 1: Is there an active node? ---
+  if (!state.active_node || state.active_node.status !== "building") {
+    // Not in a build — allow writes to .forgeplan/ but warn about others
+    if (relPath.startsWith(".forgeplan/")) {
+      return { block: false };
+    }
+    // Allow writes outside build context (non-build operations like review, revise)
+    if (state.active_node && ["reviewing", "revising"].includes(state.active_node.status)) {
+      return { block: false };
+    }
+    return { block: false };
+  }
+
+  const activeNodeId = state.active_node.node;
+
+  // --- Allow exempt paths ---
+  // .forgeplan/ bookkeeping is always allowed
+  if (relPath.startsWith(".forgeplan/")) {
+    return { block: false };
+  }
+
+  // Shared types module is allowed (exempt cross-scope write)
+  if (relPath.startsWith("src/shared/types/")) {
+    return { block: false };
+  }
+
+  // --- Load manifest ---
+  if (!fs.existsSync(manifestPath)) {
+    return { block: false };
+  }
+
+  let manifest;
+  try {
+    const yaml = require(path.join(__dirname, "..", "node_modules", "js-yaml"));
+    manifest = yaml.load(fs.readFileSync(manifestPath, "utf-8"));
+  } catch {
+    return { block: false };
+  }
+
+  if (!manifest.nodes || !manifest.nodes[activeNodeId]) {
+    return { block: false };
+  }
+
+  const activeNode = manifest.nodes[activeNodeId];
+  const activeScope = activeNode.file_scope;
+
+  // --- Check 2: Does the file match the active node's file_scope? ---
+  if (activeScope && !minimatch(relPath, activeScope)) {
+    // Check if it matches ANY other node's scope
+    const otherNode = findOwningNode(manifest.nodes, relPath, activeNodeId);
+    if (otherNode) {
+      return {
+        block: true,
+        message:
+          `BLOCKED: File "${relPath}" belongs to node "${otherNode}" (scope: ${manifest.nodes[otherNode].file_scope}), ` +
+          `but the active build is for "${activeNodeId}" (scope: ${activeScope}). ` +
+          `Do not write files outside the active node's file_scope.`,
+      };
+    }
+    return {
+      block: true,
+      message:
+        `BLOCKED: File "${relPath}" is outside the active node's file_scope "${activeScope}". ` +
+        `Only write files within the active node's territory, or to exempt paths (.forgeplan/, src/shared/types/).`,
+    };
+  }
+
+  // --- Check 3: Is the file in another node's files list? ---
+  for (const [nodeId, nodeData] of Object.entries(manifest.nodes)) {
+    if (nodeId === activeNodeId) continue;
+    const nodeFiles = nodeData.files || [];
+    if (nodeFiles.includes(relPath)) {
+      return {
+        block: true,
+        message:
+          `BLOCKED: File "${relPath}" is already registered to node "${nodeId}". ` +
+          `Do not modify files owned by other nodes.`,
+      };
+    }
+  }
+
+  // --- Check 4: Shared model redefinition guard ---
+  if (manifest.shared_models && toolInput.content) {
+    const content = toolInput.content || "";
+    const sharedModelNames = Object.keys(manifest.shared_models);
+
+    for (const modelName of sharedModelNames) {
+      // Look for type/interface/class definitions (not imports)
+      const redefPatterns = [
+        new RegExp(`\\btype\\s+${modelName}\\b\\s*=`, "m"),
+        new RegExp(`\\binterface\\s+${modelName}\\b\\s*\\{`, "m"),
+        new RegExp(`\\bclass\\s+${modelName}\\b`, "m"),
+      ];
+
+      for (const pattern of redefPatterns) {
+        if (pattern.test(content)) {
+          // Check if this node lists the model in shared_dependencies
+          // Either way, block redefinition — shared models come from src/shared/types/
+          return {
+            block: true,
+            message:
+              `BLOCKED: "${modelName}" is a shared model defined in the manifest. ` +
+              `Import it from the shared types module (src/shared/types/) — do not redefine locally. ` +
+              `Use: import { ${modelName} } from 'src/shared/types';`,
+          };
+        }
+      }
+    }
+  }
+
+  // For Edit tool, check the new_string for redefinitions too
+  if (manifest.shared_models && toolInput.new_string) {
+    const content = toolInput.new_string || "";
+    const sharedModelNames = Object.keys(manifest.shared_models);
+
+    for (const modelName of sharedModelNames) {
+      const redefPatterns = [
+        new RegExp(`\\btype\\s+${modelName}\\b\\s*=`, "m"),
+        new RegExp(`\\binterface\\s+${modelName}\\b\\s*\\{`, "m"),
+        new RegExp(`\\bclass\\s+${modelName}\\b`, "m"),
+      ];
+
+      for (const pattern of redefPatterns) {
+        if (pattern.test(content)) {
+          return {
+            block: true,
+            message:
+              `BLOCKED: "${modelName}" is a shared model defined in the manifest. ` +
+              `Import it from the shared types module (src/shared/types/) — do not redefine locally.`,
+          };
+        }
+      }
+    }
+  }
+
+  // --- Layer 1 passed — allow (Layer 2 LLM check runs separately via prompt hook) ---
+  return { block: false };
+}
+
+/**
+ * Find which node owns a given file path by checking file_scope globs.
+ */
+function findOwningNode(nodes, filePath, excludeNodeId) {
+  for (const [nodeId, nodeData] of Object.entries(nodes)) {
+    if (nodeId === excludeNodeId) continue;
+    if (nodeData.file_scope && minimatch(filePath, nodeData.file_scope)) {
+      return nodeId;
+    }
+  }
+  return null;
+}
+
+// Export for testing
+if (require.main !== module) {
+  module.exports = { evaluate, findOwningNode };
+}

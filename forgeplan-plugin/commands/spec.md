@@ -9,46 +9,62 @@ allowed-tools: Read Write Edit Bash Glob Grep
 
 Generate a detailed node spec for the specified node(s).
 
-**Reference:** Read the specification skill at `${CLAUDE_PLUGIN_ROOT}/skills/specification/SKILL.md` for field definitions and quality rules before generating specs.
+**Before starting:** Read the specification skill at `${CLAUDE_PLUGIN_ROOT}/skills/specification/SKILL.md` for field definitions, quality rules, and the canonical type mapping table.
 
 **Target:** $ARGUMENTS
 
 ## Prerequisites
 
 - `.forgeplan/manifest.yaml` must exist (run `/forgeplan:discover` first)
-- The target node must exist in the manifest
+- `.forgeplan/state.json` must exist
+- The target node must exist in the manifest (or use `--all`)
 
-## Behavior
+## Single Node Mode (`/forgeplan:spec [node-id]`)
 
-### Single Node Mode (`/forgeplan:spec auth`)
-
-1. Read the manifest to get the node's metadata, connections, and shared model dependencies
+1. Read the manifest to get the node's metadata, connections, shared model dependencies, and tech stack
 2. Read the existing skeleton spec at `.forgeplan/specs/[node-id].yaml` if it exists
-3. Engage the user in a brief conversation to fill in details:
-   - What are the specific inputs and their validation rules?
-   - What are the exact outputs and response types?
-   - What are the acceptance criteria (specific, testable assertions)?
-   - What constraints apply (technology choices, behavioral rules)?
-   - What is explicitly NOT in scope (non-goals)?
-   - What are the likely failure modes to test against?
-4. Write the complete spec to `.forgeplan/specs/[node-id].yaml` using the node spec schema
-5. Update the node's status to "specced" in `.forgeplan/state.json`
+3. Read specs of nodes this node connects to (for interface context)
+4. Engage the user in a brief conversation to fill in details. Ask about each section that needs more specificity:
+   - **Inputs/outputs:** What data enters and exits this node? What types? What validation?
+   - **Acceptance criteria:** What specific, testable things must be true when this node is complete? Frame each as: "AC[n]: [description] — test: [how to verify]"
+   - **Constraints:** What technology choices or behavioral rules must the implementation follow?
+   - **Non-goals:** What is explicitly NOT in scope? (At least 1 required — this prevents feature creep)
+   - **Failure modes:** What are the likely bugs that could ship? (At least 1 required — this guides the reviewer)
+   - **Interfaces:** For each connection, what is the contract? What direction (read/write, outbound, inbound)?
+5. Write the complete spec to `.forgeplan/specs/[node-id].yaml` using ALL 11 fields from the node spec schema
+6. Run validation: `node "${CLAUDE_PLUGIN_ROOT}/scripts/validate-manifest.js" .forgeplan/manifest.yaml`
+7. Update the node's status to `"specced"` in `.forgeplan/state.json`
+8. Present a summary of the spec and confirm with the user
 
-### All Nodes Mode (`/forgeplan:spec --all`)
+## All Nodes Mode (`/forgeplan:spec --all`)
 
-1. Read the manifest and determine dependency order (topological sort)
-2. Generate specs for each node in order, using completed specs to inform dependent nodes
-3. For each node, present the draft spec and ask the user to review before finalizing
-4. Update state.json after each spec is written
+1. Read the manifest and determine dependency order using topological sort:
+   ```bash
+   node -e "const y=require('js-yaml');const f=require('fs');const m=y.load(f.readFileSync('.forgeplan/manifest.yaml','utf8'));const nodes=Object.keys(m.nodes);const deg={};const adj={};nodes.forEach(n=>{deg[n]=0;adj[n]=[]});nodes.forEach(n=>{(m.nodes[n].depends_on||[]).forEach(d=>{if(nodes.includes(d)){adj[d].push(n);deg[n]++}})});const q=nodes.filter(n=>deg[n]===0);const order=[];while(q.length){const c=q.shift();order.push(c);adj[c].forEach(n=>{if(--deg[n]===0)q.push(n)})};console.log(order.join(' '))"
+   ```
+2. Process each node in dependency order:
+   - For the first 1-2 nodes (typically database and auth), engage in full conversation
+   - For subsequent nodes, generate a draft spec based on the manifest metadata and already-completed specs, then present it for user review/edit
+   - Use completed specs to inform interface contracts on dependent nodes
+3. After each spec is written:
+   - Run validation
+   - Update state.json
+   - Present summary and get user confirmation before moving to the next node
+4. After all specs are complete, present a full project summary showing all nodes and their acceptance criteria counts
 
-## Spec Quality Rules
+## Spec Quality Gates
 
-- Every acceptance criterion MUST have an `id` (AC1, AC2, etc.) and a `test` field describing how to verify it
-- Every interface MUST have a `type` (read/write, outbound, inbound) and a `contract` description
-- Every node MUST have at least one `non_goal` to prevent scope creep
-- Every node MUST have at least one `failure_mode` to guide the reviewer
-- `shared_dependencies` MUST list every shared model this node uses — cross-reference with the manifest
-- `file_scope` MUST match the manifest and not overlap with any other node
+Before finalizing any spec, verify:
+
+- [ ] Every acceptance criterion has `id` (AC1, AC2...) AND `test` field
+- [ ] Every interface has `type` (read/write | outbound | inbound) AND `contract`
+- [ ] At least 1 `non_goal` present
+- [ ] At least 1 `failure_mode` present
+- [ ] `shared_dependencies` lists every shared model from the manifest that this node uses
+- [ ] `file_scope` matches the manifest entry and doesn't overlap with other nodes
+- [ ] `depends_on` matches the manifest entry
+
+If any gate fails, fix it before writing the spec file.
 
 ## Output
 

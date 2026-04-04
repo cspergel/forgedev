@@ -1,5 +1,5 @@
 ---
-description: Begin building a node. Sets the active node, injects spec + interfaces + shared models into context, and starts the Builder agent. Enforcement hooks (PreToolUse, PostToolUse, Stop) are wired in Sprint 2 — until then, enforcement relies on the Builder agent's constraint directive.
+description: Begin building a node. Sets the active node, injects spec + interfaces + shared models into context, and starts the Builder agent with PreToolUse and PostToolUse enforcement hooks.
 user-invocable: true
 argument-hint: "[node-id]"
 allowed-tools: Read Write Edit Bash Glob Grep
@@ -9,7 +9,11 @@ context: fork
 
 # Build Node
 
-Build the specified node following its spec. The Builder agent enforces constraints via its directive prompt. Deterministic hook enforcement (file scope blocking, shared model guard, Stop hook bounce) is added in Sprint 2.
+Build the specified node following its spec with layered enforcement:
+- **PreToolUse hook** — deterministic file scope blocking + shared model guard, then LLM spec compliance check
+- **PostToolUse hook** — auto-registers files and logs changes
+- **Builder agent directive** — constraint enforcement via prompt
+- **Stop hook** — acceptance criteria evaluation (Sprint 3)
 
 **Target node:** $ARGUMENTS
 

@@ -10,30 +10,45 @@ Analyze the project state and recommend which node to work on next.
 
 ## Process
 
-1. Read `.forgeplan/manifest.yaml` for the dependency graph
-2. Read `.forgeplan/state.json` for current node statuses
-3. Determine the dependency-aware build order (topological sort)
-4. Find the next node whose:
-   - Status is "pending" or "specced"
-   - All `depends_on` nodes have status "built" or "reviewed"
+Run the deterministic next-node recommender:
+```bash
+node "${CLAUDE_PLUGIN_ROOT}/scripts/next-node.js"
+```
 
-## Priority Rules
+The script outputs JSON with the recommendation. Parse it and present to the user.
 
-1. **Crashed/stuck nodes first** — if any node is in "building" status without an active session, flag it
-2. **Reviewed nodes that need rebuilding** — if a revision flagged dependent nodes, prioritize those
-3. **Dependency order** — among eligible nodes, recommend the one that unblocks the most downstream nodes
+## Output Formatting
 
-## Output
+Based on the JSON `type` field:
 
+### type: "stuck"
+```
+⚠ WARNING: [count] node(s) need attention
+[list of stuck nodes with statuses]
+Run /forgeplan:recover to fix these before proceeding.
+```
+
+### type: "recommendation"
 ```
 === Next Node ===
 Recommended: [node-id] — [node name]
+Status: [pending | specced]
 Reason: [why this node is next]
-Dependencies satisfied: [list of completed deps]
-Run: /forgeplan:spec [node-id]  (if not yet specced)
-     /forgeplan:build [node-id] (if specced)
+Dependencies satisfied: [list]
+Run: [next_action]
 
 Progress: [completed]/[total] nodes complete
+[Other eligible: [list] — if any]
 ```
 
-If all nodes are complete, suggest running `/forgeplan:integrate` for full system verification.
+### type: "complete"
+```
+All [total] nodes are complete!
+Run /forgeplan:integrate to verify cross-node interfaces.
+```
+
+### type: "blocked"
+```
+No eligible nodes found. Check dependencies and node statuses.
+Progress: [completed]/[total] nodes complete
+```

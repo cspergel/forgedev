@@ -39,22 +39,24 @@ ForgeDev/
 
 ## Sprint Status
 
-### Sprint 1: Foundation (CURRENT)
-**Goal:** User can run `/forgeplan:discover` and produce a validated manifest with shared models.
+### Sprint 1: Foundation (COMPLETE)
+**Goal:** User can run `/forgeplan:discover` and produce a validated manifest with shared models. **DONE.**
+
+### Sprint 2: Build Harness (CURRENT)
+**Goal:** A user can spec and build a single node with hook enforcement.
 
 **Deliverables:**
-- [x] Plugin scaffold with plugin.json and directory structure
-- [x] Manifest schema with shared_models, validation, file_scope, revision_count
-- [x] Node spec schema with ALL fields (inputs, outputs, shared_dependencies, data_models, interfaces w/ type, acceptance_criteria w/ id+test, constraints, non_goals, failure_modes, file_scope, depends_on)
-- [x] validate-manifest script (cycle detection, orphan check, scope overlap)
-- [x] state.json schema
-- [x] /forgeplan:discover command + Architect agent
-- [x] Client portal blueprint template
-- [x] All remaining command/agent stubs (9 commands, 3 agents)
+- [x] /forgeplan:spec command fleshed out with --all flag, quality gates, dependency ordering
+- [x] PreToolUse hook — Layer 1 deterministic (file scope blocking, cross-node guard, shared model redefinition guard)
+- [x] PostToolUse hook — file registration in manifest + state, conversation logging
+- [x] /forgeplan:next command with deterministic dependency graph traversal script
+- [x] All hooks wired in hooks.json (SessionStart, PreToolUse, PostToolUse)
+- [ ] Code review against execution plan
 
-**Sprint 1 Test:** Run /forgeplan:discover, describe the client portal, get a 7-node manifest with 2 shared models, validated with no cycles and no scope overlaps.
+**Sprint 2 Test:** Spec and build the database node for client portal. Verify PreToolUse blocks writes outside file_scope. Verify PreToolUse blocks a local User type redefinition. Verify anchor comments are generated. Verify /forgeplan:next correctly recommends auth after database is complete.
 
-### Sprint 2: Build Harness (NEXT)
+**Note:** Stop hook is Sprint 3 (execution plan line 432), not Sprint 2.
+
 ### Sprint 3: Review and Recovery
 ### Sprint 4: Integration and BYOK
 ### Sprint 5: Dogfood and Ship
