@@ -44,6 +44,11 @@
             "enum": ["pending", "specced", "building", "built", "reviewing", "reviewed", "revising", "revised"],
             "description": "Current node status (reviewing/revising are transient in-progress states)"
           },
+          "last_build_completed": {
+            "type": ["string", "null"],
+            "format": "date-time",
+            "description": "ISO timestamp of when the last build completed. Used by /next to determine if a node has been rebuilt after a revision."
+          },
           "previous_status": {
             "type": ["string", "null"],
             "description": "Status before the current transient operation (reviewing/revising). Used by recovery SKIP to restore the correct state. Set by review/revise commands before changing status."
@@ -91,6 +96,10 @@
         },
         "required": ["status"]
       }
+    },
+    "shared_types_created_by": {
+      "type": ["string", "null"],
+      "description": "Node ID that first created src/shared/types/index.ts. Used by recovery to determine shared types ownership."
     },
     "stop_hook_active": {
       "type": "boolean",

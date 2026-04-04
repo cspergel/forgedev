@@ -21,7 +21,7 @@ Build the specified node following its spec with layered enforcement:
 
 - `.forgeplan/manifest.yaml` must exist
 - `.forgeplan/specs/[node-id].yaml` must exist and be complete
-- The target node's status in `.forgeplan/state.json` must be `"specced"` or later (not `"pending"`)
+- The target node's status must be one of: `"specced"`, `"built"`, `"reviewed"`, or `"revised"` (not `"pending"`, `"building"`, `"reviewing"`, or `"revising"`)
 - All nodes in the target's `depends_on` list must have status "built", "reviewed", or "revised"
 - No other node can be currently in "building" status
 
@@ -51,10 +51,12 @@ The Builder agent receives:
 ## Completion
 
 When the build is complete:
-1. Update node status to "built" in state.json
-2. Clear active_node in state.json
-3. Suggest running `/forgeplan:review [node-id]` next
+1. Update `nodes.[node-id].status` to `"built"` in state.json
+2. Set `nodes.[node-id].last_build_completed` to current ISO timestamp
+3. Clear `active_node` to `null`
+4. Set `last_updated` to current ISO timestamp
+5. Suggest running `/forgeplan:review [node-id]` next
 
 ## Re-Build After Review
 
-If `/forgeplan:review` issues REQUEST CHANGES, the user can re-run `/forgeplan:build [node-id]` to address the failures. This works because the prerequisite "specced or later" includes "reviewed" — so the build command accepts nodes in any post-spec status. The cycle is: specced → building → built → reviewed → building → built → reviewed (until APPROVE).
+If `/forgeplan:review` issues REQUEST CHANGES, the user can re-run `/forgeplan:build [node-id]` to address the failures. The build command accepts `"reviewed"` status as a valid entry point. The cycle is: specced → building → built → reviewed → building → built → reviewed (until APPROVE). Similarly after revision: revised → building → built.

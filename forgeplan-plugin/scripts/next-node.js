@@ -104,24 +104,27 @@ function main() {
   }
 
   // --- Priority 2: Nodes needing rebuild after revision ---
+  // Check revision_history for affected nodes that haven't been rebuilt since the revision
   const needsRebuild = [];
   for (const id of nodeIds) {
     const ns = nodeStates[id];
-    if (!ns || !ns.revision_history) continue;
+    if (!ns || !ns.revision_history || !Array.isArray(ns.revision_history)) continue;
     for (const rev of ns.revision_history) {
-      if (Array.isArray(rev.affected_nodes)) {
-        for (const affected of rev.affected_nodes) {
-          if (
-            nodeIds.includes(affected) &&
-            !needsRebuild.includes(affected) &&
-            !stuck.includes(affected)
-          ) {
-            const affectedState = nodeStates[affected];
-            // Only flag if the affected node was previously completed but hasn't been rebuilt
-            if (affectedState && ["built", "reviewed"].includes(affectedState.status)) {
-              needsRebuild.push(affected);
-            }
+      if (!Array.isArray(rev.affected_nodes)) continue;
+      const revTimestamp = rev.timestamp || "";
+      for (const affected of rev.affected_nodes) {
+        if (!nodeIds.includes(affected) || needsRebuild.includes(affected) || stuck.includes(affected)) continue;
+        const affectedState = nodeStates[affected];
+        if (!affectedState) continue;
+        // Only flag completed nodes (built, reviewed, revised) that haven't been
+        // rebuilt AFTER this revision (compare timestamps if available)
+        if (["built", "reviewed", "revised"].includes(affectedState.status)) {
+          // If we have timestamps, only flag if the revision is newer than the last build
+          const lastBuildTime = affectedState.last_build_completed || "";
+          if (revTimestamp && lastBuildTime && revTimestamp <= lastBuildTime) {
+            continue; // Already rebuilt after this revision
           }
+          needsRebuild.push(affected);
         }
       }
     }

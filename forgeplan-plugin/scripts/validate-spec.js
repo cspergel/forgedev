@@ -43,15 +43,22 @@ function main() {
 
   // Load manifest for cross-validation
   let manifest = null;
+  const manifestExplicit = process.argv[3]; // Was manifest path explicitly provided?
   if (fs.existsSync(manifestPath)) {
     try {
       manifest = yaml.load(fs.readFileSync(manifestPath, "utf-8"));
     } catch (err) {
-      console.error(
-        `Warning: Could not parse manifest at ${manifestPath}: ${err.message}. ` +
-        `Skipping manifest cross-validation — spec-only checks still apply.`
-      );
+      if (manifestExplicit) {
+        // Manifest was explicitly provided — parse failure is an error
+        console.error(`Error: Could not parse manifest: ${err.message}`);
+        process.exit(2);
+      } else {
+        console.error(`Warning: Could not parse manifest — skipping cross-validation.`);
+      }
     }
+  } else if (manifestExplicit) {
+    console.error(`Error: Manifest not found at ${manifestPath}`);
+    process.exit(2);
   }
 
   const { errors, warnings } = validateSpec(spec, manifest);
@@ -106,6 +113,8 @@ function validateSpec(spec, manifest) {
       } else {
         if (!inp.name) errors.push(`inputs[${i}]: missing name`);
         if (!inp.type) errors.push(`inputs[${i}]: missing type`);
+        if (inp.required === undefined) warnings.push(`inputs[${i}] (${inp.name || "?"}): missing "required" field`);
+        if (!inp.validation) warnings.push(`inputs[${i}] (${inp.name || "?"}): missing "validation" rule`);
       }
     }
   }

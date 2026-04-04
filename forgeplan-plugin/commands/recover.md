@@ -80,7 +80,7 @@ Resume behavior depends on the crashed operation. **Read** state.json, then **up
   - Source files (`.ts`, `.js`, `.tsx`, `.jsx`) containing `// @forgeplan-node: [node-id]`
   - If git available: `git ls-files --others` within `file_scope` for new untracked files only
   - If no git: list ALL files in `file_scope` and warn that manual confirmation is required
-- **Shared types check:** If this was the first node built (i.e., it created `src/shared/types/index.ts`), ask the user whether to also remove the shared types file. If other nodes have already been built that depend on it, warn against removal.
+- **Shared types check:** Read `shared_types_created_by` from state.json. If it matches the crashed node's ID, `src/shared/types/index.ts` was created during this build. Ask whether to remove it. If other nodes have already been built that depend on it, warn against removal.
 - Present the file list to the user for confirmation before deleting
 - Reset node status to "specced" in state.json
 - Clear active_node in state.json

@@ -55,8 +55,25 @@ function processHook(input) {
   // Skip .forgeplan/ files — don't register bookkeeping as node files
   if (relPath.startsWith(".forgeplan/")) return;
 
-  // Skip the canonical shared types file — tracked separately
-  if (relPath === "src/shared/types/index.ts") return;
+  // Track shared types creation in state (but don't register in manifest)
+  if (relPath === "src/shared/types/index.ts") {
+    try {
+      const stateData = JSON.parse(fs.readFileSync(
+        path.join(cwd, ".forgeplan", "state.json"), "utf-8"
+      ));
+      if (stateData.active_node && stateData.active_node.status === "building") {
+        const nodeId = stateData.active_node.node;
+        if (!stateData.shared_types_created_by) {
+          stateData.shared_types_created_by = nodeId;
+          fs.writeFileSync(
+            path.join(cwd, ".forgeplan", "state.json"),
+            JSON.stringify(stateData, null, 2), "utf-8"
+          );
+        }
+      }
+    } catch { /* best effort */ }
+    return; // Don't register in manifest files list
+  }
 
   const forgePlanDir = path.join(cwd, ".forgeplan");
   const statePath = path.join(forgePlanDir, "state.json");

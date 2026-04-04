@@ -10,19 +10,22 @@ This skill provides context for generating high-quality node specifications.
 
 ## Node Spec Template
 
-Every node spec MUST include these 11 fields (see `${CLAUDE_PLUGIN_ROOT}/templates/schemas/node-spec-schema.yaml`):
+Every node spec MUST include these 14 fields (see `${CLAUDE_PLUGIN_ROOT}/templates/schemas/node-spec-schema.yaml`):
 
-1. **inputs** — External entry points with name, type, required flag, and validation rule
-2. **outputs** — Guaranteed responses with name and type (use `$shared.ModelName` for shared models)
-3. **shared_dependencies** — List of shared models this node uses (must match manifest exactly)
-4. **data_models** — Node-specific data types (NOT shared across nodes)
-5. **interfaces** — Directional contracts with target_node, type (read/write|outbound|inbound), and contract description
-6. **acceptance_criteria** — Testable assertions with `id` (AC1, AC2...), `description`, and `test` field
-7. **constraints** — Strict behavioral rules the implementation must follow
-8. **non_goals** — Explicit scope boundaries — what this node does NOT do
-9. **failure_modes** — Specific bugs the Reviewer will test for
-10. **file_scope** — Glob pattern defining this node's file territory
-11. **depends_on** — Nodes that must be built before this one
+1. **node** — Node ID (must match manifest key)
+2. **name** — Human-readable name
+3. **description** — What this node does, its responsibility
+4. **inputs** — External entry points with name, type, required flag, and validation rule
+5. **outputs** — Guaranteed responses with name and type
+6. **shared_dependencies** — List of shared models this node uses (must match manifest exactly)
+7. **data_models** — Node-specific data types (NOT shared across nodes)
+8. **interfaces** — Directional contracts with target_node, type (read/write|outbound|inbound), and contract description
+9. **acceptance_criteria** — Testable assertions with `id` (AC1, AC2...), `description`, and `test` field
+10. **constraints** — Strict behavioral rules the implementation must follow
+11. **non_goals** — Explicit scope boundaries — what this node does NOT do
+12. **failure_modes** — Specific bugs the Reviewer will test for
+13. **file_scope** — Glob pattern defining this node's file territory
+14. **depends_on** — Nodes that must be built before this one
 
 ## Quality Rules
 

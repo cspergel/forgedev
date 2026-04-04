@@ -47,8 +47,12 @@ Reopen a completed node for modification and analyze change impact.
    - Run validation
    - List all affected nodes with specific interface/model references that need updating
    - Suggest running `/forgeplan:build [affected-node]` for each affected node
-5. Update node status to "revised" in state.json and clear `active_node` to `null`
-6. Log the revision in the node's `revision_history` in state.json
+5. Update state.json:
+   - Set `nodes.[node-id].status` to `"revised"`
+   - Clear `nodes.[node-id].previous_status` to `null`
+   - Clear `active_node` to `null`
+   - Set `last_updated` to current ISO timestamp
+6. Log the revision in `nodes.[node-id].revision_history` in state.json
 
 ## The Killer Proof
 
