@@ -21,7 +21,7 @@ review:
 
   # --- API Mode Settings ---
   # provider: "openai"            # openai | google | anthropic
-  # api_key: ""                   # Your API key (or use env var)
+  # api_key: "$OPENAI_API_KEY"    # Env var reference (prefix with $) or direct key
   # model: "gpt-4o"               # Model to use for review
 
   # --- Common Settings ---

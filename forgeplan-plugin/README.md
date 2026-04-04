@@ -92,7 +92,7 @@ enforcement:
 ├── manifest.yaml          # Central command file
 ├── config.yaml            # BYOK and preferences (optional)
 ├── state.json             # Session state
-├��─ specs/                 # Node specifications
+├── specs/                 # Node specifications
 ├── conversations/         # Design rationale
 │   └── nodes/             # Per-node build logs
 ├── reviews/               # Review reports

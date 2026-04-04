@@ -22,7 +22,7 @@ const path = require("path");
 const { execSync, spawn } = require("child_process");
 const yaml = require(path.join(__dirname, "..", "node_modules", "js-yaml"));
 
-function main() {
+async function main() {
   const nodeId = process.argv[2];
   const configPath =
     process.argv[3] || path.join(process.cwd(), ".forgeplan", "config.yaml");
@@ -87,7 +87,7 @@ function main() {
       result = reviewViaCli(reviewConfig, prompt, cwd);
       break;
     case "api":
-      result = reviewViaApi(reviewConfig, prompt);
+      result = await reviewViaApi(reviewConfig, prompt);
       break;
     default:
       console.error(`Unknown review mode: ${mode}. Use mcp, cli, api, or native.`);
@@ -176,21 +176,15 @@ function assembleReviewPrompt(nodeId, spec, manifest, nodeFiles) {
 function reviewViaMcp(config, prompt, cwd) {
   const mcpServer = config.mcp_server || "codex";
   const timeout = config.timeout || 120000;
+  const tmpPrompt = path.join(cwd, ".forgeplan", ".tmp-review-prompt.md");
 
   try {
-    // Write prompt to temp file for MCP input
-    const tmpPrompt = path.join(cwd, ".forgeplan", ".tmp-review-prompt.md");
     fs.writeFileSync(tmpPrompt, prompt, "utf-8");
 
-    // Execute via MCP - this assumes the MCP server is already configured
-    // via `claude mcp add [server-name]`
     const result = execSync(
       `claude mcp call ${mcpServer} review --input "${tmpPrompt}"`,
       { encoding: "utf-8", timeout, cwd, stdio: ["pipe", "pipe", "pipe"] }
     );
-
-    // Clean up temp file
-    try { fs.unlinkSync(tmpPrompt); } catch {}
 
     return parseReviewResponse(result);
   } catch (err) {
@@ -199,6 +193,8 @@ function reviewViaMcp(config, prompt, cwd) {
       report: `## Cross-Model Review Error (MCP)\n\nMCP call to "${mcpServer}" failed: ${err.message}\n\nEnsure the MCP server is configured via \`claude mcp add ${mcpServer}\`.`,
       findingsCount: 0,
     };
+  } finally {
+    try { fs.unlinkSync(tmpPrompt); } catch {}
   }
 }
 
@@ -210,21 +206,16 @@ function reviewViaCli(config, prompt, cwd) {
   const command = config.cli_command || "codex";
   const args = config.cli_args || [];
   const timeout = config.timeout || 120000;
+  const tmpPrompt = path.join(cwd, ".forgeplan", ".tmp-review-prompt.md");
 
   try {
-    // Write prompt to temp file
-    const tmpPrompt = path.join(cwd, ".forgeplan", ".tmp-review-prompt.md");
     fs.writeFileSync(tmpPrompt, prompt, "utf-8");
 
-    // Build the CLI command
     const fullArgs = [...args, tmpPrompt];
     const result = execSync(
       `${command} ${fullArgs.join(" ")}`,
       { encoding: "utf-8", timeout, cwd, stdio: ["pipe", "pipe", "pipe"] }
     );
-
-    // Clean up
-    try { fs.unlinkSync(tmpPrompt); } catch {}
 
     return parseReviewResponse(result);
   } catch (err) {
@@ -233,6 +224,8 @@ function reviewViaCli(config, prompt, cwd) {
       report: `## Cross-Model Review Error (CLI)\n\nCLI command "${command}" failed: ${err.message}\n\nEnsure ${command} is installed and accessible.`,
       findingsCount: 0,
     };
+  } finally {
+    try { fs.unlinkSync(tmpPrompt); } catch {}
   }
 }
 
@@ -240,20 +233,24 @@ function reviewViaCli(config, prompt, cwd) {
  * API mode — direct HTTP calls to provider APIs.
  * Requires API key in config.
  */
-function reviewViaApi(config, prompt) {
+async function reviewViaApi(config, prompt) {
   const provider = config.provider || "openai";
-  const apiKey = config.api_key;
+  // Resolve API key — support env var references ($ENV_VAR_NAME)
+  let apiKey = config.api_key;
+  if (apiKey && apiKey.startsWith("$")) {
+    apiKey = process.env[apiKey.slice(1)] || "";
+  }
   const model = config.model;
 
   if (!apiKey) {
     return {
       status: "error",
-      report: `## Cross-Model Review Error (API)\n\nNo api_key configured for provider "${provider}" in .forgeplan/config.yaml.`,
+      report: `## Cross-Model Review Error (API)\n\nNo api_key configured for provider "${provider}" in .forgeplan/config.yaml.\nUse a direct key or env var reference like "$OPENAI_API_KEY".`,
       findingsCount: 0,
     };
   }
 
-  // Provider-specific API calls
+  // Provider-specific API configuration
   let url, headers, body;
 
   switch (provider) {
@@ -298,22 +295,23 @@ function reviewViaApi(config, prompt) {
   }
 
   try {
-    // Use Node's built-in fetch or curl fallback
-    const curlResult = execSync(
-      `curl -s -X POST "${url}" -H "Authorization: ${headers.Authorization || ""}" -H "x-api-key: ${headers["x-api-key"] || ""}" -H "anthropic-version: ${headers["anthropic-version"] || ""}" -H "Content-Type: application/json" -d @-`,
-      { input: body, encoding: "utf-8", timeout: 120000 }
-    );
+    // Use Node.js built-in fetch (Node 18+) — no credentials in process args
+    const response = await fetch(url, {
+      method: "POST",
+      headers,
+      body,
+      signal: AbortSignal.timeout(120000),
+    });
 
-    // Parse response based on provider
-    const response = JSON.parse(curlResult);
+    const data = await response.json();
     let text = "";
 
     if (provider === "openai") {
-      text = response.choices?.[0]?.message?.content || "";
+      text = data.choices?.[0]?.message?.content || "";
     } else if (provider === "google") {
-      text = response.candidates?.[0]?.content?.parts?.[0]?.text || "";
+      text = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
     } else if (provider === "anthropic") {
-      text = response.content?.[0]?.text || "";
+      text = data.content?.[0]?.text || "";
     }
 
     return parseReviewResponse(text);
