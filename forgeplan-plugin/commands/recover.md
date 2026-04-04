@@ -73,12 +73,13 @@ Resume behavior depends on the crashed operation:
 
 ## Reset (building only)
 
-- Identify files to remove using two sources (in priority order):
-  1. `state.json` → `nodes.[node].files_created` (if PostToolUse hook has been populating this — available from Sprint 2)
-  2. **Fallback:** scan the node's `file_scope` glob from the manifest and collect:
-     - Source files (`.ts`, `.js`, `.tsx`, `.jsx`) containing `// @forgeplan-node: [node-id]`
-     - If the project is a git repo: use `git ls-files --others --modified` within `file_scope` to identify files added/changed during the build
-     - If the project is NOT a git repo: list ALL files within `file_scope` and warn the user that without git history, the reset cannot distinguish pre-existing files from generated ones — the user must manually confirm which files to remove
+- Identify files using `state.json` → `nodes.[node]`:
+  - **`files_created`** — files created by Write tool during this build. These are SAFE TO DELETE (they didn't exist before the build).
+  - **`files_modified`** — files modified by Edit tool during this build. These are NOT safe to delete — they existed before the build. Warn the user that these files were modified and may need manual revert (use `git checkout` if available).
+- If `files_created` is empty (PostToolUse wasn't running), use the **fallback**:
+  - Source files (`.ts`, `.js`, `.tsx`, `.jsx`) containing `// @forgeplan-node: [node-id]`
+  - If git available: `git ls-files --others` within `file_scope` for new untracked files only
+  - If no git: list ALL files in `file_scope` and warn that manual confirmation is required
 - **Shared types check:** If this was the first node built (i.e., it created `src/shared/types/index.ts`), ask the user whether to also remove the shared types file. If other nodes have already been built that depend on it, warn against removal.
 - Present the file list to the user for confirmation before deleting
 - Reset node status to "specced" in state.json

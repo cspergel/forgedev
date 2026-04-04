@@ -55,7 +55,11 @@ function evaluate(input) {
   const toolName = input.tool_name;
   const toolInput = input.tool_input || {};
 
-  // Only enforce on Write and Edit tools
+  // Enforce on Write, Edit, and Bash (file-mutating commands)
+  if (toolName === "Bash") {
+    return evaluateBash(toolInput, cwd);
+  }
+
   if (toolName !== "Write" && toolName !== "Edit") {
     return { block: false };
   }
@@ -102,15 +106,47 @@ function evaluate(input) {
   }
 
   // --- Check 1: Is there an active node? ---
-  if (!state.active_node || state.active_node.status !== "building") {
-    // Not in a build — allow writes to .forgeplan/ but warn about others
-    if (relPath.startsWith(".forgeplan/")) {
-      return { block: false };
+  if (!state.active_node) {
+    // No active operation — allow all writes (user is working outside ForgePlan commands)
+    return { block: false };
+  }
+
+  const activeStatus = state.active_node.status;
+
+  // .forgeplan/ bookkeeping is always allowed regardless of operation type
+  if (relPath.startsWith(".forgeplan/")) {
+    return { block: false };
+  }
+
+  // Reviewing: only allow writes to .forgeplan/ (already handled above)
+  // The reviewer must NOT touch implementation code
+  if (activeStatus === "reviewing") {
+    return {
+      block: true,
+      message:
+        `BLOCKED: During review, only .forgeplan/ files (reviews, state) can be written. ` +
+        `File "${relPath}" is implementation code. The reviewer must not modify code — flag issues for the Builder.`,
+    };
+  }
+
+  // Revising: allow .forgeplan/ (handled above), shared types regen, and spec/manifest edits
+  // but NOT arbitrary implementation writes (those happen during rebuild)
+  if (activeStatus === "revising") {
+    if (relPath === "src/shared/types/index.ts") {
+      return { block: false }; // revise can regenerate shared types
     }
-    // Allow writes outside build context (non-build operations like review, revise)
-    if (state.active_node && ["reviewing", "revising"].includes(state.active_node.status)) {
-      return { block: false };
-    }
+    // During revise, only specs and manifest should change — not implementation code
+    // Implementation changes happen when affected nodes are rebuilt
+    return {
+      block: true,
+      message:
+        `BLOCKED: During revision, only specs, manifest, and shared types can be modified. ` +
+        `File "${relPath}" is implementation code. Run /forgeplan:build after revision to update implementation.`,
+    };
+  }
+
+  // For non-building states we don't recognize, allow
+  if (activeStatus !== "building") {
     return { block: false };
   }
 
@@ -278,6 +314,61 @@ function evaluate(input) {
 
   // --- Layer 1 passed — allow (Layer 2 LLM check runs separately via prompt hook) ---
   return { block: false };
+}
+
+/**
+ * Evaluate Bash commands for file-writing operations that bypass Write/Edit.
+ * Blocks shell commands that create/modify files outside the active node's scope.
+ */
+function evaluateBash(toolInput, cwd) {
+  const command = toolInput.command || "";
+
+  // Patterns that indicate file creation/modification
+  const fileWritePatterns = [
+    /\b(?:cat|echo|printf)\s.*?>\s*/,  // redirections: echo > file, cat > file
+    /\btee\s/,                          // tee file
+    /\bcp\s/,                           // cp source dest
+    /\bmv\s/,                           // mv source dest
+    /\bmkdir\s/,                        // mkdir (not file write but structure creation)
+    /\btouch\s/,                        // touch file
+    /\bsed\s+-i/,                       // sed -i (in-place edit)
+    /\bawk\s.*-i/,                      // awk in-place
+    />\s*[^\s|&;]/,                     // any stdout redirection to a file
+  ];
+
+  const isFileWrite = fileWritePatterns.some((p) => p.test(command));
+
+  if (!isFileWrite) {
+    return { block: false };
+  }
+
+  // Check for active build
+  const forgePlanDir = path.join(cwd, ".forgeplan");
+  const statePath = path.join(forgePlanDir, "state.json");
+
+  if (!fs.existsSync(statePath)) {
+    return { block: false };
+  }
+
+  let state;
+  try {
+    state = JSON.parse(fs.readFileSync(statePath, "utf-8"));
+  } catch {
+    return { block: false };
+  }
+
+  if (!state.active_node || state.active_node.status !== "building") {
+    return { block: false };
+  }
+
+  // During active build, warn about Bash file writes — they bypass enforcement
+  return {
+    block: true,
+    message:
+      `BLOCKED: Bash command appears to write files ("${command.substring(0, 80)}..."). ` +
+      `During an active build, use the Write or Edit tool instead of Bash for file operations. ` +
+      `This ensures file scope enforcement, shared model guards, and file registration work correctly.`,
+  };
 }
 
 /**

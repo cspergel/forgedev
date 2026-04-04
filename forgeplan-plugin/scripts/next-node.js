@@ -46,6 +46,17 @@ function main() {
   const nodeIds = Object.keys(manifest.nodes);
   const nodeStates = state.nodes || {};
 
+  // --- Sync active_node into nodeStates to prevent drift ---
+  // If active_node says a node is "building" but nodeStates doesn't reflect it,
+  // inject the active status so recommendations don't conflict with in-progress work
+  if (state.active_node && state.active_node.node) {
+    const activeId = state.active_node.node;
+    if (!nodeStates[activeId]) {
+      nodeStates[activeId] = {};
+    }
+    nodeStates[activeId].status = state.active_node.status;
+  }
+
   // --- Priority 1: Stuck/crashed nodes ---
   const stuckStatuses = ["building", "reviewing", "revising"];
   const stuck = [];

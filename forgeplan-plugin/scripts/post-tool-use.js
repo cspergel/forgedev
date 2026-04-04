@@ -111,7 +111,7 @@ function processHook(input) {
     );
   }
 
-  // --- 2. Auto-register file in state.json files_created ---
+  // --- 2. Track file in state.json — distinguish creates from edits ---
   try {
     // Re-read state in case it changed
     state = JSON.parse(fs.readFileSync(statePath, "utf-8"));
@@ -123,9 +123,16 @@ function processHook(input) {
     if (!state.nodes[activeNodeId].files_created) {
       state.nodes[activeNodeId].files_created = [];
     }
+    if (!state.nodes[activeNodeId].files_modified) {
+      state.nodes[activeNodeId].files_modified = [];
+    }
 
-    if (!state.nodes[activeNodeId].files_created.includes(relPath)) {
-      state.nodes[activeNodeId].files_created.push(relPath);
+    // Write tool = new file creation; Edit tool = modifying existing file
+    const isCreate = toolName === "Write";
+    const targetList = isCreate ? "files_created" : "files_modified";
+
+    if (!state.nodes[activeNodeId][targetList].includes(relPath)) {
+      state.nodes[activeNodeId][targetList].push(relPath);
       fs.writeFileSync(statePath, JSON.stringify(state, null, 2), "utf-8");
     }
   } catch (err) {
