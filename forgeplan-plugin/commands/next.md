@@ -52,3 +52,9 @@ Run /forgeplan:integrate to verify cross-node interfaces.
 No eligible nodes found. Check dependencies and node statuses.
 Progress: [completed]/[total] nodes complete
 ```
+
+### type: "error"
+```
+ERROR: [message]
+```
+This occurs when `.forgeplan/state.json` is corrupted or unreadable. Present the error message and suggest fixing or deleting state.json.

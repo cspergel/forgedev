@@ -21,16 +21,10 @@ Audit the specified node's implementation against its spec.
 
 ## Setup
 
-Before starting the review, set the active node in `.forgeplan/state.json`:
-```json
-{
-  "active_node": {
-    "node": "[node-id]",
-    "status": "reviewing",
-    "started_at": "[ISO timestamp]"
-  }
-}
-```
+**Read** `.forgeplan/state.json`, then **update** (do not overwrite) these fields:
+- Set `active_node` to `{"node": "[node-id]", "status": "reviewing", "started_at": "[ISO timestamp]"}`
+- Set `last_updated` to current ISO timestamp
+- Preserve all other existing fields
 
 ## Review Process
 

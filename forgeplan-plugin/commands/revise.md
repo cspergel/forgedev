@@ -18,16 +18,10 @@ Reopen a completed node for modification and analyze change impact.
 
 ## Setup
 
-Before starting the revision, set the active node in `.forgeplan/state.json`:
-```json
-{
-  "active_node": {
-    "node": "[node-id]",
-    "status": "revising",
-    "started_at": "[ISO timestamp]"
-  }
-}
-```
+**Read** `.forgeplan/state.json`, then **update** (do not overwrite) these fields:
+- Set `active_node` to `{"node": "[node-id]", "status": "revising", "started_at": "[ISO timestamp]"}`
+- Set `last_updated` to current ISO timestamp
+- Preserve all other existing fields
 
 ## Process
 

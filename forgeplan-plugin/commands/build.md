@@ -30,17 +30,11 @@ Build the specified node following its spec with layered enforcement:
 1. Read the manifest and the target node's spec
 2. Read specs for all nodes this node interfaces with (for contract context)
 3. Read shared model definitions from the manifest
-4. Set the active node in `.forgeplan/state.json`:
-   ```json
-   {
-     "active_node": {
-       "node": "[node-id]",
-       "status": "building",
-       "started_at": "[ISO timestamp]"
-     }
-   }
-   ```
-5. Update the node's status to "building" in state.json
+4. **Read** `.forgeplan/state.json`, then **update** (do not overwrite) these fields:
+   - Set `active_node` to `{"node": "[node-id]", "status": "building", "started_at": "[ISO timestamp]"}`
+   - Set `nodes.[node-id].status` to `"building"`
+   - Set `last_updated` to current ISO timestamp
+   - Preserve all other existing fields (`session_id`, `nodes`, `stop_hook_active`, `discovery_complete`)
 
 ## Builder Agent Context
 

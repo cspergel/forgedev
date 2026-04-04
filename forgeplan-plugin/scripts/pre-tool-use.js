@@ -406,11 +406,19 @@ function evaluateBash(toolInput, cwd) {
     /^\s*Select-String\b/i,            // PowerShell grep
   ];
 
-  // Check if command matches a safe pattern AND has no redirection
-  const isSafe = safePatterns.some((p) => p.test(command));
-  const hasRedirection = />\s*[^\s]/.test(command) || /\|\s*Out-File/i.test(command);
+  // Split command on chaining operators and validate EVERY segment
+  // Separators: ; && || | (pipe to non-whitelisted command)
+  const segments = command.split(/\s*(?:;|&&|\|\||(?<!\|)\|(?!\|))\s*/).filter(Boolean);
 
-  if (isSafe && !hasRedirection) {
+  const allSegmentsSafe = segments.every((seg) => {
+    const trimmed = seg.trim();
+    if (!trimmed) return true;
+    const matchesSafe = safePatterns.some((p) => p.test(trimmed));
+    const hasRedirection = />\s*[^\s]/.test(trimmed) || /\|\s*Out-File/i.test(trimmed);
+    return matchesSafe && !hasRedirection;
+  });
+
+  if (allSegmentsSafe) {
     return { block: false };
   }
 
