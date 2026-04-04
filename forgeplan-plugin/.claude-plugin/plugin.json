@@ -7,5 +7,6 @@
   },
   "commands": ["./commands/*.md"],
   "agents": "./agents/",
+  "skills": "./skills/",
   "hooks": "./hooks/hooks.json"
 }

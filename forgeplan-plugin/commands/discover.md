@@ -23,18 +23,25 @@ First, create the `.forgeplan/` directory structure if it doesn't exist:
 └── reviews/
 ```
 
+Then copy the ForgePlan CLAUDE.md into the project root (if one doesn't already exist):
+- Source: `${CLAUDE_PLUGIN_ROOT}/templates/forgeplan-claude.md`
+- Destination: `CLAUDE.md` in the project root (merge with existing if present)
+
+Also append the `.forgeplan/state.json` exclusion from `${CLAUDE_PLUGIN_ROOT}/templates/forgeplan-gitignore` to the project's `.gitignore` if not already present.
+
 ## Template Mode
 
 If the user's argument starts with `template:`, load the corresponding blueprint:
 - `template:client-portal` → Load from `${CLAUDE_PLUGIN_ROOT}/templates/blueprints/client-portal.yaml`
 
 When loading a template:
-1. Copy the blueprint to `.forgeplan/manifest.yaml`
-2. Set `created_at` to the current ISO 8601 timestamp
-3. Generate skeleton specs for each node into `.forgeplan/specs/`
-4. Run validation: `node "${CLAUDE_PLUGIN_ROOT}/scripts/validate-manifest.js" .forgeplan/manifest.yaml`
-5. Present the architecture summary to the user
-6. Ask if they want to customize anything before proceeding
+1. Create the `.forgeplan/` directory structure and copy CLAUDE.md + .gitignore entries (per Setup above)
+2. Copy the blueprint to `.forgeplan/manifest.yaml`
+3. Set `created_at` to the current ISO 8601 timestamp
+4. Generate skeleton specs for each node into `.forgeplan/specs/`
+5. Run validation: `node "${CLAUDE_PLUGIN_ROOT}/scripts/validate-manifest.js" .forgeplan/manifest.yaml`
+6. Present the architecture summary to the user
+7. Ask if they want to customize anything before proceeding
 
 ## Guided Discovery Mode
 
