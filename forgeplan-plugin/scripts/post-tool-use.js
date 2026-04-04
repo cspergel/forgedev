@@ -76,7 +76,72 @@ function processHook(input) {
 
   const activeNodeId = state.active_node.node;
 
-  // --- 1. Auto-register file in manifest ---
+  // --- 1. Classify file BEFORE registering in manifest ---
+  // Must happen first so the manifest check sees pre-build state
+  let fileAction = "created"; // default for conversation log
+  try {
+    // Re-read state in case it changed
+    state = JSON.parse(fs.readFileSync(statePath, "utf-8"));
+
+    if (!state.nodes) state.nodes = {};
+    if (!state.nodes[activeNodeId]) {
+      state.nodes[activeNodeId] = { status: "building" };
+    }
+    if (!state.nodes[activeNodeId].files_created) {
+      state.nodes[activeNodeId].files_created = [];
+    }
+    if (!state.nodes[activeNodeId].files_modified) {
+      state.nodes[activeNodeId].files_modified = [];
+    }
+
+    const alreadyKnown =
+      state.nodes[activeNodeId].files_created.includes(relPath) ||
+      state.nodes[activeNodeId].files_modified.includes(relPath);
+
+    let targetList;
+    if (alreadyKnown) {
+      targetList = null;
+    } else if (toolName === "Edit") {
+      targetList = "files_modified";
+      fileAction = "edited";
+    } else {
+      // Write tool: check manifest BEFORE we register the file
+      let preExisting = false;
+      try {
+        const yaml = require(path.join(__dirname, "..", "node_modules", "js-yaml"));
+        const mText = fs.readFileSync(manifestPath, "utf-8");
+        const mData = yaml.load(mText);
+        if (mData.nodes) {
+          for (const [nid, ndata] of Object.entries(mData.nodes)) {
+            if ((ndata.files || []).includes(relPath)) {
+              preExisting = true;
+              break;
+            }
+          }
+        }
+      } catch {
+        // Can't check — assume new file (won't accidentally delete unknowns)
+      }
+      if (preExisting) {
+        targetList = "files_modified";
+        fileAction = "overwrote";
+      } else {
+        targetList = "files_created";
+        fileAction = "created";
+      }
+    }
+
+    if (targetList && !state.nodes[activeNodeId][targetList].includes(relPath)) {
+      state.nodes[activeNodeId][targetList].push(relPath);
+      fs.writeFileSync(statePath, JSON.stringify(state, null, 2), "utf-8");
+    }
+  } catch (err) {
+    process.stderr.write(
+      `ForgePlan PostToolUse: Could not classify file: ${err.message}\n`
+    );
+  }
+
+  // --- 2. Register file in manifest (after classification) ---
   try {
     const yaml = require(path.join(__dirname, "..", "node_modules", "js-yaml"));
     const manifestText = fs.readFileSync(manifestPath, "utf-8");
@@ -95,7 +160,6 @@ function processHook(input) {
             (manifest.project.revision_count || 0) + 1;
         }
 
-        // Write updated manifest
         const updatedYaml = yaml.dump(manifest, {
           lineWidth: -1,
           noRefs: true,
@@ -108,69 +172,6 @@ function processHook(input) {
   } catch (err) {
     process.stderr.write(
       `ForgePlan PostToolUse: Could not register file in manifest: ${err.message}\n`
-    );
-  }
-
-  // --- 2. Track file in state.json — distinguish creates from edits ---
-  try {
-    // Re-read state in case it changed
-    state = JSON.parse(fs.readFileSync(statePath, "utf-8"));
-
-    if (!state.nodes) state.nodes = {};
-    if (!state.nodes[activeNodeId]) {
-      state.nodes[activeNodeId] = { status: "building" };
-    }
-    if (!state.nodes[activeNodeId].files_created) {
-      state.nodes[activeNodeId].files_created = [];
-    }
-    if (!state.nodes[activeNodeId].files_modified) {
-      state.nodes[activeNodeId].files_modified = [];
-    }
-
-    // Determine if this is a new file or a modification of an existing one.
-    // Edit tool always means modifying existing content.
-    // Write tool could be creating OR overwriting — check if the file was
-    // already known (registered in manifest files list or already tracked this build).
-    const alreadyKnown =
-      state.nodes[activeNodeId].files_created.includes(relPath) ||
-      state.nodes[activeNodeId].files_modified.includes(relPath);
-
-    let targetList;
-    if (alreadyKnown) {
-      // Already tracked — don't re-classify
-      targetList = null;
-    } else if (toolName === "Edit") {
-      // Edit = always modifying existing content
-      targetList = "files_modified";
-    } else {
-      // Write tool: check if file was in any node's files list before this build
-      // (meaning it existed from a previous build or was pre-existing)
-      let preExisting = false;
-      try {
-        const yaml = require(path.join(__dirname, "..", "node_modules", "js-yaml"));
-        const mText = fs.readFileSync(manifestPath, "utf-8");
-        const mData = yaml.load(mText);
-        if (mData.nodes) {
-          for (const [nid, ndata] of Object.entries(mData.nodes)) {
-            if ((ndata.files || []).includes(relPath)) {
-              preExisting = true;
-              break;
-            }
-          }
-        }
-      } catch {
-        // If we can't check, assume new file (safer for reset — won't delete unknowns)
-      }
-      targetList = preExisting ? "files_modified" : "files_created";
-    }
-
-    if (targetList && !state.nodes[activeNodeId][targetList].includes(relPath)) {
-      state.nodes[activeNodeId][targetList].push(relPath);
-      fs.writeFileSync(statePath, JSON.stringify(state, null, 2), "utf-8");
-    }
-  } catch (err) {
-    process.stderr.write(
-      `ForgePlan PostToolUse: Could not update state.json: ${err.message}\n`
     );
   }
 
@@ -188,8 +189,8 @@ function processHook(input) {
     }
 
     const timestamp = new Date().toISOString();
-    const action = toolName === "Write" ? "Created" : "Edited";
-    const logEntry = `- [${timestamp}] ${action}: \`${relPath}\`\n`;
+    const actionLabel = fileAction.charAt(0).toUpperCase() + fileAction.slice(1);
+    const logEntry = `- [${timestamp}] ${actionLabel}: \`${relPath}\`\n`;
 
     fs.appendFileSync(convPath, logEntry, "utf-8");
   } catch (err) {

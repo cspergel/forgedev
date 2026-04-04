@@ -129,19 +129,33 @@ function evaluate(input) {
     };
   }
 
-  // .forgeplan/ bookkeeping is allowed for building and revising
-  if (relPath.startsWith(".forgeplan/")) {
-    return { block: false };
+  // Building: only specific .forgeplan/ paths allowed per builder contract
+  if (activeStatus === "building" && relPath.startsWith(".forgeplan/")) {
+    const activeNodeId_ = state.active_node.node;
+    if (
+      relPath === `.forgeplan/conversations/nodes/${activeNodeId_}.md` ||
+      relPath === ".forgeplan/state.json"
+    ) {
+      return { block: false };
+    }
+    return {
+      block: true,
+      message:
+        `BLOCKED: During build, only .forgeplan/conversations/nodes/${activeNodeId_}.md and .forgeplan/state.json ` +
+        `can be written. File "${relPath}" is outside the builder's .forgeplan/ write boundary.`,
+    };
   }
 
-  // Revising: allow .forgeplan/ (handled above), shared types regen, and spec/manifest edits
-  // but NOT arbitrary implementation writes (those happen during rebuild)
+  // Revising: allow specific .forgeplan/ paths, specs, manifest, shared types
   if (activeStatus === "revising") {
-    if (relPath === "src/shared/types/index.ts") {
-      return { block: false }; // revise can regenerate shared types
+    if (
+      relPath.startsWith(".forgeplan/specs/") ||
+      relPath === ".forgeplan/manifest.yaml" ||
+      relPath === ".forgeplan/state.json" ||
+      relPath === "src/shared/types/index.ts"
+    ) {
+      return { block: false };
     }
-    // During revise, only specs and manifest should change — not implementation code
-    // Implementation changes happen when affected nodes are rebuilt
     return {
       block: true,
       message:
