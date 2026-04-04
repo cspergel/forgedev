@@ -33,8 +33,13 @@ function main() {
   if (fs.existsSync(statePath)) {
     try {
       state = JSON.parse(fs.readFileSync(statePath, "utf-8"));
-    } catch {
-      state = { nodes: {} };
+    } catch (err) {
+      const result = {
+        type: "error",
+        message: `ERROR: .forgeplan/state.json could not be parsed: ${err.message}. Fix or delete state.json before proceeding.`,
+      };
+      console.log(JSON.stringify(result, null, 2));
+      process.exit(1);
     }
   }
 

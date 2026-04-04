@@ -75,7 +75,7 @@ Resume behavior depends on the crashed operation:
 
 - Identify files using `state.json` → `nodes.[node]`:
   - **`files_created`** — files created by Write tool during this build. These are SAFE TO DELETE (they didn't exist before the build).
-  - **`files_modified`** — files modified by Edit tool during this build. These are NOT safe to delete — they existed before the build. Warn the user that these files were modified and may need manual revert (use `git checkout` if available).
+  - **`files_modified`** — pre-existing files modified (via Edit) or overwritten (via Write) during this build. These are NOT safe to delete — they existed before the build. Warn the user that these files were changed and may need manual revert (use `git checkout` if available).
 - If `files_created` is empty (PostToolUse wasn't running), use the **fallback**:
   - Source files (`.ts`, `.js`, `.tsx`, `.jsx`) containing `// @forgeplan-node: [node-id]`
   - If git available: `git ls-files --others` within `file_scope` for new untracked files only

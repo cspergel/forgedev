@@ -336,58 +336,21 @@ function evaluate(input) {
 }
 
 /**
- * Evaluate Bash commands for file-writing operations that bypass Write/Edit.
- * Blocks shell commands that create/modify files outside the active node's scope.
+ * Evaluate Bash commands during active ForgePlan operations.
+ *
+ * Strategy: during active builds/reviews/revisions, BLOCK all Bash commands
+ * EXCEPT a whitelist of known-safe read-only operations. This is the only
+ * robust approach — regex-matching file-write patterns is a losing game
+ * because there are infinite ways to write files via interpreters, .NET, etc.
  */
 function evaluateBash(toolInput, cwd) {
   const command = toolInput.command || "";
-
-  // Patterns that indicate file creation/modification — Unix AND PowerShell
-  const fileWritePatterns = [
-    // Unix
-    /\b(?:cat|echo|printf)\s.*?>\s*/,  // redirections: echo > file, cat > file
-    /\btee\s/,                          // tee file
-    /\bcp\s/,                           // cp source dest
-    /\bmv\s/,                           // mv source dest
-    /\bmkdir\s/,                        // mkdir
-    /\btouch\s/,                        // touch file
-    /\bsed\s+-i/,                       // sed -i (in-place edit)
-    /\bawk\s.*-i/,                      // awk in-place
-    />\s*[^\s|&;]/,                     // any stdout redirection to a file
-    // PowerShell
-    /\bSet-Content\b/i,                 // Set-Content path 'content'
-    /\bAdd-Content\b/i,                 // Add-Content path 'content'
-    /\bOut-File\b/i,                    // ... | Out-File path
-    /\bNew-Item\b/i,                    // New-Item path -ItemType File
-    /\bCopy-Item\b/i,                   // Copy-Item src dest
-    /\bMove-Item\b/i,                   // Move-Item src dest
-    /\bRename-Item\b/i,                 // Rename-Item src dest
-    /\bRemove-Item\b/i,                 // Remove-Item path (destructive)
-    /\bClear-Content\b/i,              // Clear-Content path (empties file)
-    /\bInvoke-WebRequest\b.*-OutFile/i, // Download to file
-    /\b\[System\.IO\.File\]::Write/i,   // .NET file write
-    /\b\[System\.IO\.File\]::Delete/i,  // .NET file delete
-    /\b\[System\.IO\.File\]::AppendAll/i, // .NET file append
-    /\bsc\s/,                           // sc alias for Set-Content
-    /\bni\s/,                           // ni alias for New-Item
-    /\bdel\s/,                          // del alias for Remove-Item
-    /\bri\s/,                           // ri alias for Remove-Item
-    /\brm\s/,                           // rm (works in both bash and PowerShell)
-    /\brmdir\s/,                        // rmdir
-    /\bunlink\s/,                       // unlink
-  ];
-
-  const isFileWrite = fileWritePatterns.some((p) => p.test(command));
-
-  if (!isFileWrite) {
-    return { block: false };
-  }
 
   // Check for any active ForgePlan operation
   const forgePlanDir = path.join(cwd, ".forgeplan");
   const statePath = path.join(forgePlanDir, "state.json");
 
-  if (!fs.existsSync(statePath)) {
+  if (!fs.existsSync(forgePlanDir) || !fs.existsSync(statePath)) {
     return { block: false };
   }
 
@@ -414,13 +377,50 @@ function evaluateBash(toolInput, cwd) {
     return { block: false };
   }
 
-  // During any active operation, block Bash file writes — they bypass enforcement
+  // Whitelist: known-safe read-only commands that cannot mutate files
+  const safePatterns = [
+    /^\s*ls\b/,                         // list files
+    /^\s*dir\b/,                        // list files (Windows)
+    /^\s*cat\s/,                        // read file (without redirection)
+    /^\s*head\s/,                       // read file head
+    /^\s*tail\s/,                       // read file tail
+    /^\s*less\s/,                       // pager
+    /^\s*more\s/,                       // pager
+    /^\s*grep\s/,                       // search
+    /^\s*rg\s/,                         // ripgrep
+    /^\s*find\s/,                       // find files
+    /^\s*wc\s/,                         // word count
+    /^\s*diff\s/,                       // diff
+    /^\s*git\s+(status|log|diff|show|branch|remote|tag|stash\s+list)\b/,
+    /^\s*node\s.*validate-manifest/,    // our own validation script
+    /^\s*node\s.*next-node/,            // our own next-node script
+    /^\s*node\s.*session-start/,        // our own session-start script
+    /^\s*npm\s+(test|run\s+test|run\s+lint|run\s+validate)\b/, // test/lint
+    /^\s*npx\s+tsc\b/,                 // type checking
+    /^\s*pwd\b/,                        // print working directory
+    /^\s*echo\s/,                       // echo without redirection (checked below)
+    /^\s*Get-Content\b/i,              // PowerShell read
+    /^\s*Get-ChildItem\b/i,            // PowerShell list
+    /^\s*Get-Item\b/i,                 // PowerShell get item
+    /^\s*Test-Path\b/i,                // PowerShell test path
+    /^\s*Select-String\b/i,            // PowerShell grep
+  ];
+
+  // Check if command matches a safe pattern AND has no redirection
+  const isSafe = safePatterns.some((p) => p.test(command));
+  const hasRedirection = />\s*[^\s]/.test(command) || /\|\s*Out-File/i.test(command);
+
+  if (isSafe && !hasRedirection) {
+    return { block: false };
+  }
+
   return {
     block: true,
     message:
-      `BLOCKED: Bash command appears to write files ("${command.substring(0, 80)}..."). ` +
-      `During an active ${activeStatus} operation, use the Write or Edit tool instead of Bash. ` +
-      `This ensures file scope enforcement, shared model guards, and file registration work correctly.`,
+      `BLOCKED: Bash commands are restricted during active ${activeStatus} operations. ` +
+      `Use the Write or Edit tool for file operations — this ensures file scope enforcement, ` +
+      `shared model guards, and file registration work correctly. ` +
+      `Read-only commands (ls, cat, grep, git status, npm test, etc.) are allowed.`,
   };
 }
 

@@ -58,7 +58,7 @@
           "files_modified": {
             "type": "array",
             "items": { "type": "string" },
-            "description": "Pre-existing files modified via Edit tool during build (NOT safe to delete — need manual revert on reset). Auto-populated by PostToolUse."
+            "description": "Pre-existing files modified (via Edit) or overwritten (via Write) during build. NOT safe to delete on reset — need manual revert. Auto-populated by PostToolUse."
           },
           "last_review": {
             "type": ["string", "null"],
