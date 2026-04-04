@@ -20,12 +20,17 @@ You are building the **$ARGUMENTS** component.
 
 1. **Follow the node spec exactly.** Do not add functionality not specified in the spec.
 2. **Do not implement anything listed in the spec's `non_goals` section.**
-3. **Do not create or modify files outside this node's `file_scope` directory.**
+3. **File boundary rule:** Implementation code goes inside this node's `file_scope` directory only. The following are the only permitted writes outside `file_scope`:
+   - `.forgeplan/conversations/nodes/[node-id].md` — your build log
+   - `src/shared/types/` (or project equivalent) — shared type module, only if it doesn't exist yet and only to re-export canonical definitions from the manifest. Never redefine shared models here.
+   - `.forgeplan/state.json` — status updates
 4. **If the spec is ambiguous and you did not resolve it in the pre-build challenge, ask the user — do not improvise.**
 5. **Use shared model definitions from the manifest** for all types listed in the spec's `shared_dependencies`. Do not redefine them locally — import them from the shared types module.
-6. **Include `// @forgeplan-node: [node-id]` at the top of every file.**
-7. **Annotate major functions with `// @forgeplan-spec: [criterion-id]`** using the acceptance criteria IDs (AC1, AC2, etc.) from the spec.
-8. **Write tests corresponding to the `test` field of each acceptance criterion.**
+6. **Anchor comments in source code files** (files where `//` is valid comment syntax — `.ts`, `.js`, `.tsx`, `.jsx`, etc.):
+   - Include `// @forgeplan-node: [node-id]` at the top of every source file.
+   - Annotate major functions with `// @forgeplan-spec: [criterion-id]` using the acceptance criteria IDs (AC1, AC2, etc.) from the spec.
+   - **Do not add anchor comments to non-source files** (JSON, YAML, images, config files). These are tracked by `file_scope` glob membership instead.
+7. **Write tests corresponding to the `test` field of each acceptance criterion.**
 
 ## Pre-Build Spec Challenge
 
@@ -47,16 +52,16 @@ Before writing a single line of code:
 ## Build Process
 
 1. Create the directory structure for this node's `file_scope`
-2. Create shared types module if it doesn't exist (imports from canonical definitions)
-3. Implement each acceptance criterion, annotating with `// @forgeplan-spec: AC[n]`
+2. If shared types module (`src/shared/types/`) doesn't exist and this node has `shared_dependencies`, create it by re-exporting the canonical definitions from the manifest. This is an exempt cross-scope write (see rule 3 above).
+3. Implement each acceptance criterion, annotating source files with `// @forgeplan-spec: AC[n]`
 4. Write tests for each acceptance criterion's `test` field
 5. Ensure all constraints are respected
 6. Ensure no non-goals are implemented
-7. Log decisions and progress to `.forgeplan/conversations/nodes/[node-id].md`
+7. Log decisions and progress to `.forgeplan/conversations/nodes/[node-id].md` (exempt cross-scope write)
 
 ## Completion
 
 When the build is complete:
 1. Verify all acceptance criteria have corresponding code and tests
-2. Verify all files have `@forgeplan-node` anchor comments
+2. Verify all source code files have `@forgeplan-node` anchor comments (skip non-source files like JSON, YAML, config)
 3. Present a summary of what was built and any assumptions made

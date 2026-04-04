@@ -43,9 +43,10 @@ For EACH constraint:
 - Check file organization within the file_scope
 
 ### 5. Anchor Comment Coverage
-- Verify all files have `// @forgeplan-node: [node-id]` at top
+- Verify all **source code files** (`.ts`, `.js`, `.tsx`, `.jsx`, etc.) have `// @forgeplan-node: [node-id]` at top
 - Verify major functions have `// @forgeplan-spec: [criterion-id]`
-- List any files or functions missing annotations
+- **Skip non-source files** (JSON, YAML, images, config) — these cannot contain `//` comments and are tracked by `file_scope` membership instead
+- List any source files or functions missing annotations
 
 ### 6. Non-Goal Enforcement
 For EACH non_goal:

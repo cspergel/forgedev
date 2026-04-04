@@ -9,6 +9,7 @@
     "validate": "node scripts/validate-manifest.js"
   },
   "dependencies": {
-    "js-yaml": "^4.1.0"
+    "js-yaml": "^4.1.0",
+    "minimatch": "^10.2.5"
   }
 }

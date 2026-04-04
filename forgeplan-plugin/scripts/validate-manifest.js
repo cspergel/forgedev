@@ -22,6 +22,7 @@
 const fs = require("fs");
 const path = require("path");
 const yaml = require("js-yaml");
+const { minimatch } = require("minimatch");
 
 // ---------- Validation Logic ----------
 
@@ -196,19 +197,60 @@ function traceCycle(nodes, cycleNodes) {
 
 /**
  * Check if two file scope globs might overlap.
- * Compares the base directory paths — if one is a prefix of the other, they overlap.
+ *
+ * Strategy: generate representative test paths from each glob and check
+ * if either glob matches paths the other would claim. This catches cases
+ * like wildcard scopes that prefix comparison misses.
  */
 function scopesOverlap(scopeA, scopeB) {
-  const baseA = scopeA.replace(/\*\*.*$/, "").replace(/\*.*$/, "");
-  const baseB = scopeB.replace(/\*\*.*$/, "").replace(/\*.*$/, "");
+  const norm = (s) => s.replace(/\\/g, "/");
+  const a = norm(scopeA);
+  const b = norm(scopeB);
 
-  const normA = baseA.replace(/\\/g, "/").replace(/\/$/, "");
-  const normB = baseB.replace(/\\/g, "/").replace(/\/$/, "");
+  // Generate test paths from a glob by expanding its pattern into concrete examples
+  const testPaths = generateTestPaths(a).concat(generateTestPaths(b));
 
-  if (normA === normB) return true;
-  if (normA.startsWith(normB + "/")) return true;
-  if (normB.startsWith(normA + "/")) return true;
+  // Check if any test path from A matches B, or vice versa
+  for (const tp of testPaths) {
+    if (minimatch(tp, a) && minimatch(tp, b)) {
+      return true;
+    }
+  }
+
+  // Also do the prefix check as a safety net for simple cases
+  const baseA = a.replace(/\*\*.*$/, "").replace(/\*.*$/, "").replace(/\/$/, "");
+  const baseB = b.replace(/\*\*.*$/, "").replace(/\*.*$/, "").replace(/\/$/, "");
+  if (baseA === baseB) return true;
+  if (baseA.startsWith(baseB + "/")) return true;
+  if (baseB.startsWith(baseA + "/")) return true;
+
   return false;
+}
+
+/**
+ * Generate representative file paths that a glob would match.
+ * Used to test cross-glob overlap.
+ */
+function generateTestPaths(glob) {
+  const norm = glob.replace(/\\/g, "/");
+  const paths = [];
+
+  // Replace ** with a representative deep path
+  const withDepth = norm.replace(/\*\*/g, "sub/deep");
+  // Replace remaining * with a representative segment
+  const concrete = withDepth.replace(/\*/g, "example");
+
+  paths.push(concrete);
+  paths.push(concrete + "/file.ts");
+
+  // Also generate a path using the literal base
+  const base = norm.replace(/\*\*.*$/, "").replace(/\*.*$/, "").replace(/\/$/, "");
+  if (base) {
+    paths.push(base + "/file.ts");
+    paths.push(base + "/sub/file.ts");
+  }
+
+  return paths;
 }
 
 // ---------- Main ----------
