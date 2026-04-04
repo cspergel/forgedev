@@ -44,7 +44,8 @@ Choose [1/2/3]:
   1. `state.json` → `nodes.[node].files_created` (if PostToolUse hook has been populating this — available from Sprint 2)
   2. **Fallback:** scan the node's `file_scope` glob from the manifest and collect:
      - Source files (`.ts`, `.js`, `.tsx`, `.jsx`) containing `// @forgeplan-node: [node-id]`
-     - All other files within `file_scope` that were not present before the build started (use git status or git diff to identify untracked/new files within the scope)
+     - If the project is a git repo: use `git ls-files --others --modified` within `file_scope` to identify files added/changed during the build
+     - If the project is NOT a git repo: list ALL files within `file_scope` and warn the user that without git history, the reset cannot distinguish pre-existing files from generated ones — the user must manually confirm which files to remove
 - Present the file list to the user for confirmation before deleting
 - Reset node status to "specced" in state.json
 - Clear active_node in state.json

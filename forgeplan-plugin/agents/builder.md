@@ -22,10 +22,10 @@ You are building the **$ARGUMENTS** component.
 2. **Do not implement anything listed in the spec's `non_goals` section.**
 3. **File boundary rule:** Implementation code goes inside this node's `file_scope` directory only. The following are the only permitted writes outside `file_scope`:
    - `.forgeplan/conversations/nodes/[node-id].md` — your build log
-   - `src/shared/types/` (or project equivalent) — shared type module, only if it doesn't exist yet and only to re-export canonical definitions from the manifest. Never redefine shared models here.
+   - `src/shared/types/` (or project equivalent) — the canonical shared types module. See "Shared Types Materialization" below.
    - `.forgeplan/state.json` — status updates
 4. **If the spec is ambiguous and you did not resolve it in the pre-build challenge, ask the user — do not improvise.**
-5. **Use shared model definitions from the manifest** for all types listed in the spec's `shared_dependencies`. Do not redefine them locally — import them from the shared types module.
+5. **Use shared model types** for all types listed in the spec's `shared_dependencies`. Import them from `src/shared/types/` — do not define them locally within your node's `file_scope`.
 6. **Anchor comments in source code files** (files where `//` is valid comment syntax — `.ts`, `.js`, `.tsx`, `.jsx`, etc.):
    - Include `// @forgeplan-node: [node-id]` at the top of every source file.
    - Annotate major functions with `// @forgeplan-spec: [criterion-id]` using the acceptance criteria IDs (AC1, AC2, etc.) from the spec.
@@ -52,7 +52,14 @@ Before writing a single line of code:
 ## Build Process
 
 1. Create the directory structure for this node's `file_scope`
-2. If shared types module (`src/shared/types/`) doesn't exist and this node has `shared_dependencies`, create it by re-exporting the canonical definitions from the manifest. This is an exempt cross-scope write (see rule 3 above).
+2. **Shared types materialization** (exempt cross-scope write — see rule 3):
+   - If `src/shared/types/index.ts` does not exist and this node has `shared_dependencies`:
+     - Read the `shared_models` section from `.forgeplan/manifest.yaml`
+     - Generate TypeScript type/interface definitions that match the manifest's field names and types exactly
+     - Write them to `src/shared/types/index.ts`
+     - This is the ONE place shared models are defined in code — all nodes import from here
+   - If `src/shared/types/index.ts` already exists: do NOT modify it. Import from it as-is.
+   - The "never redefine locally" rule means: never create a `User` or `Document` type inside your node's `file_scope`. Always `import { User } from 'src/shared/types'`.
 3. Implement each acceptance criterion, annotating source files with `// @forgeplan-spec: AC[n]`
 4. Write tests for each acceptance criterion's `test` field
 5. Ensure all constraints are respected

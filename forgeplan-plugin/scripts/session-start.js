@@ -30,22 +30,27 @@ function main() {
     try {
       const state = JSON.parse(fs.readFileSync(statePath, "utf-8"));
 
-      if (state.active_node && state.active_node.status === "building") {
+      // Check if active_node was left in any in-progress status
+      const stuckStatuses = ["building", "reviewing", "revising"];
+      if (
+        state.active_node &&
+        stuckStatuses.includes(state.active_node.status)
+      ) {
         warnings.push(
-          `WARNING: Node "${state.active_node.node}" was left in "building" status. ` +
+          `WARNING: Node "${state.active_node.node}" was left in "${state.active_node.status}" status. ` +
             `It may have crashed. Run /forgeplan:recover to resume, reset, or review.`
         );
       }
 
-      // Check for any nodes stuck in building status
+      // Check for any nodes stuck in in-progress statuses
       if (state.nodes) {
         for (const [nodeId, nodeState] of Object.entries(state.nodes)) {
           if (
-            nodeState.status === "building" &&
+            stuckStatuses.includes(nodeState.status) &&
             (!state.active_node || state.active_node.node !== nodeId)
           ) {
             warnings.push(
-              `WARNING: Node "${nodeId}" is stuck in "building" status. Run /forgeplan:recover.`
+              `WARNING: Node "${nodeId}" is stuck in "${nodeState.status}" status. Run /forgeplan:recover.`
             );
           }
         }

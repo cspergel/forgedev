@@ -199,37 +199,31 @@ function traceCycle(nodes, cycleNodes) {
  * Check if two file scope globs might overlap.
  *
  * Strategy: generate representative test paths from each glob and check
- * if either glob matches paths the other would claim. This catches cases
- * like wildcard scopes that prefix comparison misses.
+ * if either glob matches paths the other would claim. Uses minimatch for
+ * proper glob semantics — no prefix-based fallback.
  */
 function scopesOverlap(scopeA, scopeB) {
   const norm = (s) => s.replace(/\\/g, "/");
   const a = norm(scopeA);
   const b = norm(scopeB);
 
-  // Generate test paths from a glob by expanding its pattern into concrete examples
+  // Generate test paths from both globs
   const testPaths = generateTestPaths(a).concat(generateTestPaths(b));
 
-  // Check if any test path from A matches B, or vice versa
+  // Check if any generated path matches BOTH globs
   for (const tp of testPaths) {
     if (minimatch(tp, a) && minimatch(tp, b)) {
       return true;
     }
   }
 
-  // Also do the prefix check as a safety net for simple cases
-  const baseA = a.replace(/\*\*.*$/, "").replace(/\*.*$/, "").replace(/\/$/, "");
-  const baseB = b.replace(/\*\*.*$/, "").replace(/\*.*$/, "").replace(/\/$/, "");
-  if (baseA === baseB) return true;
-  if (baseA.startsWith(baseB + "/")) return true;
-  if (baseB.startsWith(baseA + "/")) return true;
-
   return false;
 }
 
 /**
  * Generate representative file paths that a glob would match.
- * Used to test cross-glob overlap.
+ * Expands wildcards into multiple concrete variants to maximize
+ * overlap detection coverage.
  */
 function generateTestPaths(glob) {
   const norm = glob.replace(/\\/g, "/");
