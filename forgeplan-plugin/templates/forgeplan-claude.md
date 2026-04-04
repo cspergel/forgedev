@@ -15,22 +15,19 @@ This project uses **ForgePlan Core**, an architecture-governed build harness. Th
 
 ## Available Commands
 
-Commands are released incrementally. Check the plugin version for availability.
+Use ForgePlan commands in this order:
 
-**Core workflow (available now):**
 1. `/forgeplan:discover` — Define the architecture (guided conversation → manifest + skeleton specs)
 2. `/forgeplan:spec [node]` — Detail each node's spec (`--all` for all nodes in dependency order)
 3. `/forgeplan:build [node]` — Build a node following its spec
 4. `/forgeplan:next` — Get the next recommended node based on dependency graph
 5. `/forgeplan:review [node]` — Audit a built node against its spec (7-dimension review)
-
-**Extended workflow (requires plugin v0.3+):**
 6. `/forgeplan:revise [node]` — Reopen a node with change impact analysis
 7. `/forgeplan:recover` — Fix crashed/stuck builds
-
-**Full system (requires plugin v0.4+):**
 8. `/forgeplan:integrate` — Verify all cross-node interfaces
 9. `/forgeplan:status` — Full project status with dependency visualization
+
+**Note:** Some commands may have limited functionality in early plugin versions. Check the plugin version in `.claude-plugin/plugin.json` if a command behaves unexpectedly.
 
 ## Key Files
 

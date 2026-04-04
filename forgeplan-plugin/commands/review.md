@@ -19,6 +19,19 @@ Audit the specified node's implementation against its spec.
 - `.forgeplan/specs/[node-id].yaml` must exist
 - Code files must exist in the node's `file_scope` directory
 
+## Setup
+
+Before starting the review, set the active node in `.forgeplan/state.json`:
+```json
+{
+  "active_node": {
+    "node": "[node-id]",
+    "status": "reviewing",
+    "started_at": "[ISO timestamp]"
+  }
+}
+```
+
 ## Review Process
 
 Perform a spec-diff review across seven dimensions. Every finding must reference a specific spec element and cite specific code evidence.
@@ -56,4 +69,4 @@ Write the review report to `.forgeplan/reviews/[node-id].md` using the structure
 ### Recommendation: APPROVE | REQUEST CHANGES ([count] failures: [list])
 ```
 
-Update node status to "reviewed" in state.json.
+Update node status to "reviewed" in state.json and clear `active_node` to `null`.

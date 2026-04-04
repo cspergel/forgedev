@@ -22,7 +22,7 @@ You are building the **$ARGUMENTS** component.
 2. **Do not implement anything listed in the spec's `non_goals` section.**
 3. **File boundary rule:** Implementation code goes inside this node's `file_scope` directory only. The following are the only permitted writes outside `file_scope`:
    - `.forgeplan/conversations/nodes/[node-id].md` — your build log
-   - `src/shared/types/` (or project equivalent) — the canonical shared types module. See "Shared Types Materialization" below.
+   - `src/shared/types/index.ts` — the canonical shared types module. See "Shared Types Materialization" below.
    - `.forgeplan/state.json` — status updates
 4. **If the spec is ambiguous and you did not resolve it in the pre-build challenge, ask the user — do not improvise.**
 5. **Use shared model types** for all types listed in the spec's `shared_dependencies`. Import them from `src/shared/types/` — do not define them locally within your node's `file_scope`.
@@ -55,11 +55,35 @@ Before writing a single line of code:
 2. **Shared types materialization** (exempt cross-scope write — see rule 3):
    - If `src/shared/types/index.ts` does not exist and this node has `shared_dependencies`:
      - Read the `shared_models` section from `.forgeplan/manifest.yaml`
-     - Generate TypeScript type/interface definitions that match the manifest's field names and types exactly
-     - Write them to `src/shared/types/index.ts`
+     - Generate `src/shared/types/index.ts` using these **canonical type mapping rules**:
+
+       | Manifest YAML type | TypeScript output |
+       |---|---|
+       | `string` | `string` |
+       | `string (UUID)` | `string` |
+       | `string (ISO 8601)` | `string` |
+       | `string (enum: a, b, c)` | `"a" \| "b" \| "c"` |
+       | `string (optional)` | `string \| undefined` (mark field with `?`) |
+       | `string (UUID → Model.id)` | `string` (add `/** References Model.id */` JSDoc) |
+       | `number` | `number` |
+       | `number (bytes)` | `number` |
+       | `boolean` | `boolean` |
+       | Any other `type (description)` | Use the base type before the parenthetical |
+
+     - **Example**: given manifest `role: "string (enum: client, accountant)"`, generate:
+       ```typescript
+       export interface User {
+         id: string;
+         email: string;
+         role: "client" | "accountant";
+         name: string;
+         created_at: string;
+       }
+       ```
+     - Add `// @forgeplan-node: shared` at the top of the file
      - This is the ONE place shared models are defined in code — all nodes import from here
    - If `src/shared/types/index.ts` already exists: do NOT modify it. Import from it as-is.
-   - The "never redefine locally" rule means: never create a `User` or `Document` type inside your node's `file_scope`. Always `import { User } from 'src/shared/types'`.
+   - The "never redefine locally" rule means: never create a `User` or `Document` type inside your node's `file_scope`. Always `import { User } from '@/shared/types'`.
 3. Implement each acceptance criterion, annotating source files with `// @forgeplan-spec: AC[n]`
 4. Write tests for each acceptance criterion's `test` field
 5. Ensure all constraints are respected

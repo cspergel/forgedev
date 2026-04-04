@@ -16,6 +16,19 @@ Reopen a completed node for modification and analyze change impact.
 - Node must have status "built" or "reviewed"
 - `.forgeplan/specs/[node-id].yaml` must exist
 
+## Setup
+
+Before starting the revision, set the active node in `.forgeplan/state.json`:
+```json
+{
+  "active_node": {
+    "node": "[node-id]",
+    "status": "revising",
+    "started_at": "[ISO timestamp]"
+  }
+}
+```
+
 ## Process
 
 1. Read the current spec and identify what the user wants to change
@@ -37,7 +50,7 @@ Reopen a completed node for modification and analyze change impact.
    - Run validation
    - List all affected nodes with specific interface/model references that need updating
    - Suggest running `/forgeplan:build [affected-node]` for each affected node
-5. Update node status to "revised" in state.json
+5. Update node status to "revised" in state.json and clear `active_node` to `null`
 6. Log the revision in the node's `revision_history` in state.json
 
 ## The Killer Proof
