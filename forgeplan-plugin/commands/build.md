@@ -49,18 +49,18 @@ The Builder agent receives:
 - Shared model definitions from the manifest
 - The constraint directive (see Builder agent prompt)
 
-## Completion
+## Completion — Stop Hook Owns This Transition
 
-When the build is complete:
-1. Update `nodes.[node-id].status` to `"built"` in state.json
-2. Set `nodes.[node-id].last_build_completed` to current ISO timestamp
-3. Clear `active_node` to `null`
-4. Set `last_updated` to current ISO timestamp
-5. Suggest running `/forgeplan:review [node-id]` next
+**Do NOT manually update `nodes.[node-id].status` to `"built"` or clear `active_node`.** The Stop hook is the sole gate between `"building"` and `"built"`:
 
-## Verification-Gated Status Transition
+1. When the Builder agent finishes, it presents a summary and stops
+2. The Stop hook fires automatically — Layer 1 (`stop-hook.js`) checks bounce counter, Layer 2 (prompt) evaluates every acceptance criterion by ID
+3. **If all criteria pass:** The Stop hook marks the node as `"built"`, sets `last_build_completed`, resets `bounce_count` to 0, clears `active_node`
+4. **If criteria fail:** The Stop hook bounces — lists the failing criteria and continues building (up to 3 bounces, then escalates to user via `/forgeplan:recover`)
 
-The node status does NOT advance to "built" based on the Builder's self-report. The Stop hook independently evaluates acceptance criteria before allowing the transition. The Builder agent sets `active_node.agent_status` to `DONE` when it believes work is complete, but the actual `nodes.[id].status` transition to "built" only happens after the Stop hook's Layer 2 verification passes.
+After the Stop hook allows completion, suggest running `/forgeplan:review [node-id]` next.
+
+Manually marking as `"built"` would bypass acceptance criteria verification — the entire point of the Stop hook.
 
 ## Re-Build After Review (Fresh Agent Pattern)
 

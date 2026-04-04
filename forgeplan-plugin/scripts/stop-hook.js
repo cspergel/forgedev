@@ -101,8 +101,8 @@ function evaluate(input) {
       `ForgePlan Stop: Node "${activeNodeId}" has bounced ${bounceCount} times without resolving all criteria. ` +
       `Escalating to user. The build is still in progress — you can:\n` +
       `  - Continue working on unmet criteria manually\n` +
-      `  - Run /forgeplan:recover ${activeNodeId} to reset or force-complete\n` +
-      `  - Run /forgeplan:review ${activeNodeId} after manually marking as built\n`
+      `  - Run /forgeplan:recover ${activeNodeId} and choose RESUME to restart the Builder agent\n` +
+      `  - Run /forgeplan:recover ${activeNodeId} and choose REVIEW to mark as built and assess partial completion\n`
     );
     return { block: false };
   }

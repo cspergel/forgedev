@@ -46,7 +46,9 @@ Reopen a completed node for modification and analyze change impact.
    - **If shared model changed: regenerate `src/shared/types/index.ts`** from the updated manifest using the canonical type mapping rules (see Builder agent). This is the ONE file that must be updated immediately on shared model changes — it is the source of truth for all node imports.
    - Run validation
    - List all affected nodes with specific interface/model references that need updating
-   - Suggest running `/forgeplan:build [affected-node]` for each affected node
+   - For each affected node, suggest the two-step remediation:
+     1. `/forgeplan:spec [affected-node]` — update the affected node's spec to reflect the changed interface contracts or shared model fields. The spec must be current before rebuilding, otherwise the Builder follows stale instructions.
+     2. `/forgeplan:build [affected-node]` — rebuild against the updated spec
 5. Update state.json:
    - Set `nodes.[node-id].status` to `"revised"`
    - Clear `nodes.[node-id].previous_status` to `null`

@@ -435,16 +435,21 @@ The success metric — "fewer broken references, fewer duplicate types, and fewe
 
 **Goal:** The build-review loop works end to end. Crashes are recoverable.
 
-**Deliverables:**
-- `/forgeplan:review` command with Reviewer agent (native mode)
-- Spec-diff review format: per-criterion pass/fail with code evidence citations, per-constraint enforced/violated, per-interface implemented/missing, per-failure-mode handled/absent (no generic feedback allowed)
-- Stop hook with bounce counter (Layer 1 deterministic + Layer 2 LLM evaluating criteria by ID and test fields)
-- SessionStart hook for crash detection
-- `/forgeplan:recover` command with resume/reset/manual-review options
-- `/forgeplan:revise` command with change impact analysis
-- Node-level conversation logging
+**Already completed during Sprint 2 hardening:**
+- Stop hook with bounce counter — `stop-hook.js` (Layer 1 deterministic) + prompt hook (Layer 2 LLM evaluating criteria by ID). Wired in `hooks.json`.
+- SessionStart hook for crash detection — `session-start.js`. Wired in `hooks.json`.
+- PreToolUse enforcement for reviewing and revising statuses — per-operation write boundaries in `pre-tool-use.js`
+- Node-level conversation logging — `post-tool-use.js` appends to `.forgeplan/conversations/nodes/[node-id].md`
 
-**Test:** Build and review `auth` node. Verify review report cites specific files for each criterion pass/fail. Intentionally leave AC3 (session persistence) unmet — verify Stop hook bounces with "AC3: FAIL" message. Kill the terminal mid-build — verify SessionStart detects the stuck node on next launch. Revise the `auth` spec to change an interface — verify connected nodes are flagged.
+**Remaining deliverables:**
+- `/forgeplan:review` command with Reviewer agent (native mode) — command and agent are defined, needs functional testing
+- Spec-diff review format: per-criterion pass/fail with code evidence citations, per-constraint enforced/violated, per-interface implemented/missing, per-failure-mode handled/absent (no generic feedback allowed)
+- `/forgeplan:recover` command with resume/reset/manual-review options — command is defined, needs functional testing
+- `/forgeplan:revise` command with change impact analysis and two-step remediation (re-spec then rebuild affected nodes) — command is defined, needs functional testing
+- Verify Stop hook correctly gates the building→built transition (the Stop hook owns this transition, not the build command)
+- End-to-end build→review→revise→recover loop testing
+
+**Test:** Build and review `auth` node. Verify review report cites specific files for each criterion pass/fail. Intentionally leave AC3 (session persistence) unmet — verify Stop hook bounces with "AC3: FAIL" message. Kill the terminal mid-build — verify SessionStart detects the stuck node on next launch. Revise the `auth` spec to change an interface — verify connected nodes are flagged and the two-step remediation (re-spec then rebuild) is recommended.
 
 ### Sprint 4: Integration and BYOK (Weeks 7–8)
 
