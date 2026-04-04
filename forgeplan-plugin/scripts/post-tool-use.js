@@ -89,6 +89,12 @@ function processHook(input) {
       if (!node.files.includes(relPath)) {
         node.files.push(relPath);
 
+        // Increment revision_count per manifest schema contract
+        if (manifest.project) {
+          manifest.project.revision_count =
+            (manifest.project.revision_count || 0) + 1;
+        }
+
         // Write updated manifest
         const updatedYaml = yaml.dump(manifest, {
           lineWidth: -1,

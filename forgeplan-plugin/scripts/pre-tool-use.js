@@ -41,11 +41,12 @@ process.stdin.on("end", () => {
     }
     process.exit(0);
   } catch (err) {
-    // On error, allow the operation (fail open) but warn
+    // On malformed input (can't parse JSON from Claude), block to be safe
     process.stderr.write(
-      `ForgePlan PreToolUse warning: ${err.message}\n`
+      `BLOCKED: ForgePlan PreToolUse could not parse hook input: ${err.message}. ` +
+      `This is a safety block — enforcement cannot verify this operation.\n`
     );
-    process.exit(0);
+    process.exit(2);
   }
 });
 
@@ -90,8 +91,14 @@ function evaluate(input) {
   let state;
   try {
     state = JSON.parse(fs.readFileSync(statePath, "utf-8"));
-  } catch {
-    return { block: false };
+  } catch (err) {
+    // state.json exists but can't be parsed — enforcement is compromised
+    return {
+      block: true,
+      message:
+        `BLOCKED: .forgeplan/state.json exists but could not be parsed: ${err.message}. ` +
+        `Enforcement cannot verify this operation. Fix or delete state.json to proceed.`,
+    };
   }
 
   // --- Check 1: Is there an active node? ---
@@ -115,13 +122,31 @@ function evaluate(input) {
     return { block: false };
   }
 
-  // Shared types module is allowed (exempt cross-scope write)
+  // Shared types module — conditionally exempt
+  // During /forgeplan:build: only allow CREATION (file doesn't exist yet), not modification
+  // During /forgeplan:revise: always allow (revise regenerates shared types on model changes)
   if (relPath.startsWith("src/shared/types/")) {
-    return { block: false };
+    if (state.active_node.status === "revising") {
+      return { block: false };
+    }
+    // During build: only allow if the file doesn't exist yet
+    const sharedTypesAbs = path.join(cwd, relPath);
+    if (!fs.existsSync(sharedTypesAbs)) {
+      return { block: false };
+    }
+    return {
+      block: true,
+      message:
+        `BLOCKED: src/shared/types/ already exists and cannot be modified during /forgeplan:build. ` +
+        `Only /forgeplan:revise can regenerate the shared types module after manifest changes. ` +
+        `Import from the existing module instead.`,
+    };
   }
 
   // --- Load manifest ---
   if (!fs.existsSync(manifestPath)) {
+    // No manifest during active build is suspicious — warn but allow
+    // (the manifest should exist if state.json has an active node)
     return { block: false };
   }
 
@@ -129,8 +154,13 @@ function evaluate(input) {
   try {
     const yaml = require(path.join(__dirname, "..", "node_modules", "js-yaml"));
     manifest = yaml.load(fs.readFileSync(manifestPath, "utf-8"));
-  } catch {
-    return { block: false };
+  } catch (err) {
+    return {
+      block: true,
+      message:
+        `BLOCKED: .forgeplan/manifest.yaml could not be parsed: ${err.message}. ` +
+        `Enforcement cannot verify file scope boundaries. Fix the manifest to proceed.`,
+    };
   }
 
   if (!manifest.nodes || !manifest.nodes[activeNodeId]) {
