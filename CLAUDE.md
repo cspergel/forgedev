@@ -53,7 +53,12 @@ Hardened through 14 cross-model review rounds (Claude + Codex). Key hardening:
 - Spec validator with manifest cross-checking and strict field shapes
 - Revision→rebuild pipeline wired into /forgeplan:next
 
-### Sprint 3: Review and Recovery (NEXT)
+### Sprint 3: Review and Recovery (COMPLETE)
+**Goal:** The build-review loop works end to end. Crashes are recoverable. **DONE.**
+
+Most deliverables were implemented during Sprint 1/2 hardening (review, revise, recover, session-start, conversation logging). Sprint 3 added the Stop hook — the last enforcement gate. All 7 deliverables verified against plan.
+
+### Sprint 4: Integration and BYOK (NEXT)
 ### Sprint 4: Integration and BYOK
 ### Sprint 5: Dogfood and Ship
 ### Sprint 6: Autonomous Iterative Sweep
