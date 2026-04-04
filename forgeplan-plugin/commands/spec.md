@@ -32,16 +32,16 @@ Generate a detailed node spec for the specified node(s).
    - **Failure modes:** What are the likely bugs that could ship? (At least 1 required — this guides the reviewer)
    - **Interfaces:** For each connection, what is the contract? What direction (read/write, outbound, inbound)?
 5. Write the complete spec to `.forgeplan/specs/[node-id].yaml` using ALL 11 fields from the node spec schema
-6. Run spec validation: `node "${CLAUDE_PLUGIN_ROOT}/scripts/validate-spec.js" .forgeplan/specs/[node-id].yaml`
+6. Run spec validation: `node "${CLAUDE_PLUGIN_ROOT}/scripts/validate-spec.js" .forgeplan/specs/[node-id].yaml .forgeplan/manifest.yaml`
 7. Run manifest validation: `node "${CLAUDE_PLUGIN_ROOT}/scripts/validate-manifest.js" .forgeplan/manifest.yaml`
 8. Update the node's status to `"specced"` in `.forgeplan/state.json`
 9. Present a summary of the spec and confirm with the user
 
 ## All Nodes Mode (`/forgeplan:spec --all`)
 
-1. Read the manifest and determine dependency order using topological sort:
+1. Read the manifest and determine dependency order. Run the next-node script to get the topological order, or read the manifest and sort manually:
    ```bash
-   node -e "const y=require('js-yaml');const f=require('fs');const m=y.load(f.readFileSync('.forgeplan/manifest.yaml','utf8'));const nodes=Object.keys(m.nodes);const deg={};const adj={};nodes.forEach(n=>{deg[n]=0;adj[n]=[]});nodes.forEach(n=>{(m.nodes[n].depends_on||[]).forEach(d=>{if(nodes.includes(d)){adj[d].push(n);deg[n]++}})});const q=nodes.filter(n=>deg[n]===0);const order=[];while(q.length){const c=q.shift();order.push(c);adj[c].forEach(n=>{if(--deg[n]===0)q.push(n)})};console.log(order.join(' '))"
+   node "${CLAUDE_PLUGIN_ROOT}/scripts/topo-sort.js"
    ```
 2. Process each node in dependency order:
    - For the first 1-2 nodes (typically database and auth), engage in full conversation

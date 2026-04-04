@@ -66,10 +66,10 @@ Choose [1/2/3]:
 
 ## Resume
 
-Resume behavior depends on the crashed operation:
-- **Building:** Set active_node to `{"status": "building"}`, start the **Builder agent** with existing files as context
-- **Reviewing:** Set active_node to `{"status": "reviewing"}`, start the **Reviewer agent** from scratch (reviews are cheap to re-run)
-- **Revising:** Set active_node to `{"status": "revising"}`, re-read the current spec and manifest state, continue the revision process
+Resume behavior depends on the crashed operation. **Read** state.json, then **update** (do not overwrite):
+- **Building:** Set `active_node` to `{"node": "[node-id]", "status": "building", "started_at": "[current ISO timestamp]"}`, set `last_updated`, start the **Builder agent** with existing files as context
+- **Reviewing:** Set `active_node` to `{"node": "[node-id]", "status": "reviewing", "started_at": "[current ISO timestamp]"}`, set `last_updated`, start the **Reviewer agent** from scratch
+- **Revising:** Set `active_node` to `{"node": "[node-id]", "status": "revising", "started_at": "[current ISO timestamp]"}`, set `last_updated`, re-read spec and manifest, continue revision
 
 ## Reset (building only)
 

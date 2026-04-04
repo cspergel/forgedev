@@ -20,8 +20,11 @@ const yaml = require(path.join(__dirname, "..", "node_modules", "js-yaml"));
 
 function main() {
   const specPath = process.argv[2];
+  const manifestPath = process.argv[3] ||
+    path.join(path.dirname(specPath || "."), "..", "manifest.yaml");
+
   if (!specPath) {
-    console.error("Usage: node validate-spec.js <path-to-spec.yaml>");
+    console.error("Usage: node validate-spec.js <spec.yaml> [manifest.yaml]");
     process.exit(2);
   }
 
@@ -38,7 +41,17 @@ function main() {
     process.exit(2);
   }
 
-  const { errors, warnings } = validateSpec(spec);
+  // Load manifest for cross-validation if available
+  let manifest = null;
+  if (fs.existsSync(manifestPath)) {
+    try {
+      manifest = yaml.load(fs.readFileSync(manifestPath, "utf-8"));
+    } catch {
+      // Can't load manifest — skip cross-validation
+    }
+  }
+
+  const { errors, warnings } = validateSpec(spec, manifest);
 
   if (warnings.length > 0) {
     console.log("Warnings:");
@@ -56,32 +69,36 @@ function main() {
   process.exit(0);
 }
 
-function validateSpec(spec) {
+function validateSpec(spec, manifest) {
   const errors = [];
   const warnings = [];
 
-  // Required top-level fields
-  const required = ["node", "name", "description", "file_scope", "depends_on"];
-  for (const field of required) {
-    if (spec[field] === undefined || spec[field] === null) {
-      errors.push(`Missing required field: ${field}`);
+  // Required string fields
+  const stringFields = ["node", "name", "description", "file_scope"];
+  for (const field of stringFields) {
+    if (typeof spec[field] !== "string" || !spec[field].trim()) {
+      errors.push(`${field}: must be a non-empty string (got ${typeof spec[field]})`);
     }
   }
 
-  // Array fields that must exist (can be empty)
+  // Required array fields with type enforcement
   const arrayFields = [
     "inputs", "outputs", "shared_dependencies", "interfaces",
-    "acceptance_criteria", "constraints", "non_goals", "failure_modes",
+    "acceptance_criteria", "constraints", "non_goals", "failure_modes", "depends_on",
   ];
   for (const field of arrayFields) {
     if (spec[field] === undefined || spec[field] === null) {
       errors.push(`Missing required field: ${field}`);
+    } else if (!Array.isArray(spec[field])) {
+      errors.push(`${field}: must be an array (got ${typeof spec[field]})`);
     }
   }
 
-  // data_models must exist (can be empty object)
-  if (spec.data_models === undefined) {
+  // data_models must be an object (can be empty)
+  if (spec.data_models === undefined || spec.data_models === null) {
     errors.push("Missing required field: data_models");
+  } else if (typeof spec.data_models !== "object" || Array.isArray(spec.data_models)) {
+    errors.push(`data_models: must be an object/map (got ${Array.isArray(spec.data_models) ? "array" : typeof spec.data_models})`);
   }
 
   // Quality rules
@@ -123,6 +140,38 @@ function validateSpec(spec) {
 
   if (!spec.file_scope) {
     errors.push("file_scope is required for build enforcement");
+  }
+
+  // --- Manifest cross-validation (if manifest available) ---
+  if (manifest && manifest.nodes && spec.node) {
+    const nodeId = spec.node;
+    const manifestNode = manifest.nodes[nodeId];
+
+    if (!manifestNode) {
+      errors.push(`Node "${nodeId}" not found in manifest`);
+    } else {
+      // file_scope must match
+      if (manifestNode.file_scope && spec.file_scope && manifestNode.file_scope !== spec.file_scope) {
+        errors.push(`file_scope mismatch: spec says "${spec.file_scope}", manifest says "${manifestNode.file_scope}"`);
+      }
+
+      // depends_on must match
+      const specDeps = (Array.isArray(spec.depends_on) ? spec.depends_on : []).sort().join(",");
+      const manifestDeps = (manifestNode.depends_on || []).sort().join(",");
+      if (specDeps !== manifestDeps) {
+        errors.push(`depends_on mismatch: spec says [${specDeps}], manifest says [${manifestDeps}]`);
+      }
+    }
+
+    // shared_dependencies must reference valid shared models
+    if (manifest.shared_models && Array.isArray(spec.shared_dependencies)) {
+      const validModels = Object.keys(manifest.shared_models);
+      for (const dep of spec.shared_dependencies) {
+        if (!validModels.includes(dep)) {
+          errors.push(`shared_dependencies: "${dep}" is not defined in manifest shared_models (available: ${validModels.join(", ")})`);
+        }
+      }
+    }
   }
 
   return { errors, warnings };

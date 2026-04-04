@@ -5,7 +5,10 @@ This project uses **ForgePlan Core**, an architecture-governed build harness. Th
 ## Critical Rules
 
 1. **Always check for an active node** before writing code. Read `.forgeplan/state.json` to see if a node is currently being built.
-2. **Never write files outside the active node's `file_scope`** directory. The manifest defines which directories belong to which node. Permitted exceptions: `.forgeplan/` bookkeeping files and the shared types module.
+2. **Never write files outside the active node's `file_scope`** directory. The manifest defines which directories belong to which node. Permitted exceptions depend on the active operation:
+   - **Building:** `.forgeplan/conversations/nodes/[node].md`, `.forgeplan/state.json`, and `src/shared/types/index.ts` (creation only)
+   - **Reviewing:** `.forgeplan/reviews/[node].md` and `.forgeplan/state.json` only
+   - **Revising:** `.forgeplan/specs/[node].yaml`, `.forgeplan/manifest.yaml`, `.forgeplan/state.json`, and `src/shared/types/index.ts`
 3. **Never redefine shared models locally.** Shared models (User, Document, etc.) are defined canonically in `.forgeplan/manifest.yaml`. Import them — do not create local copies.
 4. **Follow the node spec exactly.** Each node's spec at `.forgeplan/specs/[node].yaml` defines what to build, what NOT to build (non_goals), and how to verify it (acceptance_criteria).
 5. **Use anchor comments in source code files** (`.ts`, `.js`, `.tsx`, `.jsx`):

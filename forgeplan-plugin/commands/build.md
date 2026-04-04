@@ -30,11 +30,7 @@ Build the specified node following its spec with layered enforcement:
 1. Read the manifest and the target node's spec
 2. Read specs for all nodes this node interfaces with (for contract context)
 3. Read shared model definitions from the manifest
-4. **Snapshot existing files** in the node's `file_scope` directory before building starts. This enables PostToolUse to distinguish genuinely new files from pre-existing ones. Use the Glob tool to list all files matching the node's `file_scope` pattern, or if using Bash, this cross-platform Node command:
-   ```bash
-   node -e "const fs=require('fs'),p=require('path');function walk(d){let r=[];try{for(const e of fs.readdirSync(d,{withFileTypes:true}))e.isDirectory()?r=r.concat(walk(p.join(d,e.name))):r.push(p.join(d,e.name).split(p.sep).join('/'))}catch{}return r};console.log(JSON.stringify(walk('[file_scope_base_dir]')))"
-   ```
-   Where `[file_scope_base_dir]` is the directory part of the file_scope (e.g., `src/database` from `src/database/**`). The result is a JSON array of relative file paths.
+4. **Snapshot existing files** in the node's `file_scope` before building starts. This enables PostToolUse to distinguish genuinely new files from pre-existing ones. Use the **Glob tool** with the node's `file_scope` pattern to list all matching files. Store the result as `nodes.[node-id].pre_build_files` in state.json. The Glob tool handles all glob patterns correctly regardless of platform.
 5. **Read** `.forgeplan/state.json`, then **update** (do not overwrite) these fields:
    - Set `active_node` to `{"node": "[node-id]", "status": "building", "started_at": "[ISO timestamp]"}`
    - Set `nodes.[node-id].status` to `"building"`
