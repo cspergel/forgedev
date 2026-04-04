@@ -64,8 +64,6 @@ Most deliverables were implemented during Sprint 1/2 hardening (review, revise, 
 Deliverables: cross-model-review.js (MCP/CLI/API modes, 3 providers, env var resolution, fetch-based), BYOK config with strict/advisory modes, integrate-check.js with fault-side ID, status-report.js with dependency graph, SaaS starter + internal dashboard blueprints, README.
 
 ### Sprint 5: Dogfood and Ship (NEXT)
-### Sprint 4: Integration and BYOK
-### Sprint 5: Dogfood and Ship
 ### Sprint 6: Autonomous Iterative Sweep
 
 ## Eleven Commands

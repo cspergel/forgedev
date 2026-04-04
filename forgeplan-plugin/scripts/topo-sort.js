@@ -16,48 +16,61 @@ const fs = require("fs");
 const path = require("path");
 const yaml = require(path.join(__dirname, "..", "node_modules", "js-yaml"));
 
-const manifestPath =
-  process.argv[2] || path.join(process.cwd(), ".forgeplan", "manifest.yaml");
+function topoSort(manifestPath) {
+  if (!fs.existsSync(manifestPath)) {
+    return { error: "No manifest found at " + manifestPath };
+  }
 
-if (!fs.existsSync(manifestPath)) {
-  console.error("No manifest found at " + manifestPath);
-  process.exit(1);
-}
+  let manifest;
+  try {
+    manifest = yaml.load(fs.readFileSync(manifestPath, "utf-8"));
+  } catch (err) {
+    return { error: "Could not parse manifest: " + err.message };
+  }
 
-let manifest;
-try {
-  manifest = yaml.load(fs.readFileSync(manifestPath, "utf-8"));
-} catch (err) {
-  console.error("Could not parse manifest: " + err.message);
-  process.exit(1);
-}
+  if (!manifest.nodes || typeof manifest.nodes !== "object") {
+    return { error: "Manifest has no nodes." };
+  }
 
-if (!manifest.nodes || typeof manifest.nodes !== "object") {
-  console.error("Manifest has no nodes.");
-  process.exit(1);
-}
-
-const nodes = Object.keys(manifest.nodes);
-const deg = {};
-const adj = {};
-nodes.forEach((n) => { deg[n] = 0; adj[n] = []; });
-nodes.forEach((n) => {
-  (manifest.nodes[n].depends_on || []).forEach((d) => {
-    if (nodes.includes(d)) { adj[d].push(n); deg[n]++; }
+  const nodes = Object.keys(manifest.nodes);
+  const deg = {};
+  const adj = {};
+  nodes.forEach((n) => { deg[n] = 0; adj[n] = []; });
+  nodes.forEach((n) => {
+    (manifest.nodes[n].depends_on || []).forEach((d) => {
+      if (nodes.includes(d)) { adj[d].push(n); deg[n]++; }
+    });
   });
-});
 
-const q = nodes.filter((n) => deg[n] === 0);
-const order = [];
-while (q.length) {
-  const c = q.shift();
-  order.push(c);
-  adj[c].forEach((n) => { if (--deg[n] === 0) q.push(n); });
+  const q = nodes.filter((n) => deg[n] === 0);
+  const order = [];
+  while (q.length) {
+    const c = q.shift();
+    order.push(c);
+    adj[c].forEach((n) => { if (--deg[n] === 0) q.push(n); });
+  }
+
+  if (order.length !== nodes.length) {
+    return { error: "Cycle detected — cannot determine build order." };
+  }
+
+  return { order };
 }
 
-if (order.length !== nodes.length) {
-  console.error("Cycle detected — cannot determine build order.");
-  process.exit(1);
+function main() {
+  const manifestPath =
+    process.argv[2] || path.join(process.cwd(), ".forgeplan", "manifest.yaml");
+
+  const result = topoSort(manifestPath);
+  if (result.error) {
+    console.error(result.error);
+    process.exit(1);
+  }
+  console.log(result.order.join(" "));
 }
 
-console.log(order.join(" "));
+if (require.main === module) {
+  main();
+} else {
+  module.exports = { topoSort };
+}

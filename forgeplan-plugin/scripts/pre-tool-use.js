@@ -172,20 +172,9 @@ function evaluate(input) {
 
   const activeNodeId = state.active_node.node;
 
-  // --- Allow exempt paths ---
-  // .forgeplan/ bookkeeping is always allowed
-  if (relPath.startsWith(".forgeplan/")) {
-    return { block: false };
-  }
-
-  // Shared types module — only src/shared/types/index.ts is exempt (the ONE canonical file)
-  // Any other file under src/shared/types/ is NOT exempt and must fall within a node's file_scope
+  // --- Building: .forgeplan/ was already handled above (lines 133-147) ---
+  // --- Building: shared types exempt (creation only) ---
   if (relPath === "src/shared/types/index.ts") {
-    if (state.active_node.status === "revising") {
-      // /forgeplan:revise can always regenerate shared types after manifest changes
-      return { block: false };
-    }
-    // During build: only allow CREATION (file doesn't exist yet), not modification
     const sharedTypesAbs = path.join(cwd, relPath);
     if (!fs.existsSync(sharedTypesAbs)) {
       return { block: false };
@@ -393,9 +382,13 @@ function evaluateBash(toolInput, cwd) {
     /^\s*wc\s/,                         // word count
     /^\s*diff\s/,                       // diff
     /^\s*git\s+(status|log|diff|show|branch|remote|tag|stash\s+list)\b/,
-    /^\s*node\s.*validate-manifest/,    // our own validation script
-    /^\s*node\s.*next-node/,            // our own next-node script
-    /^\s*node\s.*session-start/,        // our own session-start script
+    /^\s*node\s+[^\s]*validate-manifest\.js/,  // our own validation script
+    /^\s*node\s+[^\s]*validate-spec\.js/,     // our own spec validator
+    /^\s*node\s+[^\s]*next-node\.js/,         // our own next-node script
+    /^\s*node\s+[^\s]*session-start\.js/,     // our own session-start script
+    /^\s*node\s+[^\s]*topo-sort\.js/,         // our own topo-sort script
+    /^\s*node\s+[^\s]*status-report\.js/,     // our own status report script
+    /^\s*node\s+[^\s]*integrate-check\.js/,   // our own integration checker
     /^\s*npm\s+(test|run\s+test|run\s+lint|run\s+validate)\b/, // test/lint
     /^\s*npx\s+tsc\b/,                 // type checking
     /^\s*pwd\b/,                        // print working directory
@@ -407,8 +400,17 @@ function evaluateBash(toolInput, cwd) {
     /^\s*Select-String\b/i,            // PowerShell grep
   ];
 
+  // Block command substitution patterns that can hide mutations inside safe commands
+  if (/\$\(|`[^`]*`|<\(|>\(/.test(command)) {
+    return {
+      block: true,
+      message:
+        `BLOCKED: Command substitution ($(), backticks, process substitution) is not allowed during active ${activeStatus} operations. ` +
+        `Use the Write or Edit tool for file operations.`,
+    };
+  }
+
   // Split command on chaining operators and validate EVERY segment
-  // Separators: ; && || | (pipe to non-whitelisted command)
   const segments = command.split(/\s*(?:;|&&|\|\||(?<!\|)\|(?!\|))\s*/).filter(Boolean);
 
   const allSegmentsSafe = segments.every((seg) => {

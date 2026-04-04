@@ -4,7 +4,7 @@
  * validate-spec.js — ForgePlan Core Node Spec Validator
  *
  * Validates a node spec YAML file against the required schema.
- * Checks all 11 required fields and quality rules.
+ * Checks all 14 required fields and quality rules.
  *
  * Usage: node validate-spec.js <path-to-spec.yaml>
  *

@@ -207,11 +207,7 @@ function processHook(input) {
       if (!node.files.includes(relPath)) {
         node.files.push(relPath);
 
-        // Increment revision_count per manifest schema contract
-        if (manifest.project) {
-          manifest.project.revision_count =
-            (manifest.project.revision_count || 0) + 1;
-        }
+        // Note: revision_count is incremented by /forgeplan:revise, not per-file registration
 
         const updatedYaml = yaml.dump(manifest, {
           lineWidth: -1,

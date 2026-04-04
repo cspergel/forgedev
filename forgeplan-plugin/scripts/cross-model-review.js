@@ -303,6 +303,15 @@ async function reviewViaApi(config, prompt) {
       signal: AbortSignal.timeout(120000),
     });
 
+    if (!response.ok) {
+      const errorText = await response.text();
+      return {
+        status: "error",
+        report: `## Cross-Model Review Error (API)\n\nHTTP ${response.status} from ${provider}: ${errorText.substring(0, 500)}`,
+        findingsCount: 0,
+      };
+    }
+
     const data = await response.json();
     let text = "";
 

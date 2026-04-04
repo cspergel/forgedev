@@ -21,8 +21,8 @@
 
 const fs = require("fs");
 const path = require("path");
-const yaml = require("js-yaml");
-const { minimatch } = require("minimatch");
+const yaml = require(path.join(__dirname, "..", "node_modules", "js-yaml"));
+const { minimatch } = require(path.join(__dirname, "..", "node_modules", "minimatch"));
 
 // ---------- Validation Logic ----------
 
