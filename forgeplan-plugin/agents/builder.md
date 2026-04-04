@@ -82,8 +82,8 @@ Before writing a single line of code:
        ```
      - Add `// @forgeplan-node: shared` at the top of the file
      - This is the ONE place shared models are defined in code — all nodes import from here
-   - If `src/shared/types/index.ts` already exists: do NOT modify it. Import from it as-is.
-   - The "never redefine locally" rule means: never create a `User` or `Document` type inside your node's `file_scope`. Always `import { User } from '@/shared/types'`.
+   - If `src/shared/types/index.ts` already exists: do NOT modify it during a `/forgeplan:build`. Import from it as-is. (Only `/forgeplan:revise` may regenerate this file when shared models change in the manifest.)
+   - The "never redefine locally" rule means: never create a `User` or `Document` type inside your node's `file_scope`. Always `import { User } from 'src/shared/types'`.
 3. Implement each acceptance criterion, annotating source files with `// @forgeplan-spec: AC[n]`
 4. Write tests for each acceptance criterion's `test` field
 5. Ensure all constraints are respected

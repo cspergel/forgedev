@@ -27,7 +27,7 @@ Use ForgePlan commands in this order:
 8. `/forgeplan:integrate` — Verify all cross-node interfaces
 9. `/forgeplan:status` — Full project status with dependency visualization
 
-**Note:** Some commands may have limited functionality in early plugin versions. Check the plugin version in `.claude-plugin/plugin.json` if a command behaves unexpectedly.
+**Note:** Some commands may have limited functionality in early plugin versions.
 
 ## Key Files
 

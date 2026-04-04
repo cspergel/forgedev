@@ -47,6 +47,7 @@ Before starting the revision, set the active node in `.forgeplan/state.json`:
 4. If interface or shared model change:
    - Update the spec
    - Update the manifest if shared models changed
+   - **If shared model changed: regenerate `src/shared/types/index.ts`** from the updated manifest using the canonical type mapping rules (see Builder agent). This is the ONE file that must be updated immediately on shared model changes — it is the source of truth for all node imports.
    - Run validation
    - List all affected nodes with specific interface/model references that need updating
    - Suggest running `/forgeplan:build [affected-node]` for each affected node
