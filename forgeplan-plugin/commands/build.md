@@ -21,6 +21,7 @@ Build the specified node following its spec with layered enforcement:
 
 - `.forgeplan/manifest.yaml` must exist
 - `.forgeplan/specs/[node-id].yaml` must exist and be complete
+- The target node's status in `.forgeplan/state.json` must be `"specced"` or later (not `"pending"`)
 - All nodes in the target's `depends_on` list must have status "built" or "reviewed"
 - No other node can be currently in "building" status
 

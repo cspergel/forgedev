@@ -4,17 +4,19 @@
  * pre-tool-use.js — ForgePlan Core PreToolUse Hook
  *
  * Runs before every Write/Edit tool call during a build.
- * Two-layer enforcement:
- *   Layer 1 — Deterministic (instant, no tokens): file scope, cross-node, shared model guard
- *   Layer 2 — LLM-mediated (only if Layer 1 passes): spec compliance, non_goals
+ * Layer 1 enforcement — Deterministic (instant, no tokens):
+ *   - Active node check
+ *   - File scope glob matching
+ *   - Cross-node territory blocking
+ *   - Shared model redefinition guard
+ *
+ * Layer 2 (LLM-mediated spec compliance, non_goals checking) runs as a
+ * separate "prompt" type hook in hooks.json, after this script passes.
  *
  * Input: JSON on stdin with tool_name and tool_input
  * Output:
- *   Exit 0 — allow the operation
+ *   Exit 0 — allow the operation (Layer 2 prompt hook runs next)
  *   Exit 2 — block the operation (stderr message shown to Claude)
- *
- * Layer 2 uses a "prompt" hook type, so this script only handles Layer 1.
- * Layer 2 is defined as a separate prompt hook in hooks.json.
  */
 
 const fs = require("fs");
@@ -175,7 +177,7 @@ function evaluate(input) {
 
   // --- Check 4: Shared model redefinition guard ---
   if (manifest.shared_models && toolInput.content) {
-    const content = toolInput.content || "";
+    const content = toolInput.content;
     const sharedModelNames = Object.keys(manifest.shared_models);
 
     for (const modelName of sharedModelNames) {
@@ -204,7 +206,7 @@ function evaluate(input) {
 
   // For Edit tool, check the new_string for redefinitions too
   if (manifest.shared_models && toolInput.new_string) {
-    const content = toolInput.new_string || "";
+    const content = toolInput.new_string;
     const sharedModelNames = Object.keys(manifest.shared_models);
 
     for (const modelName of sharedModelNames) {

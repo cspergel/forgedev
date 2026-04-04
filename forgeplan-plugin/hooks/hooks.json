@@ -18,6 +18,10 @@
           {
             "type": "command",
             "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/pre-tool-use.js\""
+          },
+          {
+            "type": "prompt",
+            "prompt": "ENFORCEMENT CHECK — Before this file write proceeds, verify ALL of the following against the active node's spec at .forgeplan/specs/[active-node].yaml. Read the spec if you haven't already.\n\n1. CONSTRAINT COMPLIANCE: Does this code comply with every constraint listed in the spec? If any constraint is violated, respond with 'BLOCK: Constraint violated — [quote the constraint]'.\n2. NON-GOALS: Does this code implement anything listed in the spec's non_goals section? If so, respond with 'BLOCK: Non-goal implemented — [quote the non-goal]'.\n3. SCOPE CREEP: Does this code add functionality not described in any acceptance criterion? If so, respond with 'BLOCK: Feature not in spec — [describe what was added]'.\n4. SHARED MODEL FIELDS: If this code uses a shared model type, do the fields match the manifest definition? If fields are wrong or extra fields are added, respond with 'BLOCK: Shared model field mismatch — [details]'.\n\nIf ALL checks pass, respond with 'ALLOW'."
           }
         ]
       }
