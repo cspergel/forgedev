@@ -1,0 +1,58 @@
+# ForgePlan Manifest Schema
+# This is the template used by /forgeplan:discover to generate manifest.yaml
+# The manifest is the central command file — the spider at the center of the web.
+# Every operation in ForgePlan begins by reading the manifest.
+
+# --- Project Metadata ---
+project:
+  name: ""                          # Human-readable project name
+  description: ""                   # One-line project description
+  tech_stack:                       # Technology choices (informs builder agents)
+    frontend: ""                    # e.g., "React + Tailwind CSS"
+    backend: ""                     # e.g., "Node.js + Express"
+    database: ""                    # e.g., "Supabase (PostgreSQL)"
+    auth: ""                        # e.g., "Supabase Auth"
+    hosting: ""                     # e.g., "Vercel"
+    storage: ""                     # e.g., "Supabase Storage"
+  created_at: ""                    # ISO 8601 timestamp
+  revision_count: 0                 # Incremented on every manifest write
+
+# --- Shared Models ---
+# Canonical data types used across multiple nodes.
+# Any entity referenced by 2+ nodes MUST be defined here, never locally in specs.
+# Agents import these definitions — they do not redefine them.
+shared_models:
+  # Example:
+  # User:
+  #   fields:
+  #     id: "string (UUID)"
+  #     email: "string"
+  #     role: "string (enum: client, accountant)"
+  #     name: "string"
+  #     created_at: "string (ISO 8601)"
+
+# --- Validation Rules ---
+# Enforced by validate-manifest script after every manifest write.
+validation:
+  no_circular_dependencies: true    # Topological sort must succeed
+  no_orphan_nodes: true             # Every node must connect to at least one other
+  no_file_scope_overlaps: true      # No two nodes can claim the same directory
+
+# --- Nodes ---
+# Each entry defines a node in the architecture graph.
+# Detailed specs live in .forgeplan/specs/[node-id].yaml
+nodes:
+  # Example:
+  # auth:
+  #   name: "Authentication Service"
+  #   type: "service"               # service | frontend | database | storage | integration
+  #   status: "pending"             # pending | specced | building | built | reviewed | revised
+  #   file_scope: "src/auth/**"
+  #   depends_on:
+  #     - database
+  #   connects_to:
+  #     - database
+  #     - api
+  #     - frontend-login
+  #   files: []                     # Auto-populated by PostToolUse hook during build
+  #   spec: "specs/auth.yaml"       # Pointer to detailed spec file

@@ -1,0 +1,93 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ForgePlan State",
+  "description": "Ephemeral session state for ForgePlan. Tracks active node, build progress, and hook control flags. Located at .forgeplan/state.json",
+  "type": "object",
+  "properties": {
+    "session_id": {
+      "type": "string",
+      "description": "Current Claude Code session ID"
+    },
+    "last_updated": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp of last state write"
+    },
+    "active_node": {
+      "type": ["object", "null"],
+      "description": "Currently active node for building. Null when no build is in progress.",
+      "properties": {
+        "node": {
+          "type": "string",
+          "description": "Node ID from manifest"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["building", "reviewing", "revising"],
+          "description": "What operation is in progress"
+        },
+        "started_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["node", "status", "started_at"]
+    },
+    "nodes": {
+      "type": "object",
+      "description": "Per-node state tracking. Keys are node IDs.",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": ["pending", "specced", "building", "built", "reviewed", "revised"],
+            "description": "Current node status"
+          },
+          "bounce_count": {
+            "type": "integer",
+            "minimum": 0,
+            "default": 0,
+            "description": "Number of times Stop hook has bounced this node back. Escalates to user at >= 3."
+          },
+          "files_created": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Files created during build (auto-populated by PostToolUse)"
+          },
+          "last_review": {
+            "type": ["string", "null"],
+            "description": "Path to most recent review report, or null"
+          },
+          "revision_history": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "timestamp": { "type": "string", "format": "date-time" },
+                "reason": { "type": "string" },
+                "affected_nodes": {
+                  "type": "array",
+                  "items": { "type": "string" }
+                }
+              }
+            },
+            "description": "History of revisions to this node"
+          }
+        },
+        "required": ["status"]
+      }
+    },
+    "stop_hook_active": {
+      "type": "boolean",
+      "default": false,
+      "description": "Prevents infinite loops in Stop hook evaluation"
+    },
+    "discovery_complete": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether /forgeplan:discover has completed successfully"
+    }
+  },
+  "required": ["session_id", "last_updated", "active_node", "nodes", "stop_hook_active", "discovery_complete"]
+}

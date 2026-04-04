@@ -1,0 +1,115 @@
+# ForgePlan Core — Development Context
+
+## What This Project Is
+
+ForgePlan Core is a Claude Code plugin that serves as an architecture-governed AI build harness. The `.forgeplan/` directory is the product. Claude Code is the first interface. The plugin is how developers interact with it.
+
+## Canonical Reference Documents
+
+**ALWAYS reference these before making architectural decisions:**
+- `Planning Documents/ForgePlan_Core_Execution_Plan.md` — The build plan. Sprint-by-sprint deliverables, schemas, enforcement model, agent specs.
+- `Planning Documents/ForgePlan_Concept_v4.1.md` — The vision document. Long-term product direction (Sections 1-16, 18-23). Section 17 is superseded by the Execution Plan.
+
+**The Execution Plan is the authority for implementation details.** The Concept Doc is the authority for product vision.
+
+## Project Structure
+
+```
+ForgeDev/
+├── CLAUDE.md                          # This file — dev context
+├── Planning Documents/                # Vision + execution plans
+├── forgeplan-plugin/                  # The Claude Code plugin (the product)
+│   ├── .claude-plugin/
+│   │   └── plugin.json               # Plugin manifest
+│   ├── commands/                      # 9 slash commands (.md files)
+│   ├── agents/                        # 3 agents: architect, builder, reviewer
+│   ├── hooks/
+│   │   └── hooks.json                # PreToolUse, PostToolUse, Stop, SessionStart
+│   ├── scripts/                       # validate-manifest, cross-model-review, etc.
+│   ├── templates/                     # Blueprint templates, schema templates
+│   │   ├── blueprints/               # Client portal, SaaS starter, etc.
+│   │   └── schemas/                  # Schema templates
+│   │       ├── manifest-schema.yaml  # Manifest YAML template
+│   │       ├── node-spec-schema.yaml # Node spec YAML template
+│   │       └── state-schema.json     # state.json template
+│   └── README.md
+└── docs/
+    └── plans/                         # Implementation plans
+```
+
+## Sprint Status
+
+### Sprint 1: Foundation (CURRENT)
+**Goal:** User can run `/forgeplan:discover` and produce a validated manifest with shared models.
+
+**Deliverables:**
+- [x] Plugin scaffold with plugin.json and directory structure
+- [x] Manifest schema with shared_models, validation, file_scope, revision_count
+- [x] Node spec schema with ALL fields (inputs, outputs, shared_dependencies, data_models, interfaces w/ type, acceptance_criteria w/ id+test, constraints, non_goals, failure_modes, file_scope, depends_on)
+- [x] validate-manifest script (cycle detection, orphan check, scope overlap)
+- [x] state.json schema
+- [ ] /forgeplan:discover command + Architect agent
+- [x] Client portal blueprint template
+- [ ] All remaining command/agent stubs
+
+**Sprint 1 Test:** Run /forgeplan:discover, describe the client portal, get a 7-node manifest with 2 shared models, validated with no cycles and no scope overlaps.
+
+### Sprint 2: Build Harness (NEXT)
+### Sprint 3: Review and Recovery
+### Sprint 4: Integration and BYOK
+### Sprint 5: Dogfood and Ship
+
+## Nine Commands
+
+| Command | Sprint | Description |
+|---------|--------|-------------|
+| `/forgeplan:discover` | 1 | Guided conversation → manifest + skeleton specs |
+| `/forgeplan:spec` | 2 | Generate detailed node spec |
+| `/forgeplan:build` | 2 | Build a node with enforcement |
+| `/forgeplan:review` | 3 | Audit node against spec |
+| `/forgeplan:revise` | 3 | Reopen and change a node |
+| `/forgeplan:next` | 2 | Dependency-aware next recommendation |
+| `/forgeplan:status` | 4 | Full project status visualization |
+| `/forgeplan:integrate` | 4 | Cross-node interface verification |
+| `/forgeplan:recover` | 3 | Crash recovery |
+
+## Three Agents
+
+| Agent | Role | Key Behaviors |
+|-------|------|--------------|
+| Architect | Discovery, manifest creation | Anti-collapse enforcement, shared model identification, text summaries |
+| Builder | Node code generation | Pre-build spec challenge, anchor comments, constraint directive |
+| Reviewer | Spec-diff audit | 7 audit dimensions, per-criterion PASS/FAIL, code evidence |
+
+## Four Hook Types
+
+| Hook | Type | Purpose |
+|------|------|---------|
+| PreToolUse | command | Layer 1: deterministic file scope + shared model guard. Layer 2: LLM spec compliance |
+| PostToolUse | command | Auto-register files, log changes |
+| Stop | prompt/agent | Evaluate acceptance criteria, bounce counter |
+| SessionStart | command | Detect crashed/stuck builds |
+
+## Key Design Decisions
+
+- **Node spec is the most important artifact.** Everything downstream depends on spec quality.
+- **Layered enforcement:** Fast deterministic checks first, LLM only when needed. 80%+ of enforcement is instant glob matching.
+- **Shared models are canonical.** Any entity referenced by 2+ nodes must be a shared model in the manifest, never defined locally.
+- **Spec-diff review, not vibes.** Every review finding must reference a specific spec element and cite specific code evidence.
+- **The `.forgeplan/` directory is the product.** The plugin is one interface to it. The standalone app is another.
+- **Anchor comments** (`// @forgeplan-node: [id]`, `// @forgeplan-spec: [criterion-id]`) tie code to architecture.
+
+## The Canonical Demo: Client Portal
+
+Every example uses this project:
+- **7 nodes:** database, auth, api, file-storage, frontend-login, frontend-dashboard, frontend-accountant-view
+- **2 shared models:** User (client vs accountant roles), Document (upload lifecycle)
+- Auth: email/password + Google OAuth, role-based access
+- File handling: upload, storage, retrieval with encryption
+- Multiple frontend views per role
+
+## Platform Notes
+
+- Development on Windows 11, use Unix shell syntax in bash
+- Plugin must be cross-platform (scripts should use Node.js, not bash-only)
+- validate-manifest should be .js not .sh for Windows compatibility

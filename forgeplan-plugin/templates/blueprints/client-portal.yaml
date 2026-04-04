@@ -1,0 +1,141 @@
+# ForgePlan Blueprint: Client Portal
+# A client portal where small business owners upload tax documents for their accountant.
+# This is the canonical demo project used for all ForgePlan testing and examples.
+#
+# 7 nodes, 2 shared models, auth complexity, file handling, multiple frontend views.
+
+project:
+  name: "Client Portal"
+  description: "A portal where small business owners upload tax documents for their accountant, with role-based access and secure file handling."
+  tech_stack:
+    frontend: "React + Tailwind CSS"
+    backend: "Node.js + Express"
+    database: "Supabase (PostgreSQL)"
+    auth: "Supabase Auth"
+    hosting: "Vercel"
+    storage: "Supabase Storage"
+  created_at: ""
+  revision_count: 0
+
+shared_models:
+  User:
+    fields:
+      id: "string (UUID)"
+      email: "string"
+      role: "string (enum: client, accountant)"
+      name: "string"
+      created_at: "string (ISO 8601)"
+  Document:
+    fields:
+      id: "string (UUID)"
+      name: "string"
+      type: "string (enum: tax-return, receipt, w2, 1099, other)"
+      status: "string (enum: uploaded, processing, reviewed, flagged)"
+      uploaded_by: "string (UUID → User.id)"
+      uploaded_at: "string (ISO 8601)"
+      file_path: "string"
+      file_size: "number (bytes)"
+      notes: "string (optional)"
+
+validation:
+  no_circular_dependencies: true
+  no_orphan_nodes: true
+  no_file_scope_overlaps: true
+
+nodes:
+  database:
+    name: "Database Layer"
+    type: "database"
+    status: "pending"
+    file_scope: "src/database/**"
+    depends_on: []
+    connects_to:
+      - auth
+      - api
+      - file-storage
+    files: []
+    spec: "specs/database.yaml"
+
+  auth:
+    name: "Authentication Service"
+    type: "service"
+    status: "pending"
+    file_scope: "src/auth/**"
+    depends_on:
+      - database
+    connects_to:
+      - database
+      - api
+      - frontend-login
+    files: []
+    spec: "specs/auth.yaml"
+
+  api:
+    name: "API Layer"
+    type: "service"
+    status: "pending"
+    file_scope: "src/api/**"
+    depends_on:
+      - database
+      - auth
+    connects_to:
+      - database
+      - auth
+      - file-storage
+      - frontend-dashboard
+      - frontend-accountant-view
+    files: []
+    spec: "specs/api.yaml"
+
+  file-storage:
+    name: "File Storage Service"
+    type: "storage"
+    status: "pending"
+    file_scope: "src/storage/**"
+    depends_on:
+      - database
+    connects_to:
+      - database
+      - api
+    files: []
+    spec: "specs/file-storage.yaml"
+
+  frontend-login:
+    name: "Login & Registration Page"
+    type: "frontend"
+    status: "pending"
+    file_scope: "src/pages/login/**"
+    depends_on:
+      - auth
+    connects_to:
+      - auth
+    files: []
+    spec: "specs/frontend-login.yaml"
+
+  frontend-dashboard:
+    name: "Client Dashboard"
+    type: "frontend"
+    status: "pending"
+    file_scope: "src/pages/dashboard/**"
+    depends_on:
+      - api
+      - auth
+    connects_to:
+      - api
+      - auth
+    files: []
+    spec: "specs/frontend-dashboard.yaml"
+
+  frontend-accountant-view:
+    name: "Accountant View"
+    type: "frontend"
+    status: "pending"
+    file_scope: "src/pages/accountant/**"
+    depends_on:
+      - api
+      - auth
+    connects_to:
+      - api
+      - auth
+    files: []
+    spec: "specs/frontend-accountant-view.yaml"

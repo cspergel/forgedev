@@ -1,0 +1,87 @@
+# ForgePlan Node Spec Schema
+# This is the template for individual node specification files.
+# The spec is the most important file in the system. Everything downstream —
+# build enforcement, review, integration, Stop hook — depends on spec quality.
+#
+# Located at: .forgeplan/specs/[node-id].yaml
+
+# --- Identity ---
+node: ""                              # Node ID (must match manifest key)
+name: ""                              # Human-readable name
+
+# --- Description ---
+description: >
+  # What this node does, its responsibility, its role in the system.
+
+# --- INPUTS (external entry points) ---
+inputs:
+  # - name: ""
+  #   type: ""                        # Data type (use $shared.ModelName for shared models)
+  #   required: true                  # Whether this input is required
+  #   validation: ""                  # Validation rule in plain English
+
+# --- OUTPUTS (guaranteed responses) ---
+outputs:
+  # - name: ""
+  #   type: ""                        # Data type (use $shared.ModelName for shared models)
+
+# --- SHARED MODEL DEPENDENCIES ---
+# Must match manifest shared_models exactly.
+# The harness injects these definitions into the Builder's context.
+# PreToolUse hook blocks local redefinitions.
+shared_dependencies: []
+  # - User
+  # - Document
+
+# --- LOCAL DATA MODELS (node-specific, not shared) ---
+data_models: {}
+  # AuthError:
+  #   code: string
+  #   message: string
+
+# --- INTERFACES (strict directional contracts) ---
+# type: read/write | outbound | inbound
+# Directional typing makes integration check more precise about fault side.
+interfaces: []
+  # - target_node: ""
+  #   type: ""                        # read/write | outbound | inbound
+  #   contract: ""                    # Plain English description of the contract
+
+# --- ACCEPTANCE CRITERIA ---
+# Must be testable. Stop hook evaluates these by ID.
+# Builder agent uses the test field to write actual test cases.
+# Anchor comments reference these IDs: // @forgeplan-spec: AC1
+acceptance_criteria: []
+  # - id: AC1
+  #   description: ""                 # What must be true
+  #   test: ""                        # How to verify it (testable assertion)
+
+# --- CONSTRAINTS (strict behavioral rules) ---
+constraints: []
+  # - "Must use Supabase Auth"
+  # - "No password storage in app code"
+
+# --- NON-GOALS (explicit scope boundaries) ---
+# Prevents feature creep. Builder agent is told not to implement these.
+# Reviewer flags any non-goal that was implemented anyway.
+# Highest-leverage field for preventing feature creep.
+non_goals: []
+  # - "No custom JWT implementation"
+  # - "No multi-tenant org support"
+
+# --- FAILURE MODES ---
+# Gives the Reviewer a concrete checklist of things to break.
+# Instead of generic "check for security," these are specific bugs that actually ship.
+failure_modes: []
+  # - "Invalid login attempts not rate-limited"
+  # - "Session not persisted after page reload"
+
+# --- FILE SCOPE (deterministic enforcement boundary) ---
+# PreToolUse hook uses this glob to block writes outside the node's territory.
+file_scope: ""
+  # e.g., "src/auth/**"
+
+# --- DEPENDENCIES ---
+# Nodes that must be built before this one.
+depends_on: []
+  # - database
