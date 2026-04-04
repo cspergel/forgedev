@@ -152,7 +152,7 @@ function processHook(input) {
         const mData = yaml.load(mText);
         if (mData.nodes) {
           for (const [nid, ndata] of Object.entries(mData.nodes)) {
-            if ((ndata.files || []).includes(relPath) && nid !== activeNodeId) {
+            if ((ndata.files || []).includes(relPath)) {
               preExisting = true;
               break;
             }

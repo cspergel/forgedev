@@ -100,7 +100,7 @@ function validateManifest(manifest) {
     if (node.file_scope) {
       scopes.push({ nodeId, scope: node.file_scope });
     } else {
-      warnings.push(`Node "${nodeId}" has no file_scope defined.`);
+      errors.push(`Node "${nodeId}" has no file_scope defined. Every node must have a file_scope for build enforcement to work.`);
     }
   }
 

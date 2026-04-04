@@ -380,8 +380,13 @@ function evaluateBash(toolInput, cwd) {
   let state;
   try {
     state = JSON.parse(fs.readFileSync(statePath, "utf-8"));
-  } catch {
-    return { block: false };
+  } catch (err) {
+    return {
+      block: true,
+      message:
+        `BLOCKED: .forgeplan/state.json could not be parsed: ${err.message}. ` +
+        `Shell commands blocked while enforcement state is corrupted. Fix or delete state.json.`,
+    };
   }
 
   if (!state.active_node) {
