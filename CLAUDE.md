@@ -64,17 +64,16 @@ Most deliverables were implemented during Sprint 1/2 hardening (review, revise, 
 
 Deliverables: cross-model-review.js (MCP/CLI/API modes, 3 providers, env var resolution, fetch-based), BYOK config with strict/advisory modes, integrate-check.js with fault-side ID, status-report.js with dependency graph, SaaS starter + internal dashboard blueprints, README.
 
-### Sprint 5: Dogfood and Ship (CURRENT)
-**Goal:** Prove the four things. Run the change propagation test. Ship to marketplace.
+### Sprint 5: Dogfood and Ship (COMPLETE)
+**Goal:** Prove the four things. Run the change propagation test. **DONE.**
 
-Tooling built:
-- measure-quality.js (broken refs via tsc, duplicate types, abandoned stubs)
-- find-affected-nodes.js (shared model dependency scanner)
-- regenerate-shared-types.js (deterministic TypeScript codegen from manifest)
-- integrate-check.js enhanced with shared model field consistency
-- Batch revise mode (--model flag for cascading changes)
-- review-fixing status for multi-agent review cycles
-- CHANGELOG.md, version 0.5.0
+Dogfood results on client portal (7 nodes, 61+ files):
+- Quality metrics: 0 broken references, 0 duplicate types, 0 abandoned stubs
+- Integration: 16 pass, 2 expected warnings, 0 failures
+- Change propagation: Added phone to User → 6 nodes cascaded → 0 breakage
+- All 49 acceptance criteria verified across 7 nodes
+- 15 commands all working end-to-end
+
 ### Sprint 6: Autonomous Iterative Sweep
 **Goal:** Cross-model alternating sweep with `/forgeplan:sweep` and `/forgeplan:deep-build`.
 
