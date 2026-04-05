@@ -1,7 +1,7 @@
 ---
-description: Audit a built node against its spec using the seven-dimension review format. Native Claude review, plus optional cross-model verification via BYOK. Produces structured pass/fail reports with code evidence citations.
+description: Audit a built node against its spec using the seven-dimension review format. Native Claude review, plus optional cross-model verification via BYOK. Use --all to review all built nodes sequentially.
 user-invocable: true
-argument-hint: "[node-id]"
+argument-hint: "[node-id | --all]"
 allowed-tools: Read Write Glob Grep Bash
 agent: reviewer
 ---
@@ -10,7 +10,19 @@ agent: reviewer
 
 Audit the specified node's implementation against its spec.
 
-**Target node:** $ARGUMENTS
+**Target:** $ARGUMENTS
+
+## Review All Mode (`--all`)
+
+If the argument is `--all`, review all built nodes sequentially in dependency order:
+
+1. Run `node "${CLAUDE_PLUGIN_ROOT}/scripts/topo-sort.js"` to get the dependency order
+2. Read `.forgeplan/state.json` to find nodes with status `"built"` (not yet reviewed)
+3. For each eligible node in dependency order:
+   - Run the single-node review flow below
+   - Present each review result before moving to the next
+   - If any node gets REQUEST CHANGES, note it and continue with the remaining nodes
+4. After all reviews, present a summary: which nodes passed, which need changes
 
 ## Prerequisites
 
@@ -72,9 +84,8 @@ Check `multi_agent_review.enabled` in config.yaml. If true and the native review
 
 **Before dispatching a fixer agent**, transition the status so PreToolUse allows implementation writes:
 - Set `active_node.status` to `"review-fixing"` in state.json
-- Set `nodes.[node-id].status` to `"review-fixing"` in state.json
 - This enables the same write enforcement as `"building"` (file_scope, shared model guard, PostToolUse file registration)
-- After the fixer returns, set both `active_node.status` and `nodes.[node-id].status` back to `"reviewing"` before dispatching the re-reviewer
+- After the fixer returns, set `active_node.status` back to `"reviewing"` before dispatching the re-reviewer
 
 1. Spawn a **fresh Builder agent** using `context: fork` (isolated subagent with NO shared context from the current session). Provide it ONLY:
    - The original node spec (read fresh from `.forgeplan/specs/[node-id].yaml`)
@@ -98,7 +109,7 @@ Check `multi_agent_review.enabled` in config.yaml. If true and the native review
 
 **Context rules:** The review command itself (the orchestrator) retains context across cycles — it needs to track progress, compare findings, and decide when to stop. But every agent it **dispatches** (fixer agents and reviewer agents) must be spawned fresh with `context: fork` — no shared conversation history, no prior reasoning, no builder context. This is what eliminates same-context blindness.
 
-**Cycle report format:** Each re-reviewer writes to a cycle-specific file: `.forgeplan/reviews/[node-id]-cycle-[N].md`. The orchestrator consolidates results by appending a cycle summary to the main review file `.forgeplan/reviews/[node-id].md` with a header like `## Cycle [N] Review`. This prevents the re-reviewer from overwriting the original review. The `fixer_model` classification (auto-high/auto) applies to the **single fixer agent per cycle** — classify based on the most complex finding in the batch (if any finding is complex, use opus for the entire fix).
+The cycle reports are appended to `.forgeplan/reviews/[node-id].md` with cycle numbers.
 
 ## Step 2: Cross-Model Review (if BYOK configured)
 
@@ -129,16 +140,14 @@ The node advances to `"reviewed"` regardless of the cross-model result. Cross-mo
 
 ### `enforcement.mode: "strict"`
 The node can only advance to `"reviewed"` if **both** the native review and the cross-model review pass:
-- If the native review recommends APPROVE **and** the cross-model review returns `status: "approved"` → advance to `"reviewed"` (proceed to Completion — Advancing)
-- If either review has failures → do NOT advance. Proceed to Completion — Non-Advancing. Present the combined failures and recommend re-running `/forgeplan:review` (which will trigger another multi-agent fix cycle if enabled) or running `/forgeplan:build [node-id]` for a full rebuild.
+- If the native review recommends APPROVE **and** the cross-model review returns `status: "approved"` → advance to `"reviewed"`
+- If either review has failures → do NOT advance. Present the combined failures and recommend running `/forgeplan:build [node-id]` to address them, then re-running `/forgeplan:review`
 
 **If cross-model review errors** (network failure, misconfigured provider, timeout): In strict mode, warn the user that the cross-model gate could not be evaluated and offer two choices:
 1. Retry the cross-model review
 2. Override and advance to `"reviewed"` anyway (with a note in the review report that cross-model verification was skipped)
 
-## Completion — Advancing
-
-When the review passes (advisory mode, or strict mode with both reviews approving):
+## Completion
 
 Update state.json:
 - Set `nodes.[node-id].status` to `"reviewed"`
@@ -147,17 +156,3 @@ Update state.json:
 - Clear `nodes.[node-id].previous_status` to `null`
 - Clear `active_node` to `null`
 - Set `last_updated` to current ISO timestamp
-
-## Completion — Non-Advancing (strict mode failure only)
-
-When strict enforcement blocks advancement:
-
-Update state.json:
-- Restore `nodes.[node-id].status` to `nodes.[node-id].previous_status` (the status before the review started, e.g., `"built"`)
-- Set `nodes.[node-id].last_review` to `".forgeplan/reviews/[node-id].md"` (the review report remains on disk for reference)
-- If cross-model review ran, also set `nodes.[node-id].last_crossmodel_review` to `".forgeplan/reviews/[node-id]-crossmodel.md"`
-- Clear `nodes.[node-id].previous_status` to `null`
-- Clear `active_node` to `null`
-- Set `last_updated` to current ISO timestamp
-
-This unblocks the user — the node is back to `"built"` (or whatever it was), so they can run `/forgeplan:review` again or `/forgeplan:build` to address the findings.
