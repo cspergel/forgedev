@@ -426,7 +426,10 @@ function evaluateBash(toolInput, cwd) {
     /^\s*node\s+[^\s]*find-affected-nodes\.js/, // our own affected-node finder
     /^\s*node\s+[^\s]*regenerate-shared-types\.js/, // our own type generator
     /^\s*node\s+[^\s]*cross-model-bridge\.js/,   // Sprint 6: cross-model sweep bridge
-    /^\s*npm\s+(test|run\s+test|run\s+lint|run\s+validate)\b/, // test/lint
+    /^\s*codex\b/,                        // cross-model review via Codex CLI
+    /^\s*gemini\b/,                       // cross-model review via Gemini CLI
+    /^\s*claude\s+mcp\s+(call|list)\b/,   // cross-model review via MCP
+    /^\s*npm\s+(test|run\s+test|run\s+lint|run\s+validate|install)\b/, // test/lint/install
     /^\s*npx\s+tsc\b/,                 // type checking
     /^\s*pwd\b/,                        // print working directory
     /^\s*echo\s/,                       // echo without redirection (checked below)
@@ -454,8 +457,10 @@ function evaluateBash(toolInput, cwd) {
     const trimmed = seg.trim();
     if (!trimmed) return true;
     const matchesSafe = safePatterns.some((p) => p.test(trimmed));
-    const hasRedirection = />\s*[^\s]/.test(trimmed) || /\|\s*Out-File/i.test(trimmed);
-    return matchesSafe && !hasRedirection;
+    // Strip safe fd redirections (2>&1, 2>/dev/null) before checking for file redirections
+    const stripped = trimmed.replace(/\d+>&\d+/g, "").replace(/\d+>\s*\/dev\/null/g, "");
+    const hasUnsafeRedirection = />\s*[^\s]/.test(stripped) || /\|\s*Out-File/i.test(stripped);
+    return matchesSafe && !hasUnsafeRedirection;
   });
 
   if (allSegmentsSafe) {

@@ -1,5 +1,5 @@
 ---
-description: Sweep your entire codebase for cross-cutting issues. 6 parallel agents audit auth/security, type consistency, error handling, database, API contracts, and imports. Findings are fixed with node-scoped enforcement, then cross-model verified.
+description: Sweep your entire codebase for cross-cutting issues. 7 parallel agents audit auth/security, type consistency, error handling, database, API contracts, imports, and general code quality. Findings are fixed with node-scoped enforcement, then cross-model verified.
 user-invocable: true
 argument-hint: "[--cross-check (also run cross-model verification)]"
 allowed-tools: Read Write Edit Bash Glob Grep Agent
@@ -7,7 +7,7 @@ allowed-tools: Read Write Edit Bash Glob Grep Agent
 
 # Codebase Sweep
 
-Run 6 parallel sweep agents across the entire codebase, then fix findings with node-scoped enforcement.
+Run 7 parallel sweep agents across the entire codebase, then fix findings with node-scoped enforcement.
 
 ## Prerequisites
 
@@ -43,9 +43,9 @@ Run 6 parallel sweep agents across the entire codebase, then fix findings with n
    ```
 5. Set `active_node` to `null`
 
-### Phase 2: Dispatch 6 parallel sweep agents
+### Phase 2: Dispatch 7 parallel sweep agents
 
-Use the Agent tool to dispatch ALL 6 sweep agents **in parallel** (single message, 6 Agent tool calls).
+Use the Agent tool to dispatch ALL 7 sweep agents **in parallel** (single message, 7 Agent tool calls).
 
 **How to dispatch:** Read each agent's definition file from `${CLAUDE_PLUGIN_ROOT}/agents/sweep-*.md` and use its content as the system prompt for the Agent tool call. This ensures the prompts are maintained in separate files (easy to iterate) while still dispatching via the Agent tool for parallelism.
 
@@ -64,12 +64,13 @@ Agent definition files (read these, use as system prompts):
 - `agents/sweep-database.md`
 - `agents/sweep-api-contracts.md`
 - `agents/sweep-imports.md`
+- `agents/sweep-code-quality.md`
 
 Each agent returns findings in the structured FINDING format or CLEAN.
 
 ### Phase 3: Merge and deduplicate findings
 
-1. Collect all findings from the 6 agents
+1. Collect all findings from the 7 agents
 2. **Validate node IDs:** Discard any finding whose `node` field is not in `Object.keys(manifest.nodes)`. Log a warning for each discarded finding ("Finding F[N] references unknown node '[id]' — discarding"). This prevents crashes in Phase 4 when PreToolUse tries to look up a nonexistent node's file_scope. Apply the same validation in Phase 6 for cross-model findings.
 3. **Re-number** all remaining findings sequentially as F1, F2, F3... (discard the agents' self-assigned IDs, which will collide across agents)
 4. Deduplicate: if two agents report the same file + same issue, keep the one with higher severity
