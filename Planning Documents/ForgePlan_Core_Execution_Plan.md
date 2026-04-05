@@ -192,7 +192,7 @@ depends_on:
 
 ## Commands — What Ships
 
-Nine commands ship in Sprints 1–5. Two additional commands ship in Sprint 6. Each maps to a clear user action.
+Nine commands ship in Sprints 1–5. Two additional commands ship in Sprint 6. One ships in Sprint 8. Each maps to a clear user action. Sprint 7 adds ambient capabilities (skills, hooks) rather than new commands.
 
 | Command | What It Does |
 |---------|-------------|
@@ -207,6 +207,7 @@ Nine commands ship in Sprints 1–5. Two additional commands ship in Sprint 6. E
 | `/forgeplan:recover` | Detect and handle crashed builds, interrupted sweeps, and interrupted deep-builds. Resume, restart pass, reset, abort, or flag for manual review. |
 | `/forgeplan:sweep` | *Sprint 6.* Claude's parallel agents sweep the codebase, fix findings (node-scoped enforcement active during fixes), then the alternate model (Codex/Gemini via MCP, CLI subprocess, or API) cross-checks the fixes AND re-sweeps for issues Claude missed. Re-integrates after each fix cycle. Alternates until two consecutive clean passes from the alternate model. |
 | `/forgeplan:deep-build` | *Sprint 6.* Full autonomous sequence: build all → node review → integrate → Claude sweep → fix → re-integrate → cross-check → fix → re-integrate → repeat → final integrate → report. Tracks `sweep_state` for crash recovery. User walks away, comes back to a finished, cross-model-certified codebase. |
+| `/forgeplan:research [node\|--all]` | *Sprint 8.* Research agents search GitHub/npm/PyPI for existing implementations, check license compatibility, gather API docs and best practices. Findings saved to `.forgeplan/research/[node].md` and fed to the builder. |
 
 ---
 
@@ -689,6 +690,169 @@ Create a git commit after each completed fix cycle. This makes "abort to pre-swe
 
 ---
 
+### Sprint 7: Ambient Mode — Proactive Guidance and Contextual Awareness (Weeks 15–17)
+
+**Goal:** ForgePlan becomes an ambient assistant that proactively guides users based on project context — like superpowers but for architecture-governed builds. The plugin detects what the user is doing, what state the project is in, and offers relevant guidance without requiring explicit slash commands.
+
+**Why this exists:** Users don't know what they don't know. A user creating files in a pattern that looks like a new project shouldn't have to discover `/forgeplan:discover` exists. A user mid-build shouldn't have to remember to run `/forgeplan:review` when all nodes are built. A user who just finished a project shouldn't have to guess what maintenance commands are available. Superpowers proves this pattern works — ambient skill detection dramatically improves discoverability and reduces friction. ForgePlan should do the same for architecture-governed development.
+
+**Inspiration:** The superpowers plugin (obra/superpowers) demonstrates the pattern:
+- SessionStart injects context into every conversation
+- A meta-skill ("using-superpowers") trains Claude to check for relevant capabilities before every response
+- PreToolUse prompts intercept actions and apply guidance
+- The result: users get the right tool at the right time without memorizing commands
+
+**Design principle:** Ambient mode is **advisory, never blocking.** Unlike enforcement hooks (PreToolUse Layer 1/2) which can BLOCK operations, ambient mode only **suggests**. It never prevents the user from doing what they want. Think of it as a knowledgeable colleague watching over your shoulder who speaks up when they notice something relevant.
+
+#### Three Pillars of Ambient Mode
+
+**Pillar 1: Contextual SessionStart — "Where Are You?"**
+
+Expand `session-start.js` beyond crash detection into a full project state assessment that injects contextual guidance into every new conversation.
+
+Detection scenarios and responses:
+
+| Scenario | Detection | Guidance |
+|----------|-----------|----------|
+| No project, no `.forgeplan/` | Directory has no `.forgeplan/` | "I notice you're in a project without ForgePlan architecture. If you'd like to define the structure, try `/forgeplan:discover`." |
+| Fresh project, manifest exists, all pending | `.forgeplan/manifest.yaml` exists, all nodes `status: "pending"` | "Your architecture is defined with N nodes. Ready to spec? → `/forgeplan:spec --all`" |
+| All specced, none built | All nodes `status: "specced"` | "All N specs are ready. Time to build → `/forgeplan:build --all`" |
+| Build in progress | Some nodes built, some pending/specced | "Build progress: N/M nodes. Next up → `/forgeplan:next`" |
+| All built, not reviewed | All nodes `status: "built"` | "All nodes built! Quality check time → `/forgeplan:review --all`" |
+| All reviewed | All `status: "reviewed"` | "Project complete! Verify integration → `/forgeplan:integrate`" |
+| Sweep in progress (Sprint 6) | `sweep_state` is active | "Autonomous sweep in progress (pass N). Status → `/forgeplan:status`" |
+| Stuck nodes | Nodes in transient states without active_node | "N node(s) may be stuck. Recovery → `/forgeplan:recover`" |
+
+The SessionStart output uses a **prompt hook** (not just stderr warnings) to inject this context into Claude's awareness so it can reference it naturally in conversation.
+
+**Pillar 2: Activity Detection — "What Are You Doing?"**
+
+A new PreToolUse prompt hook (lightweight, advisory-only) that detects user activity patterns and suggests relevant ForgePlan capabilities.
+
+| Activity Pattern | Detection | Suggestion |
+|------------------|-----------|------------|
+| Creating new files in a structured pattern | Write/Edit to multiple new files in `src/` subdirectories | "Looks like you're building a new module. Want ForgePlan to govern this? → `/forgeplan:discover`" |
+| Modifying a shared type/model | Write/Edit to files matching shared model patterns | "You're changing a shared data structure. ForgePlan can trace the impact → `/forgeplan:affected [model]`" |
+| Writing tests | Write/Edit to `test/` or `__tests__/` or `*.test.*` | "If these tests map to a ForgePlan node, the spec's acceptance criteria can guide coverage → `/forgeplan:review [node]`" |
+| Package/dependency changes | Write/Edit to `package.json`, `requirements.txt`, etc. | "Dependency change detected. Run integration check to verify contracts → `/forgeplan:integrate`" |
+| Large refactor (many files touched in session) | PostToolUse tracking: 10+ files modified in one session | "Large refactor in progress. Consider running quality metrics → `/forgeplan:measure`" |
+
+**Important constraints:**
+- This hook runs ONLY when there is NO active operation (no `active_node`, no `sweep_state`). During builds/reviews/sweeps, the enforcement hooks handle everything — ambient detection would just add noise.
+- The hook fires at most **once per pattern per session** (debounce). It tracks which suggestions have been shown in a session-scoped counter to avoid nagging.
+- The hook is a `prompt` type, not `command` — it adds context to Claude's awareness but cannot block.
+- Suggestions are **one line each**, not walls of text. They appear as natural recommendations in Claude's response, not as system alerts.
+
+**Pillar 3: The Guide Skill — "How Does This Work?"**
+
+A new skill file (`skills/forgeplan-guide.md`) that Claude loads when it detects a user might benefit from ForgePlan guidance. This is the equivalent of superpowers' "using-superpowers" meta-skill — it teaches Claude how to naturally weave ForgePlan capabilities into conversation.
+
+The skill includes:
+- Decision tree: based on what the user is asking/doing, which command or workflow is most relevant
+- Natural language patterns: how to suggest commands conversationally (not "Run `/forgeplan:discover`" but "I can help you define the architecture for this — want me to start the discovery conversation?")
+- Common user intents mapped to ForgePlan workflows:
+  - "I want to build X" → discover → spec → build pipeline
+  - "Something's broken" → status → review → recover
+  - "I need to change Y" → revise → affected → rebuild
+  - "Is this project healthy?" → measure → integrate → status
+  - "What can I do?" → guide → help
+- Anti-patterns: when NOT to suggest ForgePlan (user is doing unrelated work, quick one-off scripts, non-project directories)
+
+#### New Files
+
+| File | Type | Purpose |
+|------|------|---------|
+| `scripts/ambient-detect.js` | Script | Activity pattern detection for PreToolUse prompt hook. Reads state, checks patterns, returns suggestions (or empty if nothing relevant). Tracks debounce state in memory (session-scoped). |
+| `skills/forgeplan-guide.md` | Skill | Meta-skill teaching Claude how to naturally integrate ForgePlan into conversation. Loaded when ambient detection triggers or user asks for help. |
+
+#### Modified Files
+
+| File | Change |
+|------|--------|
+| `scripts/session-start.js` | Expand from crash detection → full project state assessment with contextual guidance injection |
+| `hooks/hooks.json` | Add SessionStart prompt hook (alongside existing command hook). Add PreToolUse prompt hook for ambient detection (no matcher — fires on all tools, but script short-circuits when active operation is running) |
+| `commands/guide.md` | Update to reference the ambient system — explain that ForgePlan proactively suggests actions, and `/forgeplan:guide` is the explicit version |
+
+#### Deliverables (Weeks 15–16)
+
+- Expanded `session-start.js` with full project state assessment (8 scenarios above)
+- SessionStart prompt hook that injects state context into Claude's awareness
+- `ambient-detect.js` script with activity pattern detection (5 patterns above)
+- PreToolUse ambient prompt hook (advisory-only, debounced, no-op during active operations)
+- Session-scoped suggestion debounce (max once per pattern type per session)
+- `skills/forgeplan-guide.md` meta-skill with decision tree, natural language patterns, and anti-patterns
+
+#### Deliverables (Week 17)
+
+- Integration testing: verify ambient mode doesn't interfere with enforcement hooks during active operations
+- Verify debounce works (same suggestion doesn't repeat)
+- Verify prompt hooks don't add latency to normal operations (short-circuit path must be fast)
+- Dogfood: start a fresh project from scratch, verify ambient guidance naturally leads user through discover → spec → build → review → integrate without them needing to know the commands upfront
+- Update `commands/guide.md` and `commands/help.md` to reference ambient mode
+- Update CLAUDE.md sprint status
+
+#### Implementation Notes
+
+**SessionStart dual-hook architecture:**
+The existing SessionStart command hook (`session-start.js`) handles crash detection and state cleanup — it must remain a command hook because it writes to `state.json` (clearing stale flags). The new ambient context injection is a separate prompt hook that reads state and produces natural-language guidance. Both fire on SessionStart: the command hook runs first (cleanups), then the prompt hook reads the cleaned state and produces guidance.
+
+**PreToolUse hook ordering:**
+The ambient PreToolUse prompt hook must not conflict with the existing enforcement PreToolUse hooks. Order:
+1. PreToolUse command hook (deterministic enforcement — `pre-tool-use.js`)
+2. PreToolUse enforcement prompt hook (LLM spec compliance — existing Layer 2)
+3. PreToolUse ambient prompt hook (advisory suggestions — new)
+
+If the enforcement hooks BLOCK, the ambient hook never fires (blocked = no action to advise on).
+
+**Performance budget:**
+`ambient-detect.js` must complete in <50ms for the short-circuit path (active operation running = exit immediately). The full detection path (read state, check patterns) should be <200ms. If it exceeds this, the debounce mechanism means it only adds this latency once per pattern per session, not on every tool call.
+
+**Relationship to existing `/forgeplan:guide` command:**
+`/forgeplan:guide` is the explicit "where am I?" command — the user actively asks for guidance. Ambient mode is the implicit version — guidance comes to the user. They complement each other:
+- Ambient mode: lightweight, one-line suggestions woven into natural conversation
+- `/forgeplan:guide`: full state assessment with all options displayed
+
+**Future: non-technical builder mode (Concept Doc Section 4, Tier 1):**
+Ambient mode is the foundation for the non-technical builder experience described in the concept doc. When the standalone visual workstation ships, ambient detection translates directly into UI hints, tooltip guidance, and contextual action buttons. The pattern detection logic (`ambient-detect.js`) can be reused as-is — only the presentation layer changes from Claude conversation to visual UI.
+
+**Exit criteria:** A user who has never seen ForgePlan before can start a Claude Code session in an empty directory, describe what they want to build, and get naturally guided through the full discover → spec → build → review → integrate pipeline without reading documentation or memorizing commands. Ambient suggestions appear at the right time, never repeat unnecessarily, and never interfere with active operations. Dogfood on a new project (not client portal) with a fresh user perspective.
+
+---
+
+### Sprint 8: Research Agents and Autonomous Greenfield (Weeks 18–21)
+
+**Goal:** Fully autonomous greenfield builds where the user describes what they want and walks away. Research agents search for existing implementations, check licenses, and gather best practices before building.
+
+**Why this exists:** The Sprint 6 autonomous loop builds and reviews code. But it still builds everything from scratch. Real developers don't do that — they search GitHub for existing solutions, check npm/PyPI for packages that solve subproblems, read API docs, and study similar projects for patterns. Sprint 8 gives ForgePlan's autonomous pipeline the same research capabilities.
+
+**New agent types:**
+
+| Agent | Role | Tools |
+|-------|------|-------|
+| Researcher | Search GitHub/npm/PyPI for existing implementations before building a node | WebSearch, WebFetch |
+| License Checker | Verify dependency license compatibility (MIT/Apache/GPL chain) | WebFetch (package registry APIs) |
+| Inspiration Agent | Find similar projects for pattern reference, extract architectural patterns | WebSearch, WebFetch |
+| Docs Agent | Fetch API documentation, framework guides, best practices for the tech stack | WebSearch, WebFetch |
+
+**Integration with existing pipeline:**
+- Research runs AFTER spec but BEFORE build: `discover → spec → research → build → review → ...`
+- Research findings are saved to `.forgeplan/research/[node].md`
+- Builder agent receives research findings as additional context alongside the spec
+- The architect agent can also trigger research during discovery to validate that a proposed architecture is feasible
+
+**New command:**
+| Command | Description |
+|---------|-------------|
+| `/forgeplan:research [node]` | Run research agents for a specific node or `--all` for the whole project |
+
+**Deep-build integration:** `/forgeplan:deep-build` gains a `--with-research` flag that inserts the research phase into the autonomous pipeline.
+
+**This is the vision from the concept doc:** "the user describes what they want and walks away." Sprint 6 makes the build autonomous. Sprint 7 makes the interface ambient. Sprint 8 makes the preparation intelligent. Together they deliver the full autonomous experience.
+
+**Exit criteria:** Research agents find relevant packages/implementations for at least 3 of 7 client portal nodes. License checker correctly flags at least one GPL dependency in a test scenario. Builder agent demonstrably uses research findings (cites them in build decisions). Deep-build with research produces fewer custom implementations (more library usage) than without.
+
+---
+
 ## What Is Deferred (Not Cut)
 
 Everything below remains in the vision document. None of it is built until the plugin proves the core thesis.
@@ -729,8 +893,10 @@ That's day one through day three. If the discovery flow produces a good manifest
 
 ## Relationship to the Grand Vision
 
-This execution plan is **Sprint 1 through Sprint 6 of Section 17** in the concept document. Sprints 1–5 deliver the architecture-governed build harness. Sprint 6 delivers the autonomous iterative sweep system — the self-improving review loop that turns ForgePlan from a build tool into an autonomous quality engineering platform. Everything in Sections 1–16 and 18–23 of the concept document remains the long-term product direction. The concept document is the north star. This document is the first set of directions to get on the road.
+This execution plan is **Sprint 1 through Sprint 8** of the plugin's development. Sprints 1–5 deliver the architecture-governed build harness. Sprint 6 delivers the autonomous iterative sweep system. Sprint 7 makes ForgePlan an ambient assistant that guides users proactively. Sprint 8 adds research agents for fully autonomous greenfield builds. Everything in Sections 1–16 and 18–23 of the concept document remains the long-term product direction. The concept document is the north star. This document is the directions to get on the road.
 
-When the plugin proves the four things, the next document will be: **ForgePlan Workstation — Standalone Application Build Plan**, covering the Tauri shell, React Flow canvas, Monaco integration, and the visual rendering of the `.forgeplan/` directory that developers have already been building in their terminals. The `/forgeplan:deep-build` autonomous loop becomes the "Deep Build" premium feature in the visual workstation — the user clicks a button, walks away, and comes back to a fully built, fully reviewed, fully swept application.
+The arc: **Sprint 5 proved the harness works** (dogfood with data). **Sprint 6 makes it autonomous** (cross-model sweep). **Sprint 7 makes it discoverable** (ambient guidance). **Sprint 8 makes it intelligent** (research before building). Together, they deliver the concept doc's vision: a user describes what they want, walks away, and comes back to a fully built, fully reviewed, fully researched application — without ever reading a manual.
 
-The vision is intact. The build starts now.
+When the plugin proves this end-to-end, the next document will be: **ForgePlan Workstation — Standalone Application Build Plan**, covering the Tauri shell, React Flow canvas, Monaco integration, and the visual rendering of the `.forgeplan/` directory that developers have already been building in their terminals. The ambient mode pattern detection and research agents translate directly into visual UI — tooltip guidance becomes button hints, research findings become sidebar panels, and the deep-build autonomous loop becomes the "Deep Build" premium feature where the user clicks a button and walks away.
+
+The vision is intact. The build continues.

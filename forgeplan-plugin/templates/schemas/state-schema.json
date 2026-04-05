@@ -23,8 +23,8 @@
         },
         "status": {
           "type": "string",
-          "enum": ["building", "reviewing", "review-fixing", "revising"],
-          "description": "What operation is in progress. review-fixing is a transient status used during multi-agent review cycles when a fixer agent is writing code to address review findings."
+          "enum": ["building", "reviewing", "review-fixing", "revising", "sweeping"],
+          "description": "What operation is in progress. review-fixing is a transient status used during multi-agent review cycles when a fixer agent is writing code to address review findings. sweeping is used during sweep/deep-build fix cycles."
         },
         "agent_status": {
           "type": "string",
@@ -46,7 +46,7 @@
         "properties": {
           "status": {
             "type": "string",
-            "enum": ["pending", "specced", "building", "built", "reviewing", "review-fixing", "reviewed", "revising", "revised"],
+            "enum": ["pending", "specced", "building", "built", "reviewing", "review-fixing", "reviewed", "revising", "revised", "sweeping"],
             "description": "Current node status (reviewing/review-fixing/revising are transient in-progress states)"
           },
           "last_build_completed": {
@@ -119,6 +119,108 @@
       "type": "boolean",
       "default": false,
       "description": "Whether /forgeplan:discover has completed successfully"
+    },
+    "sweep_state": {
+      "type": ["object", "null"],
+      "default": null,
+      "description": "Tracks autonomous sweep/deep-build operations. Null when no sweep is active.",
+      "properties": {
+        "operation": {
+          "type": "string",
+          "enum": ["sweeping", "deep-building"],
+          "description": "Which autonomous operation is running"
+        },
+        "started_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "current_phase": {
+          "type": "string",
+          "enum": ["build-all", "claude-sweep", "claude-fix", "cross-check", "cross-fix", "integrate", "finalizing", "halted"],
+          "description": "Current phase of the sweep/deep-build cycle. build-all is deep-build only (existing pipeline, next-node.js should still return recommendations). claude-sweep onward is the autonomous sweep loop. halted means max_passes reached without convergence."
+        },
+        "pass_number": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 1
+        },
+        "current_model": {
+          "type": "string",
+          "description": "Which model is currently active (claude, codex, gemini, gpt)"
+        },
+        "fixing_node": {
+          "type": ["string", "null"],
+          "description": "Node ID currently being fixed, or null if in analysis/cross-check phase"
+        },
+        "halted_from_phase": {
+          "type": ["string", "null"],
+          "default": null,
+          "description": "When current_phase is 'halted', this records the phase before halting so recovery knows where to resume from"
+        },
+        "consecutive_clean_passes": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        },
+        "max_passes": {
+          "type": "integer",
+          "default": 10
+        },
+        "findings": {
+          "type": "object",
+          "properties": {
+            "pending": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": { "type": "string", "description": "Finding ID. Claude findings: F1, F2... Cross-model findings: X1, X2..." },
+                  "source_model": { "type": "string" },
+                  "node": { "type": "string" },
+                  "category": { "type": "string", "enum": ["auth-security", "type-consistency", "error-handling", "database", "api-contracts", "imports"] },
+                  "severity": { "type": "string", "enum": ["HIGH", "MEDIUM", "LOW"] },
+                  "description": { "type": "string" },
+                  "file": { "type": "string", "description": "File path where the issue was found" },
+                  "line": { "type": "string", "description": "Approximate line number" },
+                  "fix": { "type": "string", "description": "Recommended remediation" },
+                  "pass_found": { "type": "integer" }
+                },
+                "required": ["id", "source_model", "node", "category", "description", "pass_found"]
+              }
+            },
+            "resolved": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": { "type": "string" },
+                  "source_model": { "type": "string" },
+                  "node": { "type": "string" },
+                  "category": { "type": "string" },
+                  "resolved_by": { "type": "string" },
+                  "resolved_pass": { "type": "integer" }
+                }
+              }
+            }
+          }
+        },
+        "modified_files_by_pass": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        },
+        "integration_results": {
+          "type": "object",
+          "properties": {
+            "last_run": { "type": ["string", "null"] },
+            "passed": { "type": "boolean" },
+            "failures": { "type": "array" }
+          }
+        }
+      },
+      "required": ["operation", "started_at", "current_phase", "pass_number", "current_model", "consecutive_clean_passes", "max_passes", "findings"]
     }
   },
   "required": ["session_id", "last_updated", "active_node", "nodes", "stop_hook_active", "discovery_complete"]

@@ -81,7 +81,7 @@ function main() {
   }
 
   // --- Priority 1: Stuck/crashed nodes ---
-  const stuckStatuses = ["building", "reviewing", "review-fixing", "revising"];
+  const stuckStatuses = ["building", "reviewing", "review-fixing", "revising", "sweeping"];
   const stuck = [];
   for (const id of nodeIds) {
     const ns = nodeStates[id];
@@ -101,6 +101,37 @@ function main() {
     };
     console.log(JSON.stringify(result, null, 2));
     process.exit(0);
+  }
+
+  // --- Priority 1b: Sweep/deep-build in progress ---
+  // Only block node recommendations during actual sweep phases.
+  // During deep-build's "build-all" phase, the existing build/review
+  // pipeline needs next-node recommendations to function.
+  if (state.sweep_state && state.sweep_state.operation) {
+    const ss = state.sweep_state;
+    const buildPhases = ["build-all"];
+    if (!buildPhases.includes(ss.current_phase)) {
+      // Compute completed count inline (the main `completed` var is defined later in the file)
+      const completedStatuses_ = ["built", "reviewed", "revised"];
+      const completedCount = nodeIds.filter((id) => {
+        const ns = nodeStates[id];
+        return ns && completedStatuses_.includes(ns.status);
+      }).length;
+      const result = {
+        type: "sweep_active",
+        operation: ss.operation,
+        phase: ss.current_phase,
+        pass: ss.pass_number,
+        model: ss.current_model,
+        pending_findings: (ss.findings && ss.findings.pending) ? ss.findings.pending.length : 0,
+        resolved_findings: (ss.findings && ss.findings.resolved) ? ss.findings.resolved.length : 0,
+        message: `${ss.operation === "deep-building" ? "Deep build" : "Sweep"} in progress — pass ${ss.pass_number}, phase: ${ss.current_phase}, model: ${ss.current_model}.`,
+        progress: { completed: completedCount, total: nodeIds.length },
+      };
+      console.log(JSON.stringify(result, null, 2));
+      process.exit(0);
+    }
+    // build-all: fall through to normal recommendation logic
   }
 
   // --- Priority 2: Nodes needing rebuild after revision ---
@@ -186,7 +217,7 @@ function main() {
     const status = ns ? ns.status : "pending";
 
     if (completedStatuses.includes(status)) continue;
-    if (status === "building" || status === "reviewing" || status === "review-fixing" || status === "revising") continue;
+    if (status === "building" || status === "reviewing" || status === "review-fixing" || status === "revising" || status === "sweeping") continue;
 
     // Check all dependencies are completed
     const deps = manifest.nodes[id].depends_on || [];

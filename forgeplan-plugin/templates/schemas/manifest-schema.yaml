@@ -46,7 +46,7 @@ nodes:
   # auth:
   #   name: "Authentication Service"
   #   type: "service"               # service | frontend | database | storage | integration
-  #   status: "pending"             # pending | specced | building | built | reviewing | review-fixing | reviewed | revising | revised
+  #   status: "pending"             # pending | specced | building | built | reviewing | review-fixing | reviewed | revising | revised | sweeping
   #   file_scope: "src/auth/**"
   #   depends_on:
   #     - database

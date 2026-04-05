@@ -68,7 +68,7 @@ function validateManifest(manifest) {
   // --- 1b. Required Per-Node Fields ---
   const requiredNodeFields = ["name", "type", "status", "file_scope", "spec"];
   const validNodeTypes = ["service", "frontend", "database", "storage", "integration"];
-  const validStatuses = ["pending", "specced", "building", "built", "reviewing", "review-fixing", "reviewed", "revising", "revised"];
+  const validStatuses = ["pending", "specced", "building", "built", "reviewing", "review-fixing", "reviewed", "revising", "revised", "sweeping"];
 
   for (const nodeId of nodeIds) {
     const node = manifest.nodes[nodeId];

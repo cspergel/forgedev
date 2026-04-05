@@ -61,7 +61,7 @@ function processHook(input) {
       const stateData = JSON.parse(fs.readFileSync(
         path.join(cwd, ".forgeplan", "state.json"), "utf-8"
       ));
-      if (stateData.active_node && (stateData.active_node.status === "building" || stateData.active_node.status === "review-fixing")) {
+      if (stateData.active_node && (stateData.active_node.status === "building" || stateData.active_node.status === "review-fixing" || stateData.active_node.status === "sweeping")) {
         const nodeId = stateData.active_node.node;
         if (!stateData.shared_types_created_by) {
           stateData.shared_types_created_by = nodeId;
@@ -88,8 +88,8 @@ function processHook(input) {
     return;
   }
 
-  // Only register during active builds (including review-fixing, which is a fixer agent writing code during multi-agent review cycles)
-  if (!state.active_node || (state.active_node.status !== "building" && state.active_node.status !== "review-fixing")) return;
+  // Only register during active builds (including review-fixing and sweeping)
+  if (!state.active_node || (state.active_node.status !== "building" && state.active_node.status !== "review-fixing" && state.active_node.status !== "sweeping")) return;
 
   const activeNodeId = state.active_node.node;
 
@@ -192,6 +192,32 @@ function processHook(input) {
     process.stderr.write(
       `ForgePlan PostToolUse: Could not classify file: ${err.message}\n`
     );
+  }
+
+  // --- 1b. Sweep mode: track modified files per pass ---
+  if (state.active_node && state.active_node.status === "sweeping") {
+    try {
+      // Re-read state for sweep_state (may have been updated by classification above)
+      const freshState = JSON.parse(fs.readFileSync(statePath, "utf-8"));
+      if (freshState.sweep_state) {
+        const passKey = String(freshState.sweep_state.pass_number || 1);
+        if (!freshState.sweep_state.modified_files_by_pass) {
+          freshState.sweep_state.modified_files_by_pass = {};
+        }
+        if (!freshState.sweep_state.modified_files_by_pass[passKey]) {
+          freshState.sweep_state.modified_files_by_pass[passKey] = [];
+        }
+        if (!freshState.sweep_state.modified_files_by_pass[passKey].includes(relPath)) {
+          freshState.sweep_state.modified_files_by_pass[passKey].push(relPath);
+          freshState.last_updated = new Date().toISOString();
+          fs.writeFileSync(statePath, JSON.stringify(freshState, null, 2), "utf-8");
+        }
+      }
+    } catch (err) {
+      process.stderr.write(
+        `ForgePlan PostToolUse: Could not track sweep modified file: ${err.message}\n`
+      );
+    }
   }
 
   // --- 2. Register file in manifest (after classification) ---

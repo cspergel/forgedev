@@ -20,6 +20,13 @@ user-invocable: true
 | `/forgeplan:next` | What should I work on next? Shows the recommended node and suggests commands based on where you are. |
 | `/forgeplan:review [node\|--all]` | Review a node against its spec. 7-dimension audit with per-criterion PASS/FAIL. Optional cross-model verification. |
 
+## Autonomous
+
+| Command | What it does |
+|---------|-------------|
+| `/forgeplan:sweep [--cross-check]` | Sweep your codebase for cross-cutting issues — 6 parallel agents audit security, types, errors, database, API contracts, and imports. Fix findings with node-scoped enforcement. Add `--cross-check` for cross-model verification. |
+| `/forgeplan:deep-build` | Full autonomous pipeline: build all → review → integrate → sweep → cross-model verify → repeat until certified. Describe what you want, walk away. |
+
 ## Evolving Your Project
 
 | Command | What it does |

@@ -36,9 +36,9 @@ Build the specified node following its spec with layered enforcement:
 
 - `.forgeplan/manifest.yaml` must exist
 - `.forgeplan/specs/[node-id].yaml` must exist and be complete
-- The target node's status must be one of: `"specced"`, `"built"`, `"reviewed"`, or `"revised"` (not `"pending"`, `"building"`, `"reviewing"`, `"review-fixing"`, or `"revising"`)
+- The target node's status must be one of: `"specced"`, `"built"`, `"reviewed"`, or `"revised"` (not `"pending"`, `"building"`, `"reviewing"`, `"review-fixing"`, `"revising"`, or `"sweeping"`)
 - All nodes in the target's `depends_on` list must have status "built", "reviewed", or "revised"
-- No other node can be currently in "building" status
+- No other node can be currently in "building" or "sweeping" status
 
 ## Setup
 

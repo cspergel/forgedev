@@ -43,7 +43,7 @@ function main() {
       }
 
       // Check if active_node was left in any in-progress status
-      const stuckStatuses = ["building", "reviewing", "review-fixing", "revising"];
+      const stuckStatuses = ["building", "reviewing", "review-fixing", "revising", "sweeping"];
       if (
         state.active_node &&
         stuckStatuses.includes(state.active_node.status)
@@ -65,6 +65,33 @@ function main() {
               `WARNING: Node "${nodeId}" is stuck in "${nodeState.status}" status. Run /forgeplan:recover.`
             );
           }
+        }
+      }
+
+      // Check for interrupted sweep/deep-build
+      if (state.sweep_state && state.sweep_state.operation) {
+        const ss = state.sweep_state;
+        const op = ss.operation === "deep-building" ? "deep-build" : "sweep";
+
+        // If both active_node AND sweep_state exist, this is a single crash event
+        // (e.g., deep-build was mid-build, or sweep was mid-fix). Show ONE combined warning.
+        if (state.active_node && stuckStatuses.includes(state.active_node.status)) {
+          // Remove any per-node warning already pushed for this node (avoid duplication)
+          const nodeId = state.active_node.node;
+          const idx = warnings.findIndex(w => w.includes(`"${nodeId}"`));
+          if (idx !== -1) warnings.splice(idx, 1);
+
+          warnings.push(
+            `WARNING: An interrupted ${op} was detected during node "${nodeId}" ` +
+            `${state.active_node.status === "sweeping" ? "fix" : "build"} ` +
+            `(phase: ${ss.current_phase}, pass: ${ss.pass_number}). ` +
+            `Run /forgeplan:recover to resume or abort the ${op}.`
+          );
+        } else {
+          warnings.push(
+            `WARNING: An interrupted ${op} was detected (phase: ${ss.current_phase}, pass: ${ss.pass_number}). ` +
+            `Run /forgeplan:recover to resume, restart the current pass, or abort.`
+          );
         }
       }
     } catch (err) {

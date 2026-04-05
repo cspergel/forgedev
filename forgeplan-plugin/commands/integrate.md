@@ -10,6 +10,12 @@ Verify all cross-node interfaces are correctly implemented.
 
 ## Process
 
+0. **Prerequisite:** Read `.forgeplan/state.json`. If any node has `status: "sweeping"`, STOP:
+   ```
+   Cannot run integration check — node "[node-id]" is currently being fixed by the sweep.
+   Wait for the sweep fix to complete, or run /forgeplan:recover to abort the sweep.
+   ```
+
 1. Run the deterministic integration checker:
 ```bash
 node "${CLAUDE_PLUGIN_ROOT}/scripts/integrate-check.js"

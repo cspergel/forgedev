@@ -106,7 +106,26 @@ function evaluate(input) {
 
   // --- Check 1: Is there an active node? ---
   if (!state.active_node) {
-    // No active operation — allow all writes (user is working outside ForgePlan commands)
+    // Check for sweep analysis mode BEFORE allowing all writes.
+    // sweep_state can be active with no active_node (analysis phase, between node fixes).
+    if (state.sweep_state && state.sweep_state.operation) {
+      // Sweep analysis mode: only .forgeplan/sweeps/, deep-build-report.md, and state.json writable
+      if (
+        relPath.startsWith(".forgeplan/sweeps/") ||
+        relPath === ".forgeplan/deep-build-report.md" ||
+        relPath === ".forgeplan/state.json"
+      ) {
+        return { block: false };
+      }
+      return {
+        block: true,
+        message:
+          `BLOCKED: Sweep analysis mode is active (${state.sweep_state.operation}, phase: ${state.sweep_state.current_phase}). ` +
+          `Only .forgeplan/sweeps/, .forgeplan/deep-build-report.md, and .forgeplan/state.json can be written during analysis. ` +
+          `Assign the finding to a node for fixing before modifying source files.`,
+      };
+    }
+    // No active operation and no sweep — allow all writes
     return { block: false };
   }
 
@@ -135,12 +154,14 @@ function evaluate(input) {
     // (same file_scope check, shared model guard, .forgeplan/ boundary)
   }
 
-  // Building (and review-fixing): only specific .forgeplan/ paths allowed per builder contract
-  if ((activeStatus === "building" || activeStatus === "review-fixing") && relPath.startsWith(".forgeplan/")) {
+  // Building (and review-fixing, sweeping): only specific .forgeplan/ paths allowed per builder contract
+  if ((activeStatus === "building" || activeStatus === "review-fixing" || activeStatus === "sweeping") && relPath.startsWith(".forgeplan/")) {
     const activeNodeId_ = state.active_node.node;
     if (
       relPath === `.forgeplan/conversations/nodes/${activeNodeId_}.md` ||
-      relPath === ".forgeplan/state.json"
+      relPath === ".forgeplan/state.json" ||
+      // Sweep-only paths: only allow during sweeping, not during normal builds
+      (activeStatus === "sweeping" && (relPath.startsWith(".forgeplan/sweeps/") || relPath === ".forgeplan/deep-build-report.md"))
     ) {
       return { block: false };
     }
@@ -172,15 +193,19 @@ function evaluate(input) {
   }
 
   // For non-building/non-review-fixing states we don't recognize, allow
-  if (activeStatus !== "building" && activeStatus !== "review-fixing") {
+  if (activeStatus !== "building" && activeStatus !== "review-fixing" && activeStatus !== "sweeping") {
     return { block: false };
   }
 
   const activeNodeId = state.active_node.node;
 
   // --- Building: .forgeplan/ was already handled above (lines 133-147) ---
-  // --- Building: shared types exempt (creation only) ---
+  // --- Building: shared types exempt (creation only, or always for sweeping) ---
   if (relPath === "src/shared/types/index.ts") {
+    // Sweep fixes may always write shared types (Option A from execution plan)
+    if (activeStatus === "sweeping") {
+      return { block: false };
+    }
     const sharedTypesAbs = path.join(cwd, relPath);
     if (!fs.existsSync(sharedTypesAbs)) {
       return { block: false };
@@ -362,16 +387,17 @@ function evaluateBash(toolInput, cwd) {
     };
   }
 
-  if (!state.active_node) {
+  const inProgressStatuses = ["building", "reviewing", "review-fixing", "revising", "sweeping"];
+
+  // Check if we should enforce: either active_node in progress OR sweep_state active
+  const hasActiveNode = state.active_node && inProgressStatuses.includes(state.active_node.status);
+  const hasSweepState = !state.active_node && state.sweep_state && state.sweep_state.operation;
+
+  if (!hasActiveNode && !hasSweepState) {
     return { block: false };
   }
 
-  const activeStatus = state.active_node.status;
-  const inProgressStatuses = ["building", "reviewing", "review-fixing", "revising"];
-
-  if (!inProgressStatuses.includes(activeStatus)) {
-    return { block: false };
-  }
+  const activeStatus = state.active_node ? state.active_node.status : "sweeping";
 
   // Whitelist: known-safe read-only commands that cannot mutate files
   const safePatterns = [
@@ -399,6 +425,7 @@ function evaluateBash(toolInput, cwd) {
     /^\s*node\s+[^\s]*measure-quality\.js/,   // our own quality measurement script
     /^\s*node\s+[^\s]*find-affected-nodes\.js/, // our own affected-node finder
     /^\s*node\s+[^\s]*regenerate-shared-types\.js/, // our own type generator
+    /^\s*node\s+[^\s]*cross-model-bridge\.js/,   // Sprint 6: cross-model sweep bridge
     /^\s*npm\s+(test|run\s+test|run\s+lint|run\s+validate)\b/, // test/lint
     /^\s*npx\s+tsc\b/,                 // type checking
     /^\s*pwd\b/,                        // print working directory

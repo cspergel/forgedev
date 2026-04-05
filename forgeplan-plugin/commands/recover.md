@@ -7,19 +7,23 @@ allowed-tools: Read Write Edit Bash Glob Grep
 
 # Crash Recovery
 
-Detect and recover from interrupted builds, reviews, revisions, or review-fix cycles.
+Detect and recover from interrupted builds, reviews, revisions, review-fix cycles, sweeps, and deep-builds.
 
 ## Process
 
 1. Read `.forgeplan/state.json`
-2. Identify nodes in inconsistent states:
+2. Identify inconsistent states:
    - Status "building" with no active session
    - Status "reviewing" with no active session
    - Status "review-fixing" with no active session (fixer agent was mid-fix during multi-agent review)
    - Status "revising" with no active session
+   - Status "sweeping" with no active sweep operation (sweep_state is null but node is sweeping)
+   - `sweep_state` is non-null (interrupted sweep or deep-build)
    - Active node set but session appears stale
 
-3. For each stuck node, present **context-appropriate** options based on the crashed operation:
+3. **If both `active_node` (stuck in "building"/"sweeping") AND `sweep_state` are present:** This indicates a crash during deep-build's build-all phase or during a sweep fix. Present ONLY the sweep/deep-build recovery options below — do NOT also show the per-node building recovery prompt, as that would create conflicting options. Note: "Node '[id]' was being [built/fixed] as part of the [deep-build/sweep]. Recovering the operation will handle this node."
+
+4. For each stuck node (when no sweep_state), present **context-appropriate** options based on the crashed operation:
 
 ### If crashed during `building`:
 
@@ -90,6 +94,62 @@ Options:
 
 Choose [1/2/3]:
 ```
+
+### If interrupted sweep or deep-build detected
+
+Check `sweep_state` in state.json. If `sweep_state.operation` is non-null:
+
+```
+=== Recovery: [operation] ===
+Operation: [sweeping | deep-building]
+Phase: [current_phase] (pass [pass_number])
+Model: [current_model]
+Pending findings: [count]
+Resolved findings: [count]
+
+Options:
+  1. RESUME  — Continue from the last completed phase. The current pass is
+     re-run from scratch (partial fix state within a pass is not recoverable).
+     Findings already resolved stay resolved.
+  2. RESTART PASS — Keep state from prior passes but re-run pass [pass_number]
+     from the beginning. Use if the crash happened mid-fix and the codebase
+     may be in a partially-modified state.
+  3. ABORT  — Clear sweep_state. All nodes keep their current status.
+     Sweep reports remain on disk. You can re-run /forgeplan:sweep or
+     /forgeplan:deep-build later.
+
+Choose [1/2/3]:
+```
+
+**Resume behavior:**
+- Read `sweep_state` from state.json
+- Re-read any sweep/crosscheck reports already on disk in `.forgeplan/sweeps/`
+- Continue from `current_phase`:
+  - If `build-all`: resume the build-all loop — run `next-node.js`, continue building/reviewing remaining nodes. If `active_node` is stuck, recover it first (run per-node building recovery inline), then continue the loop.
+  - If `claude-sweep`: re-run the sweep agents
+  - If `claude-fix`: re-fix all pending findings (restart the fix loop for this pass)
+  - If `cross-check`: re-run cross-model verification
+  - If `cross-fix`: re-fix all cross-model findings (restart fix loop)
+  - If `integrate`: re-run integration
+  - If `finalizing`: just finalize
+  - If `halted`: read `sweep_state.halted_from_phase` to determine where to resume. Set `current_phase` back to `halted_from_phase`, clear `halted_from_phase` to null, then resume from that phase (using the same routing above). If `halted_from_phase` is null (shouldn't happen but defensive), default to `"claude-sweep"`.
+- Findings already in `resolved` stay resolved
+
+**Restart pass behavior:**
+- Keep `sweep_state.findings.resolved` from prior passes
+- Reset `sweep_state.findings.pending` to only findings from this pass that weren't resolved
+- Set `sweep_state.current_phase` to `"claude-sweep"` (restart the whole pass)
+- If `active_node` was set (mid-fix), clear it and set `nodes.[node].status` back to the pre-sweep status
+
+**Abort behavior:**
+- Set `sweep_state` to `null` in state.json
+- If `active_node` was set (mid-fix):
+  - Clear `active_node` to `null`
+- **Scan ALL `state.nodes` entries for orphaned "sweeping" status.** For each node with `status: "sweeping"`:
+  - If `previous_status` is set: restore `status` to `previous_status`, clear `previous_status`
+  - If `previous_status` is not set: set `status` to `"built"` (safest default — the node was built before the sweep started)
+  - This handles edge cases where the crash happened between setting node status and setting active_node
+- Sweep reports remain in `.forgeplan/sweeps/` for reference
 
 ## Resume
 

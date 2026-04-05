@@ -57,7 +57,7 @@ function main() {
 
   // Build node status list
   const completedStatuses = ["built", "reviewed", "revised"];
-  const inProgressStatuses = ["building", "reviewing", "review-fixing", "revising"];
+  const inProgressStatuses = ["building", "reviewing", "review-fixing", "revising", "sweeping"];
   const nodes = [];
   let completed = 0;
   let inProgress = 0;

@@ -74,10 +74,18 @@ Dogfood results on client portal (7 nodes, 61+ files):
 - All 49 acceptance criteria verified across 7 nodes
 - 15 commands all working end-to-end
 
-### Sprint 6: Autonomous Iterative Sweep
-**Goal:** Cross-model alternating sweep with `/forgeplan:sweep` and `/forgeplan:deep-build`.
+### Sprint 6: Autonomous Iterative Sweep (COMPLETE)
+**Goal:** Cross-model alternating sweep with `/forgeplan:sweep` and `/forgeplan:deep-build`. **DONE.**
 
-## Nine Commands (+2 planned for Sprint 6)
+Deliverables: sweep_state schema in state-schema.json, "sweeping" status across all hooks/scripts, 6 sweep agent definitions (auth-security, type-consistency, error-handling, database, api-contracts, imports), /forgeplan:sweep command (7-phase orchestration), /forgeplan:deep-build command (6-phase autonomous pipeline), cross-model-bridge.js (MCP/CLI/API modes), sweep crash recovery in /forgeplan:recover, sweep-mode enforcement in PreToolUse/PostToolUse, Layer 2 prompt sweeping bypass.
+
+### Sprint 7: Ambient Mode — Proactive Guidance
+**Goal:** ForgePlan becomes an ambient assistant (like superpowers) — detects project state and user activity, proactively suggests relevant commands without requiring explicit slash commands. Three pillars: contextual SessionStart, activity detection, guide skill.
+
+### Sprint 8: Research Agents and Autonomous Greenfield
+**Goal:** Fully autonomous greenfield builds with research agents that search GitHub/npm for existing implementations, check licenses, and gather best practices before building.
+
+## Commands
 
 | Command | Sprint | Description |
 |---------|--------|-------------|
@@ -92,6 +100,7 @@ Dogfood results on client portal (7 nodes, 61+ files):
 | `/forgeplan:recover` | 3 | Crash recovery |
 | `/forgeplan:sweep` | 6 | Parallel codebase sweep + cross-model verification |
 | `/forgeplan:deep-build` | 6 | Full autonomous build→review→sweep→cross-check pipeline |
+| `/forgeplan:research` | 8 | Research agents search for existing implementations, check licenses, gather docs |
 
 ## Three Agents
 
