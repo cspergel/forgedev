@@ -77,11 +77,36 @@ User's project description: $ARGUMENTS
 
 Follow the Architect agent's conversation framework:
 1. **Understand** the project (2-3 questions)
-2. **Decompose** into nodes (3-5 questions, enforce granularity)
-3. **Identify** shared models (entities used by 2+ nodes)
-4. **Map** connections and dependencies
-5. **Validate** and present summary
-6. **Confirm** with user before finalizing
+2. **Establish tech stack** — ask the user what they want to use, or recommend based on the project type. Cover these categories:
+   - **Runtime:** Node.js / Deno / Bun
+   - **Language:** TypeScript / JavaScript
+   - **Database:** Supabase / PostgreSQL (pg) / MySQL / SQLite / DuckDB / MongoDB / Firebase / PlanetScale / Turso / Neon / none
+   - **ORM/Query builder:** Drizzle / Prisma / Knex / TypeORM / raw SQL / Supabase client / Mongoose / none
+   - **API framework:** Express / Fastify / Hono / Koa / none (if serverless)
+   - **Auth:** Supabase Auth / NextAuth / Clerk / Lucia / custom / none
+   - **Test framework:** Vitest / Jest / Mocha / node:test
+   - **Frontend:** React / Vue / Svelte / Next.js / Nuxt / SvelteKit / none (API only)
+   - **Deployment:** Docker / Vercel / Railway / Fly.io / AWS / self-hosted / undecided
+
+   Write these into the manifest under a `tech_stack` section:
+   ```yaml
+   tech_stack:
+     runtime: node
+     language: typescript
+     database: supabase
+     orm: supabase-js
+     api_framework: express
+     auth: supabase-auth
+     test_framework: vitest
+     frontend: react
+     deployment: docker
+   ```
+   The Builder agent reads this to install correct dependencies and use the right patterns. If the user says "I don't know" for any category, recommend the most common/proven option for their project type.
+3. **Decompose** into nodes (3-5 questions, enforce granularity)
+4. **Identify** shared models (entities used by 2+ nodes)
+5. **Map** connections and dependencies. For each interface, establish the **import convention**: how Node B imports from Node A. Use the pattern `src/[node-name]/index.ts` as the canonical export point for every node. Document this in each interface's `contract` field.
+6. **Validate** and present summary
+7. **Confirm** with user before finalizing
 
 After each node addition or major change, show an updated text-based architecture summary.
 

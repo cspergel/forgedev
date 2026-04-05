@@ -241,6 +241,12 @@ function evaluate(input) {
     };
   }
 
+  // --- Project-root exempt files (builders can write to these regardless of file_scope) ---
+  const exemptRootFiles = [".env.example", "package.json", "package-lock.json", "tsconfig.json"];
+  if (exemptRootFiles.includes(relPath)) {
+    return { block: false };
+  }
+
   // --- Load manifest ---
   if (!fs.existsSync(manifestPath)) {
     return {
@@ -302,7 +308,7 @@ function evaluate(input) {
       block: true,
       message:
         `BLOCKED: File "${relPath}" is outside the active node's file_scope "${activeScope}". ` +
-        `Only write files within the active node's territory, or to exempt paths (.forgeplan/, src/shared/types/index.ts).`,
+        `Only write files within the active node's territory, or to exempt paths (.forgeplan/, src/shared/types/index.ts, .env.example, package.json).`,
     };
   }
 

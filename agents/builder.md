@@ -50,7 +50,29 @@ Before writing a single line of code:
 ## Build Process
 
 1. Create the directory structure for this node's `file_scope`
-2. **Shared types materialization** (exempt cross-scope write — see rule 3):
+2. **Read the manifest's `tech_stack` section** (if present) to determine:
+   - Which framework to use (Express, Fastify, React, etc.)
+   - Which test framework to use (Vitest, Jest, etc.)
+   - Which database client to use (Supabase, Prisma, etc.)
+   - If no `tech_stack` section exists, use TypeScript + Express + Vitest as defaults.
+3. **Install node-specific dependencies** for this node. Read the spec's interfaces and acceptance criteria to determine what packages are needed. Run:
+   ```bash
+   npm install [packages]
+   npm install --save-dev [test packages]
+   ```
+   Common patterns:
+   - API node: `express @types/express cors helmet`
+   - Database node: `@supabase/supabase-js` (or the configured DB client)
+   - Frontend node: `react react-dom @types/react` (or the configured frontend framework)
+   - Always install the test framework from `tech_stack` if not already present
+4. **Create an index.ts export file** at the root of this node's `file_scope` (e.g., `src/[node]/index.ts`). This is the canonical import point other nodes use. Export all public interfaces, functions, and types from here.
+5. **Create a .env.example file** (first node only, if it doesn't exist) listing all environment variables this project needs with placeholder values:
+   ```
+   SUPABASE_URL=https://your-project.supabase.co
+   SUPABASE_ANON_KEY=your-anon-key
+   ```
+   Subsequent nodes APPEND their env vars to the existing .env.example.
+6. **Shared types materialization** (exempt cross-scope write — see rule 3):
    - If `src/shared/types/index.ts` does not exist and this node has `shared_dependencies`:
      - Read the `shared_models` section from `.forgeplan/manifest.yaml`
      - Generate `src/shared/types/index.ts` using these **canonical type mapping rules**:
@@ -82,11 +104,11 @@ Before writing a single line of code:
      - This is the ONE place shared models are defined in code — all nodes import from here
    - If `src/shared/types/index.ts` already exists: do NOT modify it during a `/forgeplan:build`. Import from it as-is. (Only `/forgeplan:revise` may regenerate this file when shared models change in the manifest.)
    - The "never redefine locally" rule means: never create a `User` or `Document` type inside your node's `file_scope`. Always `import { User } from 'src/shared/types'`.
-3. Implement each acceptance criterion, annotating source files with `// @forgeplan-spec: AC[n]`
-4. Write tests for each acceptance criterion's `test` field
-5. Ensure all constraints are respected
-6. Ensure no non-goals are implemented
-7. Log decisions and progress to `.forgeplan/conversations/nodes/[node-id].md` (exempt cross-scope write)
+7. Implement each acceptance criterion, annotating source files with `// @forgeplan-spec: AC[n]`
+8. Write tests for each acceptance criterion's `test` field using the test framework from `tech_stack`
+9. Ensure all constraints are respected
+10. Ensure no non-goals are implemented
+11. Log decisions and progress to `.forgeplan/conversations/nodes/[node-id].md` (exempt cross-scope write)
 
 ## Completion
 
