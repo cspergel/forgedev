@@ -125,27 +125,39 @@ Sprint 6 hardening (same sprint, post-initial):
 - **What each tier means for the pipeline:**
   ```
   SMALL (simple CRUD, basic/no auth, no third-party integrations):
+    Governance: lite — still architecture-down, just compressed.
+    → Quick walkthrough: "Here's what I understood. Correct?" (one confirmation)
     → 1-2 coarse nodes (one broad-scope node with file_scope: "src/**")
-    → Single-pass build — builder generates all code in one session
-    → Auto-generate specs from manifest (skip spec conversation)
-    → Lightweight audit: 3-4 agents (auth-security, code-quality, test-quality, cross-node-integration)
-    → No cross-model verification unless requested
-    → Walkthrough: single summary confirmation, not per-feature
+    → Full-quality specs (ACs, non-goals, tests) but quick conversation —
+      Architect drafts, user confirms, no multi-turn refinement
+    → Single-pass build — builder generates all code in one session,
+      including scaffolding
+    → One sweep agent (code-quality) — catches the obvious stuff
+    → No cross-model unless requested
     → Output: working, runnable app in one session
 
   MEDIUM (auth flows, 1-2 integrations, business rules, role-based access):
+    Governance: full specs, moderate process.
+    → Section-level walkthrough (scope, non-goals, models, nodes)
     → 3-5 nodes with sensible boundaries
+    → Full spec conversation per node — detailed ACs, tests, failure modes
     → Sequential build with review after each
     → 6-8 sweep agents (skip documentation, frontend-ux if no frontend)
     → Cross-model optional
-    → Full specs but streamlined conversation
-    → Walkthrough: section-by-section (scope, non-goals, models, nodes)
+    → Output: well-structured app with enforcement
 
   LARGE (multi-tenant, payments, state machines, compliance, multi-team):
-    → Full pipeline: fine-grained nodes, 12 agents, cross-model, deep-build
+    Governance: full pipeline — this is what ForgePlan was designed for.
     → Per-feature walkthrough during discovery
-    → This is what ForgePlan was designed for
+    → Fine-grained nodes with strict boundaries
+    → Full spec conversation with pre-build spec challenge
+    → 12 sweep agents, progressive convergence
+    → Cross-model verification (Codex/GPT/Gemini)
+    → Deep-build with convergence certification
+    → Output: certified, sweep-verified codebase
   ```
+
+  **Key principle:** Spec quality is the same at every tier. What scales is node granularity, verification intensity, and walkthrough depth. The architecture-down approach never disappears — it just gets compressed for simpler projects.
 - **Architect agent update (CRITICAL):** Replace absolute decomposition rules ("NEVER collapse auth/API/database") with tier-conditional rules. SMALL tier explicitly allows and encourages coarse nodes. LARGE tier keeps current rules. Test against all three tiers.
 - **Deep-build adapts to tier:** SMALL = single-pass build, lightweight audit, no cross-model. MEDIUM = current pipeline with fewer agents. LARGE = full pipeline.
 
