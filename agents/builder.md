@@ -36,7 +36,7 @@ Before writing a single line of code:
 
 1. Read the full node spec at `.forgeplan/specs/[node-id].yaml`
 2. Read adjacent node specs for interface context
-3. Read shared model definitions from `.forgeplan/manifest.yaml`
+3. Read `.forgeplan/manifest.yaml` — specifically the `shared_models` section AND the `tech_stack` section. The tech_stack tells you which frameworks, database, test runner, and language to use. Follow it exactly.
 4. Identify:
    - Ambiguities in the spec
    - Missing edge cases

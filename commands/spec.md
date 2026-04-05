@@ -53,6 +53,24 @@ Generate a detailed node spec for the specified node(s).
    - Present summary and get user confirmation before moving to the next node
 4. After all specs are complete, present a full project summary showing all nodes and their acceptance criteria counts
 
+## Autonomous Mode (invoked by deep-build)
+
+When invoked during `/forgeplan:deep-build`, the spec command runs **non-interactively**:
+
+1. Read the manifest (tech_stack, shared_models, node metadata, connections)
+2. Read the existing skeleton spec and adjacent node specs for context
+3. Generate the BEST spec possible without user conversation:
+   - Derive acceptance criteria from the node's role, interfaces, and tech stack
+   - Infer constraints from tech_stack (e.g., "Must use Express for routing" if tech_stack.api_framework is express)
+   - Generate test fields that describe how to verify each AC (e.g., "Run npm test — expect [description]")
+   - Derive non-goals from the node's scope boundaries (what adjacent nodes handle instead)
+   - Derive failure modes from the interface contracts and data flow
+4. Write the spec, run validation, update state
+5. Do NOT ask the user for input or confirmation — deep-build is autonomous
+6. If the generated spec fails validation, fix the validation errors and retry (up to 3 attempts)
+
+The autonomous spec won't be as nuanced as a user-refined spec, but it will be complete enough for the builder to work with. The sweep phase catches issues that a quick spec misses.
+
 ## Spec Quality Gates
 
 Before finalizing any spec, verify:

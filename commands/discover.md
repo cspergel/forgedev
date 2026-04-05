@@ -26,6 +26,9 @@ npm init -y
 Then add TypeScript and common dev dependencies:
 ```bash
 npm install --save-dev typescript @types/node
+```
+If no `tsconfig.json` exists:
+```bash
 npx tsc --init --target ES2022 --module commonjs --outDir dist --rootDir src --strict --esModuleInterop --resolveJsonModule
 ```
 Create `src/` directory if it doesn't exist.
@@ -101,7 +104,21 @@ Follow the Architect agent's conversation framework:
      frontend: react
      deployment: docker
    ```
-   The Builder agent reads this to install correct dependencies and use the right patterns. If the user says "I don't know" for any category, recommend the most common/proven option for their project type.
+   The Builder agent reads this to install correct dependencies and use the right patterns.
+
+   **If the user doesn't know what to pick:** For each category, briefly explain the top 2-3 options with pros/cons, then recommend one based on their project type. Example:
+   ```
+   Database options for your project:
+     Supabase — Hosted Postgres + auth + storage. Fastest to start, free tier.
+                Downside: vendor lock-in, less control.
+     PostgreSQL (self-hosted) — Full control, any hosting. More setup.
+     SQLite — Zero config, file-based. Great for small projects.
+                Downside: no concurrent writes, not for production APIs.
+
+   For a URL shortener with auth, I'd recommend Supabase — fastest path
+   to a working product with built-in auth.
+   ```
+   Always make a recommendation. Don't leave the user stuck choosing.
 3. **Decompose** into nodes (3-5 questions, enforce granularity)
 4. **Identify** shared models (entities used by 2+ nodes)
 5. **Map** connections and dependencies. For each interface, establish the **import convention**: how Node B imports from Node A. Use the pattern `src/[node-name]/index.ts` as the canonical export point for every node. Document this in each interface's `contract` field.
@@ -133,4 +150,21 @@ When discovery is complete:
 }
 ```
 3. Populate the `nodes` object in state.json with each node ID set to `{"status": "pending"}`
-4. Present the final summary and suggest running `/forgeplan:spec --all` next to generate detailed specs, or `/forgeplan:spec [node]` for a specific node.
+4. Create an initial git commit to establish a recovery baseline:
+   ```bash
+   git add -A && git commit -m "forgeplan: project architecture initialized"
+   ```
+5. Present the final summary and suggest next steps:
+   ```
+   Architecture complete! [N] nodes, [N] shared models.
+
+   Next steps — choose your path:
+
+     Manual (more control):
+       → /forgeplan:spec --all     Generate detailed specs (interactive)
+       → /forgeplan:build [node]   Build nodes one at a time
+
+     Autonomous (walk away):
+       → /forgeplan:deep-build     Specs all nodes, builds, reviews, sweeps,
+                                    and cross-model certifies — fully autonomous.
+   ```
