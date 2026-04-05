@@ -16,6 +16,25 @@ const fs = require("fs");
 const path = require("path");
 const yaml = require(path.join(__dirname, "..", "node_modules", "js-yaml"));
 
+/** Escape a string for use in RegExp */
+function escapeRegex(s) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/** Extract a brace-delimited block from content starting at startIndex */
+function extractBlock(content, startIndex) {
+  let depth = 0;
+  let started = false;
+  for (let i = startIndex; i < content.length; i++) {
+    if (content[i] === "{") { depth++; started = true; }
+    else if (content[i] === "}") { depth--; }
+    if (started && depth === 0) {
+      return content.slice(startIndex, i + 1);
+    }
+  }
+  return content.slice(startIndex); // fallback if no closing brace
+}
+
 function main() {
   const cwd = process.cwd();
   const manifestPath =
@@ -197,9 +216,10 @@ function main() {
 
         for (const [modelName, modelDef] of Object.entries(manifest.shared_models)) {
           const fields = modelDef.fields || {};
+          const safeModelName = escapeRegex(modelName);
 
           // Check the interface exists in the file
-          const ifaceRegex = new RegExp(`interface\\s+${modelName}\\s*\\{`, "m");
+          const ifaceRegex = new RegExp(`interface\\s+${safeModelName}\\s*\\{`, "m");
           if (!ifaceRegex.test(sharedTypesContent)) {
             results.push({
               source: "shared_types",
@@ -213,17 +233,15 @@ function main() {
             continue;
           }
 
-          // Check each field exists in the interface
+          // Extract the interface block once using brace-depth counting
+          const ifaceStart = sharedTypesContent.search(ifaceRegex);
+          if (ifaceStart === -1) continue;
+          const ifaceBlock = extractBlock(sharedTypesContent, ifaceStart);
+
+          // Check each field exists in the interface block
           for (const fieldName of Object.keys(fields)) {
-            const fieldRegex = new RegExp(`\\b${fieldName}\\b\\s*[?:]`, "m");
-            // Extract the interface block — assumes regenerate-shared-types.js output format
-            // where closing } is at column 0 on its own line. For hand-edited files,
-            // a brace-depth counter would be more robust.
-            const ifaceStart = sharedTypesContent.search(ifaceRegex);
-            if (ifaceStart === -1) continue;
-            const afterIface = sharedTypesContent.slice(ifaceStart);
-            const closingBrace = afterIface.indexOf("\n}");
-            const ifaceBlock = closingBrace > 0 ? afterIface.slice(0, closingBrace + 2) : afterIface;
+            const safeFieldName = escapeRegex(fieldName);
+            const fieldRegex = new RegExp(`\\b${safeFieldName}\\b\\s*[?:]`, "m");
 
             if (!fieldRegex.test(ifaceBlock)) {
               results.push({
@@ -268,6 +286,7 @@ function main() {
   const failed = results.filter((r) => r.status === "FAIL").length;
   const pending = results.filter((r) => r.status === "PENDING").length;
   const warned = results.filter((r) => r.status === "WARN").length;
+  const unknown = results.filter((r) => r.status === "UNKNOWN").length;
 
   console.log(JSON.stringify({
     type: "integration_report",
@@ -276,7 +295,7 @@ function main() {
     failed,
     pending,
     warned,
-    verdict: failed > 0 ? "FAIL" : pending > 0 ? "INCOMPLETE" : warned > 0 ? "PASS_WITH_WARNINGS" : "PASS",
+    verdict: failed > 0 ? "FAIL" : (pending > 0 || unknown > 0) ? "INCOMPLETE" : warned > 0 ? "PASS_WITH_WARNINGS" : "PASS",
     interfaces: results,
   }, null, 2));
 }
@@ -284,5 +303,5 @@ function main() {
 if (require.main === module) {
   main();
 } else {
-  module.exports = { main, checkIntegration: main };
+  module.exports = { main, checkIntegration: main, escapeRegex, extractBlock };
 }

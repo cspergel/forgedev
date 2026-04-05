@@ -14,10 +14,12 @@ Reopen a completed node for modification and analyze change impact.
 ## Batch Mode: `--model [model-name]`
 
 If the argument starts with `--model`, this is a shared model cascade:
-1. Run the affected-node finder: `node "${CLAUDE_PLUGIN_ROOT}/scripts/find-affected-nodes.js" [model-name]`
-2. Present the list of affected nodes to the user
-3. For each affected node, run the revision flow below (update spec, rebuild)
-4. After all nodes are revised, run `/forgeplan:integrate` to verify coherence
+1. Run `node "${CLAUDE_PLUGIN_ROOT}/scripts/regenerate-shared-types.js"` to update `src/shared/types/index.ts` with the new model fields
+2. Run `node "${CLAUDE_PLUGIN_ROOT}/scripts/find-affected-nodes.js" [model-name]` to identify all affected nodes
+3. Present the full list of affected nodes and remediation plan to the user for confirmation
+4. For each affected node (in dependency order), run `/forgeplan:spec [node]` then `/forgeplan:build [node]` — wait for user confirmation between nodes
+5. If any node fails during the cascade, stop and report which nodes were successfully updated and which remain
+6. After all nodes are revised, run `/forgeplan:integrate` to verify coherence
 
 ## Single Node Mode
 
