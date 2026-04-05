@@ -118,10 +118,10 @@ function mapType(typeStr) {
   // Check for (optional) marker
   const optional = /\(optional\)/i.test(str);
 
-  // Extract base type and parenthetical
-  const parenMatch = str.match(/^(\w+)\s*\((.+)\)$/);
-  const baseType = parenMatch ? parenMatch[1].toLowerCase() : str.toLowerCase();
-  const paren = parenMatch ? parenMatch[2].trim() : null;
+  // Extract base type and parenthetical using first-paren split (handles non-word chars in type)
+  const parenIdx = str.indexOf("(");
+  const baseType = parenIdx > -1 ? str.slice(0, parenIdx).trim().toLowerCase() : str.toLowerCase();
+  const paren = parenIdx > -1 ? str.slice(parenIdx + 1, str.lastIndexOf(")")).trim() : null;
 
   let tsType = "unknown";
   let jsdoc = null;
@@ -142,8 +142,8 @@ function mapType(typeStr) {
         // string (UUID → Model.id)
         if (paren.includes("→") || paren.includes("->")) {
           tsType = "string";
-          const ref = paren.replace(/→|->/, "→").trim();
-          jsdoc = `References ${ref}`;
+          const parts = paren.split(/→|->/).map((s) => s.trim());
+          jsdoc = `References ${parts[parts.length - 1]}`;
           break;
         }
         // string (UUID), string (ISO 8601), string (optional)
@@ -165,6 +165,11 @@ function mapType(typeStr) {
       // Unknown base type — use as-is
       tsType = baseType;
       break;
+  }
+
+  // Per builder.md: optional fields get "type | undefined"
+  if (optional) {
+    tsType = `${tsType} | undefined`;
   }
 
   return { tsType, optional, jsdoc };

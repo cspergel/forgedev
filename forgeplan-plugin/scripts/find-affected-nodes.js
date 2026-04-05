@@ -80,7 +80,7 @@ function findAffectedNodes(modelName, forgePlanDir) {
   return {
     model: modelName,
     model_exists_in_manifest: modelExists,
-    model_fields: modelExists ? Object.keys(sharedModels[modelName].fields || {}) : [],
+    model_fields: modelExists ? Object.keys((sharedModels[modelName] || {}).fields || {}) : [],
     affected_count: affected.length,
     affected,
     remediation: affected.map((n) => ({
