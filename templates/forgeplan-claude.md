@@ -1,6 +1,6 @@
 # ForgePlan Project — Claude Code Instructions
 
-This project uses **ForgePlan Core**, an architecture-governed build harness. The `.forgeplan/` directory contains the project manifest, node specs, and build state.
+This project uses **ForgePlan Core**, an architecture-governed build harness. ForgePlan works **architecture down, not code up** — the architecture is defined first, then enforced as code is generated. The `.forgeplan/` directory contains the project manifest, node specs, and build state.
 
 ## Critical Rules
 

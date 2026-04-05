@@ -2,7 +2,9 @@
 
 **Architecture-governed AI development. Build software that stays coherent.**
 
-ForgePlan is a Claude Code plugin that turns your architecture into an enforceable contract. Define your system as a node graph with specs, then build node by node — with every file write checked against your architecture, every build verified against acceptance criteria, and every change propagated to affected nodes.
+*For developers using Claude Code who want AI-generated code to stay coherent as projects grow.*
+
+ForgePlan works **architecture down, not code up.** You define the system first — nodes, specs, shared models, constraints — then the harness enforces it as AI builds the code. Every file write is checked against your architecture, every build is verified against acceptance criteria, and every change propagates to affected nodes.
 
 ## The Problem
 
@@ -110,7 +112,7 @@ ForgePlan doesn't just suggest — it blocks bad writes deterministically:
 
 | Command | Description |
 |---------|-------------|
-| `/forgeplan:discover` | Architecture discovery — guided conversation, document import, or template |
+| `/forgeplan:discover` | Architecture discovery — guided conversation or template |
 | `/forgeplan:spec [node\|--all]` | Generate detailed node specifications |
 | `/forgeplan:build [node\|--all]` | Build with full enforcement |
 | `/forgeplan:review [node]` | 7-dimension spec-diff review with evidence |
