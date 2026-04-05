@@ -215,13 +215,13 @@ function main() {
 
       const suggestions = [];
       if (reviewed < nodeIds.length) {
-        suggestions.push({ command: "/forgeplan:review --all", description: "Review all built nodes" });
+        suggestions.push({ command: "/forgeplan:review --all", description: "Review all built nodes for spec compliance" });
       }
-      suggestions.push({ command: "/forgeplan:integrate", description: "Verify cross-node interfaces" });
-      suggestions.push({ command: "/forgeplan:measure", description: "Check quality metrics (broken refs, duplicates, stubs)" });
-      suggestions.push({ command: "/forgeplan:revise --model User", description: "Change a shared model field — cascades to all affected nodes" });
-      suggestions.push({ command: "/forgeplan:revise [node-id]", description: "Change a single node's spec or interfaces" });
-      suggestions.push({ command: "/forgeplan:status", description: "Full project overview" });
+      suggestions.push({ command: "/forgeplan:integrate", description: "Verify all cross-node interfaces work together" });
+      suggestions.push({ command: "/forgeplan:measure", description: "Check code quality (broken references, duplicate types, stubs)" });
+      suggestions.push({ command: "/forgeplan:revise --model [ModelName]", description: "Need to add a field or change a shared data model? This finds every affected node and walks you through updating them" });
+      suggestions.push({ command: "/forgeplan:revise [node-id]", description: "Need to change how a specific node works? This analyzes the impact and guides you through the update" });
+      suggestions.push({ command: "/forgeplan:status", description: "See the full project at a glance" });
       suggestions.push({ command: "/forgeplan:help", description: "See all available commands" });
 
       const result = {
