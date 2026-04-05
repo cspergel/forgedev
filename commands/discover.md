@@ -12,21 +12,46 @@ You are starting a ForgePlan architecture discovery session.
 
 ## Setup
 
-First, create the `.forgeplan/` directory structure if it doesn't exist:
+First, set up the project directory for a greenfield build if needed:
 
+**1. Git initialization** (if not already a git repo):
+```bash
+git init
+```
+
+**2. Project scaffolding** (if no package.json exists):
+```bash
+npm init -y
+```
+Then add TypeScript and common dev dependencies:
+```bash
+npm install --save-dev typescript @types/node
+npx tsc --init --target ES2022 --module commonjs --outDir dist --rootDir src --strict --esModuleInterop --resolveJsonModule
+```
+Create `src/` directory if it doesn't exist.
+
+**3. Create the `.forgeplan/` directory structure:**
 ```
 .forgeplan/
 ├── specs/
 ├── conversations/
 │   └── nodes/
-└── reviews/
+├── reviews/
+└── sweeps/
 ```
 
-Then set up the ForgePlan CLAUDE.md in the project root:
+**4. Set up ForgePlan CLAUDE.md:**
 - If no `CLAUDE.md` exists: copy `${CLAUDE_PLUGIN_ROOT}/templates/forgeplan-claude.md` to `CLAUDE.md`
 - If a `CLAUDE.md` already exists: append the ForgePlan section under a `# ForgePlan Project` heading at the end, but only if it doesn't already contain that heading
 
-Also append the `.forgeplan/state.json` exclusion from `${CLAUDE_PLUGIN_ROOT}/templates/forgeplan-gitignore` to the project's `.gitignore` if not already present.
+**5. Set up .gitignore:**
+Append the entries from `${CLAUDE_PLUGIN_ROOT}/templates/forgeplan-gitignore` to the project's `.gitignore` if not already present. Also ensure these common entries are present:
+```
+node_modules/
+dist/
+.env
+.env.*
+```
 
 ## Template Mode
 
@@ -76,8 +101,10 @@ When discovery is complete:
   "last_updated": "[current ISO timestamp]",
   "active_node": null,
   "nodes": {},
+  "shared_types_created_by": null,
   "stop_hook_active": false,
-  "discovery_complete": true
+  "discovery_complete": true,
+  "sweep_state": null
 }
 ```
 3. Populate the `nodes` object in state.json with each node ID set to `{"status": "pending"}`
