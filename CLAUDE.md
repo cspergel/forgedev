@@ -161,6 +161,21 @@ Sprint 6 hardening (same sprint, post-initial):
 - `/forgeplan:discover template:e-commerce` includes researched dependency stack
 - Integration with MCP servers for live API validation during builds
 
+**Pillar 6: Skill-Augmented Building**
+- Builder agent detects node type (frontend, API, database, auth) and invokes relevant external skills
+- Frontend nodes: invoke `frontend-design` skill for polished UI, layout decisions, design system choices
+- User gets prompted for style/vibe preferences (or uses project-level defaults in config.yaml)
+- API nodes: invoke API design patterns skill for RESTful conventions, pagination, error response formats
+- Database nodes: invoke schema design skill for normalization, indexing strategy, migration patterns
+- Skills run during the pre-build spec challenge phase — design decisions become spec constraints
+- Extensible: users can register custom skills per node type in config.yaml
+  ```yaml
+  skills:
+    frontend: frontend-design    # invoke this skill for frontend nodes
+    api: api-patterns            # invoke for API nodes
+    database: schema-design      # invoke for database nodes
+  ```
+
 ## Commands
 
 | Command | Sprint | Description |
