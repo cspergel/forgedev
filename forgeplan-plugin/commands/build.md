@@ -50,6 +50,8 @@ The Builder agent receives:
 - Shared model definitions from the manifest
 - The constraint directive (see Builder agent prompt)
 
+**Model selection:** Default is `sonnet`. Override via `models.builder` in `.forgeplan/config.yaml`. For complex integration nodes, consider `models.builder_override.[node-id]: "opus"`. The architect uses `opus` by default because discovery requires the strongest reasoning.
+
 ## Completion — Stop Hook Owns This Transition
 
 **Do NOT manually update `nodes.[node-id].status` to `"built"` or clear `active_node`.** The Stop hook is the sole gate between `"building"` and `"built"`:

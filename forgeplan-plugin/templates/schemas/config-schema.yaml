@@ -35,12 +35,30 @@ enforcement:
   #              (node advances to "reviewed" regardless of cross-model findings)
   mode: "advisory"
 
-# --- Model Tiering (Sprint 6) ---
+# --- Model Configuration ---
 # Assign different models to different roles for cost optimization.
-# tiering:
-#   architect: "opus"             # Most capable — system design decisions
-#   builder_simple: "sonnet"      # Leaf nodes with narrow specs
-#   builder_complex: "opus"       # Integration nodes with many dependencies
-#   reviewer: "opus"              # Critical analysis
-#   sweep_mechanical: "sonnet"    # Type consistency, import checks
-#   sweep_reasoning: "opus"       # Security audit, architecture review
+# Uses Claude model names: "opus", "sonnet", "haiku"
+# Default is "sonnet" for most tasks — override specific roles as needed.
+models:
+  # Architecture & discovery — needs strong reasoning
+  architect: "opus"
+
+  # Building — depends on node complexity
+  builder: "sonnet"              # Default for all builds
+  # builder_override:            # Optional per-node overrides
+  #   database: "sonnet"         # Simple schema work
+  #   auth: "opus"               # Complex auth flows
+  #   api: "opus"                # Integration-heavy
+
+  # Review — needs critical analysis
+  reviewer: "sonnet"             # Per-node spec-diff review
+  reviewer_final: "opus"         # Final review before ship (Sprint 5)
+
+  # Spec generation
+  spec: "sonnet"                 # Most specs are straightforward
+
+  # Sprint 6 sweep agents
+  # sweep_type_check: "sonnet"   # Mechanical pattern matching
+  # sweep_security: "opus"       # Reasoning-heavy security audit
+  # sweep_api: "sonnet"          # Contract verification
+  # sweep_imports: "haiku"       # Simple import chain analysis

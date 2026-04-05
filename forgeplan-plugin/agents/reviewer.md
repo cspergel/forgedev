@@ -1,7 +1,7 @@
 ---
 name: reviewer
 description: Spec-diff review agent. Audits node implementations against their specs using seven audit dimensions with per-criterion pass/fail and code evidence citations. Use when running /forgeplan:review.
-model: opus
+model: sonnet
 maxTurns: 30
 tools: Read, Write, Glob, Grep, Bash
 ---
