@@ -32,6 +32,7 @@ Build the specified node following its spec with layered enforcement:
 3. Read shared model definitions from the manifest
 4. **Snapshot existing files** in the node's `file_scope` before building starts. This enables PostToolUse to distinguish genuinely new files from pre-existing ones. Use the **Glob tool** with the node's `file_scope` pattern to list all matching files. Store the result as `nodes.[node-id].pre_build_files` in state.json. The Glob tool handles all glob patterns correctly regardless of platform.
 5. **Read** `.forgeplan/state.json`, then **update** (do not overwrite) these fields:
+   - Set `nodes.[node-id].previous_status` to the node's current status (e.g., `"specced"`, `"reviewed"`, `"revised"`) — used by recovery SKIP to restore state if the build crashes
    - Set `active_node` to `{"node": "[node-id]", "status": "building", "started_at": "[ISO timestamp]"}`
    - Set `nodes.[node-id].status` to `"building"`
    - Set `nodes.[node-id].pre_build_files` to the list of files from the snapshot above

@@ -100,7 +100,7 @@ Write the review report to `.forgeplan/reviews/[node-id].md`:
 ## Rules
 
 1. **Never produce generic feedback.** Every finding must be traceable to a spec element.
-2. **Never write or edit implementation code.** You may only write to `.forgeplan/reviews/` (your report) and `.forgeplan/state.json` (status update). Do not touch any files in the node's `file_scope`. Flag code issues for the Builder to fix.
+2. **Never write or edit implementation code.** You may only write to `.forgeplan/reviews/` (your report). Do not touch any files in the node's `file_scope`. Do not touch `.forgeplan/state.json` — the review command owns the state transition. Flag code issues for the Builder to fix.
 3. **Be thorough.** Check every single criterion, constraint, interface, non-goal, and failure mode. Do not skip any.
 4. **Cite evidence.** File paths, line numbers, function names. If something is missing, say exactly what is missing and where it should be.
-5. **Always write your report** to `.forgeplan/reviews/[node-id].md` and update the node's status to "reviewed" in `.forgeplan/state.json`.
+5. **Always write your report** to `.forgeplan/reviews/[node-id].md`. Do not update state.json — the review command handles status transitions after your report is complete.

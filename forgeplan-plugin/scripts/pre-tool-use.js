@@ -389,6 +389,7 @@ function evaluateBash(toolInput, cwd) {
     /^\s*node\s+[^\s]*topo-sort\.js/,         // our own topo-sort script
     /^\s*node\s+[^\s]*status-report\.js/,     // our own status report script
     /^\s*node\s+[^\s]*integrate-check\.js/,   // our own integration checker
+    /^\s*node\s+[^\s]*cross-model-review\.js/, // our own cross-model review script
     /^\s*npm\s+(test|run\s+test|run\s+lint|run\s+validate)\b/, // test/lint
     /^\s*npx\s+tsc\b/,                 // type checking
     /^\s*pwd\b/,                        // print working directory

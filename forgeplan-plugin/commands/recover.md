@@ -30,9 +30,10 @@ Files created: [count] files in [file_scope]
 Options:
   1. RESUME  — Continue building from where it left off (restarts Builder agent)
   2. RESET   — Clear generated files and restart the build
-  3. REVIEW  — Mark as built and run review to assess what was completed
+  3. REVIEW  — Mark as built and run review to assess what was completed (WARNING: bypasses Stop hook acceptance criteria verification)
+  4. SKIP    — Restore node to its status before the build started (e.g., "reviewed" if this was a re-build). Uses `nodes.[node-id].previous_status`. Only available if previous_status is set.
 
-Choose [1/2/3]:
+Choose [1/2/3/4]:
 ```
 
 ### If crashed during `reviewing`:
@@ -67,7 +68,7 @@ Choose [1/2/3]:
 ## Resume
 
 Resume behavior depends on the crashed operation. **Read** state.json, then **update** (do not overwrite):
-- **Building:** Set `active_node` to `{"node": "[node-id]", "status": "building", "started_at": "[current ISO timestamp]"}`, set `last_updated`, start the **Builder agent** with existing files as context
+- **Building:** Set `active_node` to `{"node": "[node-id]", "status": "building", "started_at": "[current ISO timestamp]"}`, reset `nodes.[node-id].bounce_count` to `0`, set `last_updated`, start the **Builder agent** with existing files as context
 - **Reviewing:** Set `active_node` to `{"node": "[node-id]", "status": "reviewing", "started_at": "[current ISO timestamp]"}`, set `last_updated`, start the **Reviewer agent** from scratch
 - **Revising:** Set `active_node` to `{"node": "[node-id]", "status": "revising", "started_at": "[current ISO timestamp]"}`, set `last_updated`, re-read spec and manifest, continue revision
 
@@ -91,3 +92,14 @@ Resume behavior depends on the crashed operation. **Read** state.json, then **up
 - Clear active_node
 - Run the Reviewer to assess partial completion
 - The review report will show which acceptance criteria are met and which are not
+- **WARNING:** This bypasses the Stop hook's acceptance criteria verification. The node is marked "built" without verifying all criteria pass. The subsequent review will identify gaps.
+
+## Skip (building — re-builds only)
+
+Only available when `nodes.[node-id].previous_status` is set (i.e., the node had a status like "reviewed" or "revised" before this build started).
+
+- Set `nodes.[node-id].status` to `nodes.[node-id].previous_status`
+- Clear `nodes.[node-id].previous_status` to `null`
+- Clear `active_node` to `null`
+- Set `last_updated` to current ISO timestamp
+- Implementation files created during this build remain on disk (not deleted). The node returns to its pre-build state as if the build was never started.
