@@ -95,7 +95,19 @@ function evaluate(input) {
   try {
     state = JSON.parse(fs.readFileSync(statePath, "utf-8"));
   } catch (err) {
-    // state.json exists but can't be parsed — enforcement is compromised
+    // state.json exists but can't be parsed — enforcement is compromised.
+    // ESCAPE HATCH: allow writes TO state.json itself (to fix the corruption)
+    // and allow rm/delete of state.json. Block everything else.
+    const isFixingState =
+      (toolName === "Write" || toolName === "Edit") &&
+      relPath === ".forgeplan/state.json";
+    const isDeletingState =
+      toolName === "Bash" &&
+      toolInput.command &&
+      /\brm\b.*\.forgeplan[/\\]state\.json/.test(toolInput.command);
+    if (isFixingState || isDeletingState) {
+      return { block: false }; // Allow the fix
+    }
     return {
       block: true,
       message:
@@ -379,11 +391,16 @@ function evaluateBash(toolInput, cwd) {
   try {
     state = JSON.parse(fs.readFileSync(statePath, "utf-8"));
   } catch (err) {
+    // ESCAPE HATCH: allow rm of state.json to break the deadlock
+    if (/\brm\b.*\.forgeplan[/\\]state\.json/.test(command)) {
+      return { block: false };
+    }
     return {
       block: true,
       message:
         `BLOCKED: .forgeplan/state.json could not be parsed: ${err.message}. ` +
-        `Shell commands blocked while enforcement state is corrupted. Fix or delete state.json.`,
+        `Shell commands blocked while enforcement state is corrupted. ` +
+        `To fix: run \`rm .forgeplan/state.json\` or use Write tool to overwrite it.`,
     };
   }
 
