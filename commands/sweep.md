@@ -119,6 +119,8 @@ Each agent returns findings in the structured FINDING format or CLEAN.
 
 ### Phase 4: Fix findings (node-scoped)
 
+**THIS PHASE IS FULLY AUTONOMOUS. Fix ALL findings — do NOT ask the user which findings to fix, do NOT ask for confirmation, do NOT prioritize by severity. Fix everything in dependency order. The sweep is designed to loop: fix → re-sweep → fix → converge. If a fix introduces a new issue, the next sweep pass will catch it. Asking the user breaks the autonomous loop.**
+
 For each node that has findings, in dependency order (use topological sort from manifest `depends_on`):
 
 1. **Save node's current status:** Set `nodes.[node-id].previous_status` to current `nodes.[node-id].status` (e.g., "built", "reviewed", "revised")
