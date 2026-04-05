@@ -71,11 +71,12 @@ Write the native review report to `.forgeplan/reviews/[node-id].md` using the st
 
 Check `multi_agent_review.enabled` in config.yaml. If true and the native review found issues (REQUEST CHANGES):
 
-1. Spawn a **fresh Builder agent** with:
-   - The original node spec
-   - The current code on disk
-   - The specific review findings to address
+1. Spawn a **fresh Builder agent** using `context: fork` (isolated subagent with NO shared context from the current session). Provide it ONLY:
+   - The original node spec (read fresh from `.forgeplan/specs/[node-id].yaml`)
+   - The current code on disk (read fresh from the node's `file_scope`)
+   - The specific review findings to address (from the review report)
    - Instruction: fix ONLY the cited issues, do not refactor or add features
+   - Do NOT pass conversation history, prior reasoning, or the builder's original context
    - **Model selection** based on `fixer_model` config:
      - `"opus"` — use opus for all fixes
      - `"auto-high"` (default, recommended) — classify each finding:
@@ -86,11 +87,11 @@ Check `multi_agent_review.enabled` in config.yaml. If true and the native review
        - **Directed** (missing AC, add validation, wire interface) → `sonnet`
        - **Complex** (architectural, multi-file, security) → `opus`
      - `"sonnet"` or `"haiku"` — use that model for all fixes
-2. After fixes, spawn a **fresh Reviewer agent** (using `multi_agent_review.reviewer_model`, default opus) to re-review
+2. After fixes, spawn a **fresh Reviewer agent** using `context: fork` (using `multi_agent_review.reviewer_model`, default opus) to re-review from scratch
 3. If still REQUEST CHANGES and cycle count < `max_cycles` (default 3), repeat from step 1
 4. If APPROVE or max cycles reached, proceed to Step 2
 
-Each cycle uses a FRESH agent — no shared context with the builder that wrote the original code or the previous fix agent. This eliminates same-context blindness.
+**Context rules:** The review command itself (the orchestrator) retains context across cycles — it needs to track progress, compare findings, and decide when to stop. But every agent it **dispatches** (fixer agents and reviewer agents) must be spawned fresh with `context: fork` — no shared conversation history, no prior reasoning, no builder context. This is what eliminates same-context blindness.
 
 The cycle reports are appended to `.forgeplan/reviews/[node-id].md` with cycle numbers.
 

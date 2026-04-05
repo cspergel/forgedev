@@ -39,7 +39,7 @@ Generate a detailed node spec for the specified node(s).
 
 ## All Nodes Mode (`/forgeplan:spec --all`)
 
-1. Read the manifest and determine dependency order. Run the next-node script to get the topological order, or read the manifest and sort manually:
+1. Read the manifest and determine dependency order. Always use the deterministic script — do not attempt manual sorting:
    ```bash
    node "${CLAUDE_PLUGIN_ROOT}/scripts/topo-sort.js"
    ```

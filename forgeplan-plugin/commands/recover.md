@@ -45,7 +45,7 @@ Partial review: [check if .forgeplan/reviews/[node-id].md exists]
 
 Options:
   1. RESUME  — Restart the review from scratch (restarts Reviewer agent)
-  2. SKIP    — Restore node to `nodes.[node-id].previous_status` (set at review start), clear active_node — review later
+  2. SKIP    — Restore node to `nodes.[node-id].previous_status` (set at review start), clear active_node — review later. Only available if `previous_status` is set.
   3. ACCEPT  — If partial review exists, mark as reviewed using existing report
 
 Choose [1/2/3]:
