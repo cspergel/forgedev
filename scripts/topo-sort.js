@@ -51,7 +51,14 @@ function topoSort(manifestPath) {
   }
 
   if (order.length !== nodes.length) {
-    return { error: "Cycle detected — cannot determine build order." };
+    // Identify cycle participants — nodes that were never added to the sorted output
+    const sortedSet = new Set(order);
+    const cycleNodes = nodes.filter((n) => !sortedSet.has(n));
+    return {
+      error: `Cycle detected — cannot determine build order. Nodes in cycle: ${cycleNodes.join(", ")}`,
+      order,
+      cycles: cycleNodes,
+    };
   }
 
   return { order };

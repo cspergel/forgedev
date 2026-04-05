@@ -78,8 +78,14 @@ Agent definition files (read these, use as system prompts):
    - `last_findings_pass`: which pass this agent last found something
    - `consecutive_clean`: how many consecutive passes returned CLEAN
 3. On **pass 2+**: only dispatch agents where `status !== "converged"`. An agent that returned CLEAN on pass N gets re-run ONCE on pass N+1 to confirm. If clean again → `status: "converged"`, agent is retired for the rest of the sweep.
+   **Anti-oscillation guard:** Track each agent's finding count per pass. If an agent's finding count stays the same or increases for 3 consecutive passes (oscillation detected), force-converge it with `status: "force-converged"` and add its remaining findings to a `needs_manual_attention` list in `sweep_state`. Log: "Agent [name] force-converged after 3 oscillating passes — [N] findings moved to manual attention."
 4. **Exception:** `cross-node-integration` always re-runs if ANY other agent had findings (since fixes in one domain can break integration). It only converges when it returns CLEAN AND no other active agents had findings in the same pass.
 5. **Exception:** `code-quality` re-runs if ANY agent had findings (cross-cutting by nature). Same convergence rule as cross-node-integration.
+
+**Token budget:** Before dispatching, estimate total content size (sum of all file sizes in bytes). If over 200KB, use a tiered approach:
+1. Give each agent only the files relevant to its domain — e.g., `sweep-database` gets database node files + shared types, `sweep-frontend-ux` gets frontend node files + shared types. Map agent names to node IDs by matching the agent's domain keyword against node IDs and `file_scope` patterns.
+2. Always include shared types (`src/shared/types/index.ts`) and manifest for context with every agent.
+3. If a single node's files exceed 100KB, instruct the agent to use Read/Grep tools on-demand instead of receiving file content upfront. Provide only file paths and the manifest so the agent knows what to inspect.
 
 **How to dispatch:** Use the Agent tool to dispatch all active agents **in parallel** (single message, N Agent tool calls).
 
@@ -203,7 +209,11 @@ node "${CLAUDE_PLUGIN_ROOT}/scripts/integrate-check.js"
 - `failures = interfaces.filter(i => i.status === "FAIL")`
 - **If `verdict === "INCOMPLETE"`:** Log a warning ("Integration check incomplete — some nodes may not have registered files. Treating as pass for sweep purposes."). Set `passed = true`. Do NOT loop — INCOMPLETE means pending/unknown interfaces that the sweep cannot fix (they need builds, not fixes). This prevents an infinite loop.
 4. Update `sweep_state.integration_results`.
-5. If integration fails AND `failures.length > 0`, add failures as new findings in `sweep_state.findings.pending` and loop back to Phase 4 (set `current_phase` back to `"claude-fix"`). If integration fails but `failures.length === 0` (edge case — non-PASS verdict with no FAIL interfaces), treat as pass with a warning to prevent an empty-fix infinite loop.
+5. If integration fails AND `failures.length > 0`, classify each failure before adding:
+   - **Skip** failures where the fault is `MISSING_SPEC`, `BOTH` (neither side built), or where either node's status is `pending` or `specced` — these cannot be fixed by the sweep. Log: "Skipping integration failure [description] — node(s) not yet built."
+   - **Add** only failures where both participating nodes are in `built`, `reviewed`, `revised`, or `sweeping` status as new findings in `sweep_state.findings.pending` and loop back to Phase 4 (set `current_phase` back to `"claude-fix"`).
+   - If all failures were skipped (none actionable), treat as pass with a warning to prevent an empty-fix infinite loop.
+   If integration fails but `failures.length === 0` (edge case — non-PASS verdict with no FAIL interfaces), treat as pass with a warning to prevent an empty-fix infinite loop.
 6. If integration passes and no `--cross-check` flag: set `current_phase` to `"finalizing"` and proceed to Phase 7.
 7. If integration passes and `--cross-check` flag: proceed to Phase 6.
 

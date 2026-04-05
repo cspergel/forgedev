@@ -433,6 +433,7 @@ function evaluateBash(toolInput, cwd) {
     /^\s*wc\s/,                         // word count
     /^\s*diff\s/,                       // diff
     /^\s*git\s+(status|log|diff|show|branch|remote|tag|stash\s+list)\b/,
+    /^\s*git\s+(add|commit)\b/,           // per-pass commits during sweep/deep-build
     /^\s*node\s+[^\s]*validate-manifest\.js/,  // our own validation script
     /^\s*node\s+[^\s]*validate-spec\.js/,     // our own spec validator
     /^\s*node\s+[^\s]*next-node\.js/,         // our own next-node script
@@ -448,7 +449,7 @@ function evaluateBash(toolInput, cwd) {
     /^\s*codex\b/,                        // cross-model review via Codex CLI
     /^\s*gemini\b/,                       // cross-model review via Gemini CLI
     /^\s*claude\s+mcp\s+(call|list)\b/,   // cross-model review via MCP
-    /^\s*npm\s+(test|run\s+test|run\s+lint|run\s+validate|install)\b/, // test/lint/install
+    /^\s*npm\s+(test|run\s+test|run\s+lint|run\s+validate|install)\b/, // test/lint/install — NOTE: npm install can execute pre/postinstall scripts; tradeoff accepted since blocking installs breaks build workflows
     /^\s*npx\s+tsc\b/,                 // type checking
     /^\s*pwd\b/,                        // print working directory
     /^\s*echo\s/,                       // echo without redirection (checked below)
@@ -502,8 +503,12 @@ function evaluateBash(toolInput, cwd) {
 function findOwningNode(nodes, filePath, excludeNodeId) {
   for (const [nodeId, nodeData] of Object.entries(nodes)) {
     if (nodeId === excludeNodeId) continue;
-    if (nodeData.file_scope && minimatch(filePath, nodeData.file_scope)) {
-      return nodeId;
+    if (nodeData.file_scope) {
+      // Normalize backslashes to forward slashes for Windows compatibility
+      const normalizedScope = nodeData.file_scope.replace(/\\/g, "/");
+      if (minimatch(filePath, normalizedScope)) {
+        return nodeId;
+      }
     }
   }
   return null;

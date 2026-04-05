@@ -15,6 +15,16 @@
 const fs = require("fs");
 const path = require("path");
 
+/**
+ * Atomic JSON write — writes to a temp file first, then renames.
+ * Prevents concurrent read-modify-write from producing corrupt state.json.
+ */
+function atomicWriteJson(filePath, data) {
+  const tmp = filePath + ".tmp";
+  fs.writeFileSync(tmp, JSON.stringify(data, null, 2), "utf-8");
+  fs.renameSync(tmp, filePath);
+}
+
 let inputData = "";
 process.stdin.setEncoding("utf-8");
 process.stdin.on("data", (chunk) => {
@@ -65,10 +75,7 @@ function processHook(input) {
         const nodeId = stateData.active_node.node;
         if (!stateData.shared_types_created_by) {
           stateData.shared_types_created_by = nodeId;
-          fs.writeFileSync(
-            path.join(cwd, ".forgeplan", "state.json"),
-            JSON.stringify(stateData, null, 2), "utf-8"
-          );
+          atomicWriteJson(path.join(cwd, ".forgeplan", "state.json"), stateData);
         }
       }
     } catch { /* best effort */ }
@@ -186,7 +193,7 @@ function processHook(input) {
 
     if (targetList && !state.nodes[activeNodeId][targetList].includes(relPath)) {
       state.nodes[activeNodeId][targetList].push(relPath);
-      fs.writeFileSync(statePath, JSON.stringify(state, null, 2), "utf-8");
+      atomicWriteJson(statePath, state);
     }
   } catch (err) {
     process.stderr.write(
@@ -210,7 +217,7 @@ function processHook(input) {
         if (!freshState.sweep_state.modified_files_by_pass[passKey].includes(relPath)) {
           freshState.sweep_state.modified_files_by_pass[passKey].push(relPath);
           freshState.last_updated = new Date().toISOString();
-          fs.writeFileSync(statePath, JSON.stringify(freshState, null, 2), "utf-8");
+          atomicWriteJson(statePath, freshState);
         }
       }
     } catch (err) {

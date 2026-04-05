@@ -352,6 +352,8 @@ async function reviewViaApi(config, prompt) {
 
 /**
  * Parse a review response into structured format.
+ * Extracts verdict from the LAST "Recommendation:" line to avoid false positives
+ * (e.g., "I would APPROVE with minor changes" in body text).
  */
 function parseReviewResponse(text) {
   const report = typeof text === "string" ? text.trim() : String(text).trim();
@@ -361,15 +363,21 @@ function parseReviewResponse(text) {
   const violatedMatches = report.match(/\bVIOLATED\b/gi) || [];
   const findingsCount = failMatches.length + violatedMatches.length;
 
-  // Determine status
-  const hasApprove = /\bAPPROVE\b/i.test(report);
-  const hasRequestChanges = /\bREQUEST CHANGES\b/i.test(report);
-
+  // Determine status from the LAST "Recommendation:" line only
   let status = "unknown";
-  if (hasApprove && !hasRequestChanges) status = "approved";
-  else if (hasRequestChanges) status = "changes_requested";
-  else if (findingsCount > 0) status = "changes_requested";
-  else status = "approved";
+  const lines = report.split("\n");
+  const recLine = lines.slice().reverse().find((l) => /^\s*Recommendation:/i.test(l));
+
+  if (recLine) {
+    if (/REQUEST CHANGES/i.test(recLine)) status = "changes_requested";
+    else if (/APPROVE/i.test(recLine)) status = "approved";
+  }
+
+  // Fallback: if no Recommendation line found, use findings count
+  if (status === "unknown") {
+    if (findingsCount > 0) status = "changes_requested";
+    else status = "approved";
+  }
 
   return { status, report, findingsCount };
 }

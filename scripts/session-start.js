@@ -30,15 +30,16 @@ function main() {
     try {
       const state = JSON.parse(fs.readFileSync(statePath, "utf-8"));
 
-      // Clear stale stop_hook_active flag from crashed sessions
+      // Clear stale stop_hook_active flag and bounce_count from crashed sessions
       if (state.stop_hook_active) {
         state.stop_hook_active = false;
+        state.bounce_count = 0;
         state.last_updated = new Date().toISOString();
         try {
           fs.writeFileSync(statePath, JSON.stringify(state, null, 2), "utf-8");
         } catch { /* best effort */ }
         warnings.push(
-          `WARNING: Cleared stale stop_hook_active flag from previous session.`
+          `WARNING: Cleared stale stop_hook_active flag and bounce_count from previous session.`
         );
       }
 

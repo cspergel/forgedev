@@ -109,14 +109,67 @@ async function main() {
       String(state.sweep_state?.pass_number || 1)
     ] || [];
 
-  // Assemble the cross-check prompt
-  const prompt = assembleCrossCheckPrompt(
+  // Assemble the cross-check prompt with token budget awareness
+  let prompt = assembleCrossCheckPrompt(
     manifest,
     allFiles,
     sharedTypes,
     sweepReport,
     modifiedFiles
   );
+
+  // Token estimation and truncation for external model context limits
+  const TOKEN_LIMIT = 100000;
+  const estimatedTokens = Math.ceil(prompt.length / 4);
+  if (estimatedTokens > TOKEN_LIMIT) {
+    console.error(
+      `Warning: Prompt truncated from ${estimatedTokens} to ~${TOKEN_LIMIT} estimated tokens for ${reviewConfig.provider || "external"} context limit.`
+    );
+    // First try: only include modified files + their specs (not the full codebase)
+    const reducedFiles = {};
+    for (const filePath of modifiedFiles) {
+      if (allFiles[filePath]) {
+        reducedFiles[filePath] = allFiles[filePath];
+      }
+    }
+    prompt = assembleCrossCheckPrompt(
+      manifest,
+      reducedFiles,
+      sharedTypes,
+      sweepReport,
+      modifiedFiles
+    );
+
+    const reducedTokens = Math.ceil(prompt.length / 4);
+    if (reducedTokens > TOKEN_LIMIT) {
+      console.error(
+        `Warning: Reduced prompt still ${reducedTokens} estimated tokens. Splitting into per-node cross-checks.`
+      );
+      // Second try: split into per-node cross-checks — only include first node's files
+      const nodeIds = Object.keys(manifest.nodes || {});
+      const perNodeFiles = {};
+      for (const nodeId of nodeIds) {
+        const nodeFileList = collectNodeFiles(cwd, forgePlanDir, nodeId);
+        for (const [fp, content] of Object.entries(nodeFileList)) {
+          if (modifiedFiles.includes(fp)) {
+            perNodeFiles[fp] = content;
+          }
+        }
+        // Check if this subset fits
+        const testPrompt = assembleCrossCheckPrompt(
+          manifest,
+          perNodeFiles,
+          sharedTypes,
+          sweepReport,
+          modifiedFiles
+        );
+        if (Math.ceil(testPrompt.length / 4) <= TOKEN_LIMIT) {
+          prompt = testPrompt;
+          break;
+        }
+      }
+    }
+  }
 
   let result;
   switch (mode) {
