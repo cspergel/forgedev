@@ -207,10 +207,28 @@ function main() {
 
   if (eligible.length === 0) {
     if (completed === nodeIds.length) {
+      // Check which nodes are reviewed vs just built
+      const reviewed = nodeIds.filter((id) => {
+        const ns = nodeStates[id];
+        return ns && ns.status === "reviewed";
+      }).length;
+
+      const suggestions = [];
+      if (reviewed < nodeIds.length) {
+        suggestions.push({ command: "/forgeplan:review --all", description: "Review all built nodes" });
+      }
+      suggestions.push({ command: "/forgeplan:integrate", description: "Verify cross-node interfaces" });
+      suggestions.push({ command: "/forgeplan:measure", description: "Check quality metrics (broken refs, duplicates, stubs)" });
+      suggestions.push({ command: "/forgeplan:revise --model User", description: "Change a shared model field — cascades to all affected nodes" });
+      suggestions.push({ command: "/forgeplan:revise [node-id]", description: "Change a single node's spec or interfaces" });
+      suggestions.push({ command: "/forgeplan:status", description: "Full project overview" });
+      suggestions.push({ command: "/forgeplan:help", description: "See all available commands" });
+
       const result = {
         type: "complete",
-        message: `All ${nodeIds.length} nodes are complete! Run /forgeplan:integrate to verify cross-node interfaces.`,
-        progress: { completed, total: nodeIds.length },
+        message: `All ${nodeIds.length} nodes are complete!`,
+        progress: { completed, total: nodeIds.length, reviewed },
+        next_steps: suggestions,
       };
       console.log(JSON.stringify(result, null, 2));
     } else {

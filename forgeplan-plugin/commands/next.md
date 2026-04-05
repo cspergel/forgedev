@@ -48,18 +48,18 @@ Progress: [completed]/[total] nodes complete
 ```
 
 ### type: "complete"
-```
-All [total] nodes are complete!
 
-What's next:
-  /forgeplan:review --all          Review all nodes (if not yet reviewed)
-  /forgeplan:integrate             Verify cross-node interfaces
-  /forgeplan:measure               Check quality metrics
-  /forgeplan:revise --model User   Change a shared model (cascades to all affected nodes)
-  /forgeplan:revise [node-id]      Change a single node's spec
-  /forgeplan:status                Full project overview
-  /forgeplan:help                  See all commands
+**You MUST display the `next_steps` array from the JSON output as a formatted list.** Do not summarize or skip these — they are the user's guide to what they can do next:
+
 ```
+=== All [total] nodes complete! ===
+
+What you can do next:
+  [for each item in next_steps]:
+  → [command]  —  [description]
+```
+
+This is critical for discoverability — users need to see the available commands.
 
 ### type: "blocked"
 ```
