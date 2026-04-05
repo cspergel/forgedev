@@ -143,7 +143,7 @@ async function main() {
       `Cross-model verification adds an independent second opinion but is not required.\n\n` +
       `**To fix:** Run \`/forgeplan:configure\` to check your setup, or retry with \`/forgeplan:sweep --cross-check\`.\n`;
 
-    result = { status: "completed", report: fallbackReport };
+    result = { status: "error", report: fallbackReport };
     console.error(`Warning: Cross-model verification failed, falling back to Claude-only sweep results.`);
   }
 

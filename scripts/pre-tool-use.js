@@ -121,9 +121,11 @@ function evaluate(input) {
     // Check for sweep analysis mode BEFORE allowing all writes.
     // sweep_state can be active with no active_node (analysis phase, between node fixes).
     if (state.sweep_state && state.sweep_state.operation) {
-      // Sweep analysis mode: only .forgeplan/sweeps/, deep-build-report.md, and state.json writable
+      // Sweep analysis mode: .forgeplan/ management files writable, source files blocked
       if (
         relPath.startsWith(".forgeplan/sweeps/") ||
+        relPath.startsWith(".forgeplan/specs/") ||
+        relPath === ".forgeplan/manifest.yaml" ||
         relPath === ".forgeplan/deep-build-report.md" ||
         relPath === ".forgeplan/state.json"
       ) {
@@ -133,7 +135,7 @@ function evaluate(input) {
         block: true,
         message:
           `BLOCKED: Sweep analysis mode is active (${state.sweep_state.operation}, phase: ${state.sweep_state.current_phase}). ` +
-          `Only .forgeplan/sweeps/, .forgeplan/deep-build-report.md, and .forgeplan/state.json can be written during analysis. ` +
+          `Only .forgeplan/ management files (specs, manifest, sweeps, state) can be written during analysis. ` +
           `Assign the finding to a node for fixing before modifying source files.`,
       };
     }

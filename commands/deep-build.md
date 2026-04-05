@@ -52,7 +52,7 @@ This is a sequential loop using existing commands:
      - If status is `"specced"`: run `/forgeplan:build [node-id]`
      - After each build, run `/forgeplan:review [node-id]`
    - `"complete"`: all nodes done, proceed to Phase 3
-   - `"stuck"`: run `/forgeplan:recover` for the stuck node(s), then re-run next-node.js
+   - `"stuck"`: auto-recover stuck nodes (set status back to "specced" for building nodes, "built" for reviewing nodes, clear `active_node`), then re-run next-node.js. Do NOT invoke interactive `/forgeplan:recover` — deep-build must stay autonomous.
    - `"blocked"` or `"error"`: halt deep-build with error message, preserve `sweep_state` for recovery:
      ```
      Deep build halted: [message from next-node.js]
@@ -86,7 +86,7 @@ If integration fails and `failures.length > 0`, add each failure as a finding in
 
 ### Phase 4: Claude sweep
 
-Run `/forgeplan:sweep` (dispatch 6 parallel sweep agents, merge findings, fix with node-scoped enforcement).
+Run `/forgeplan:sweep` (dispatch all sweep agents in parallel, merge findings, fix with node-scoped enforcement, progressive convergence).
 
 After Claude sweep fixes, re-integrate (Phase 3 logic).
 

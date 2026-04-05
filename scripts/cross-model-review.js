@@ -277,7 +277,7 @@ async function reviewViaApi(config, prompt) {
       body = JSON.stringify({
         model: model || "gpt-4o",
         messages: [{ role: "user", content: prompt }],
-        max_tokens: 4096,
+        max_tokens: 8192,
       });
       break;
 
@@ -298,7 +298,7 @@ async function reviewViaApi(config, prompt) {
       };
       body = JSON.stringify({
         model: model || "claude-sonnet-4-6",
-        max_tokens: 4096,
+        max_tokens: 8192,
         messages: [{ role: "user", content: prompt }],
       });
       break;

@@ -93,9 +93,14 @@ For each agent, provide as context in the Agent tool prompt:
 
 Each agent returns findings in the structured FINDING format or CLEAN.
 
+**Agent response validation:** For each agent's response, check:
+- If it contains FINDING blocks → parse findings normally
+- If it contains the word "CLEAN" (case-insensitive) and no FINDING blocks → mark as clean
+- If it contains NEITHER FINDING blocks NOR "CLEAN" → mark as **failed** (not clean). Log: "Agent [name] returned unstructured response — treating as failed, will re-run on next pass." Add the agent to a `failed_agents` list for re-dispatch on the next pass. Do NOT count a failed agent as clean for convergence tracking.
+
 ### Phase 3: Merge and deduplicate findings
 
-1. Collect all findings from the dispatched agents
+1. Collect all findings from the dispatched agents (excluding failed agents)
 2. **Validate node IDs:** Discard any finding whose `node` field is not in `Object.keys(manifest.nodes)`. Log a warning for each discarded finding ("Finding F[N] references unknown node '[id]' — discarding"). This prevents crashes in Phase 4 when PreToolUse tries to look up a nonexistent node's file_scope. Apply the same validation in Phase 6 for cross-model findings.
 3. **Re-number** all remaining findings sequentially as F1, F2, F3... (discard the agents' self-assigned IDs, which will collide across agents)
 4. Deduplicate: if two agents report the same file + same issue, keep the one with higher severity
