@@ -1,5 +1,5 @@
 ---
-description: Regenerate src/shared/types/index.ts from the manifest's shared_models. Deterministic — no LLM needed.
+description: Rebuild the shared TypeScript types from your manifest. Run this after changing shared model fields to keep the type definitions in sync.
 user-invocable: true
 allowed-tools: Read Bash
 ---

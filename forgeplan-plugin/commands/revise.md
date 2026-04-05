@@ -1,5 +1,5 @@
 ---
-description: Reopen a completed node for revision. Analyzes change impact — whether changes are internal-only or affect interfaces — and flags dependent nodes that may need updating.
+description: Need to change something? Revise a node's spec or change a shared data model. Automatically finds every affected node and walks you through updating them. Use --model [name] to cascade a shared model change across all dependent nodes.
 user-invocable: true
 argument-hint: "[node-id | --model model-name]"
 allowed-tools: Read Write Edit Bash Glob Grep

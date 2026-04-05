@@ -1,5 +1,5 @@
 ---
-description: Show full project status with node statuses and text-based dependency graph visualization.
+description: How's my project doing? Shows every node's status, the dependency graph, shared model usage, and suggests what to do next based on where you are.
 user-invocable: true
 allowed-tools: Read Bash
 ---

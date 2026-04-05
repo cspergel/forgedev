@@ -1,5 +1,5 @@
 ---
-description: Run cross-node interface verification. Checks that all node interfaces are correctly implemented on both sides and identifies which side is at fault for any mismatches.
+description: Do all the pieces fit together? Verifies that every node's interfaces connect correctly, shared models are consistent, and identifies exactly what's broken if something doesn't match.
 user-invocable: true
 allowed-tools: Read Glob Grep Bash
 ---

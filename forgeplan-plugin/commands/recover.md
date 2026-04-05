@@ -1,5 +1,5 @@
 ---
-description: Detect and handle crashed or stuck operations. Offers resume, reset, or manual review options for nodes left in an inconsistent state.
+description: Something went wrong? This detects crashed or stuck builds/reviews and offers options to resume, reset, or skip. Run this if a build was interrupted or a node is stuck.
 user-invocable: true
 argument-hint: "[node-id (optional)]"
 allowed-tools: Read Write Edit Bash Glob Grep

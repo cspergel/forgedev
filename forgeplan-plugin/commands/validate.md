@@ -1,5 +1,5 @@
 ---
-description: Validate the manifest and/or a node spec against the schema rules. Checks cycles, orphans, scope overlaps, field types, and manifest cross-references.
+description: Is my architecture valid? Checks the manifest for circular dependencies, orphan nodes, and scope overlaps. Validates specs for required fields and consistency with the manifest.
 user-invocable: true
 argument-hint: "[manifest | spec node-id | all]"
 allowed-tools: Read Bash

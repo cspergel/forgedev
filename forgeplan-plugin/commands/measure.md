@@ -1,5 +1,5 @@
 ---
-description: Measure code quality — count broken references, duplicate types, and abandoned stubs. Used to compare ForgePlan builds against vanilla builds.
+description: How clean is my code? Counts broken references, duplicate type definitions, and abandoned stubs. Shows a quality score you can track over time.
 user-invocable: true
 allowed-tools: Read Bash
 ---

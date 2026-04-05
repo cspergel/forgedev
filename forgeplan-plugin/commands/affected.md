@@ -1,5 +1,5 @@
 ---
-description: Find all nodes affected by a shared model change. Shows which nodes depend on a given model and what remediation steps are needed.
+description: Which nodes use this data model? Shows every node that depends on a shared model (like User or Document) and what steps are needed to update them.
 user-invocable: true
 argument-hint: "[model-name]"
 allowed-tools: Read Bash

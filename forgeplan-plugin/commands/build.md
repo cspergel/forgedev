@@ -1,5 +1,5 @@
 ---
-description: Begin building a node. Sets the active node, injects spec + interfaces + shared models into context, and starts the Builder agent with PreToolUse and PostToolUse enforcement hooks.
+description: Build a node (or all nodes). Generates code following the spec with automatic enforcement — files stay in scope, shared types are protected, and acceptance criteria are verified before completion. Use --all to build everything in dependency order.
 user-invocable: true
 argument-hint: "[node-id | --all]"
 allowed-tools: Read Write Edit Bash Glob Grep

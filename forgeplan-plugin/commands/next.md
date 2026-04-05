@@ -1,5 +1,5 @@
 ---
-description: Recommend the next node to build based on the dependency graph. Surfaces any stuck or crashed nodes that need attention first.
+description: What should I work on next? Shows the recommended next node based on dependencies, surfaces any stuck nodes, and guides you through the workflow with suggested commands.
 user-invocable: true
 allowed-tools: Read Bash
 ---
