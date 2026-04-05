@@ -15,25 +15,21 @@ ForgePlan Core is a Claude Code plugin that serves as an architecture-governed A
 ## Project Structure
 
 ```
-ForgeDev/
+ForgeDev/                              # Repo root IS the plugin root
+├── .claude-plugin/
+│   ├── plugin.json                    # Plugin manifest
+│   └── marketplace.json               # Marketplace definition
 ├── CLAUDE.md                          # This file — dev context
 ├── Planning Documents/                # Vision + execution plans
-├── forgeplan-plugin/                  # The Claude Code plugin (the product)
-│   ├── .claude-plugin/
-│   │   └── plugin.json               # Plugin manifest
-│   ├── commands/                      # 9 slash commands (.md files)
-│   ├── agents/                        # 3 agents: architect, builder, reviewer
-│   ├── hooks/
-│   │   └── hooks.json                # PreToolUse, PostToolUse, Stop, SessionStart
-│   ├── scripts/                       # validate-manifest, cross-model-review, etc.
-│   ├── templates/                     # Blueprint templates, schema templates
-│   │   ├── blueprints/               # Client portal, SaaS starter, etc.
-│   │   └── schemas/                  # Schema templates
-│   │       ├── manifest-schema.yaml  # Manifest YAML template
-│   │       ├── node-spec-schema.yaml # Node spec YAML template
-│   │       ├── state-schema.json     # state.json template
-│   │       └── config-schema.yaml    # BYOK config template
-│   └── README.md
+├── commands/                          # Slash commands (.md files)
+├── agents/                            # architect, builder, reviewer, sweep-*
+├── hooks/
+│   └── hooks.json                     # PreToolUse, PostToolUse, Stop, SessionStart
+├── scripts/                           # validate-manifest, cross-model-review, etc.
+├── templates/                         # Blueprint templates, schema templates
+│   ├── blueprints/                    # Client portal, SaaS starter, etc.
+│   └── schemas/                       # Schema templates
+├── skills/                            # Plugin skills
 └── docs/
     └── plans/                         # Implementation plans
 ```

@@ -6,11 +6,7 @@
   "plugins": [
     {
       "name": "forgeplan",
-      "source": {
-        "source": "github",
-        "repo": "cspergel/forgedev",
-        "path": "forgeplan-plugin"
-      },
+      "source": "./",
       "description": "Architecture-governed AI build harness",
       "version": "0.5.1",
       "author": {

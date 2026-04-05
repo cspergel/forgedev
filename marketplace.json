@@ -6,7 +6,7 @@
       "name": "forgeplan",
       "version": "0.5.1",
       "description": "Architecture-governed AI build harness",
-      "path": "./forgeplan-plugin"
+      "path": "./"
     }
   ]
 }
