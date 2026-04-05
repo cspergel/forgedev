@@ -34,7 +34,7 @@ Generate a detailed node spec for the specified node(s).
 5. Write the complete spec to `.forgeplan/specs/[node-id].yaml` using ALL 14 fields from the node spec schema
 6. Run spec validation: `node "${CLAUDE_PLUGIN_ROOT}/scripts/validate-spec.js" .forgeplan/specs/[node-id].yaml .forgeplan/manifest.yaml`
 7. Run manifest validation: `node "${CLAUDE_PLUGIN_ROOT}/scripts/validate-manifest.js" .forgeplan/manifest.yaml`
-8. Update the node's status to `"specced"` in `.forgeplan/state.json`
+8. **Read** `.forgeplan/state.json`, then **update** (do not overwrite): set `nodes.[node-id].status` to `"specced"` and `last_updated` to current ISO timestamp. Preserve all other existing fields.
 9. Present a summary of the spec and confirm with the user
 
 ## All Nodes Mode (`/forgeplan:spec --all`)

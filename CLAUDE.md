@@ -31,7 +31,8 @@ ForgeDev/
 │   │   └── schemas/                  # Schema templates
 │   │       ├── manifest-schema.yaml  # Manifest YAML template
 │   │       ├── node-spec-schema.yaml # Node spec YAML template
-│   │       └── state-schema.json     # state.json template
+│   │       ├── state-schema.json     # state.json template
+│   │       └── config-schema.yaml    # BYOK config template
 │   └── README.md
 └── docs/
     └── plans/                         # Implementation plans
@@ -75,8 +76,9 @@ Tooling built:
 - review-fixing status for multi-agent review cycles
 - CHANGELOG.md, version 0.5.0
 ### Sprint 6: Autonomous Iterative Sweep
+**Goal:** Cross-model alternating sweep with `/forgeplan:sweep` and `/forgeplan:deep-build`.
 
-## Eleven Commands
+## Nine Commands (+2 planned for Sprint 6)
 
 | Command | Sprint | Description |
 |---------|--------|-------------|
