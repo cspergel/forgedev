@@ -73,13 +73,93 @@ Dogfood results on client portal (7 nodes, 61+ files):
 ### Sprint 6: Autonomous Iterative Sweep (COMPLETE)
 **Goal:** Cross-model alternating sweep with `/forgeplan:sweep` and `/forgeplan:deep-build`. **DONE.**
 
-Deliverables: sweep_state schema in state-schema.json, "sweeping" status across all hooks/scripts, 6 sweep agent definitions (auth-security, type-consistency, error-handling, database, api-contracts, imports), /forgeplan:sweep command (7-phase orchestration), /forgeplan:deep-build command (6-phase autonomous pipeline), cross-model-bridge.js (MCP/CLI/API modes), sweep crash recovery in /forgeplan:recover, sweep-mode enforcement in PreToolUse/PostToolUse, Layer 2 prompt sweeping bypass.
+Original deliverables: sweep_state schema, "sweeping" status across all hooks/scripts, sweep agent definitions, /forgeplan:sweep (7-phase orchestration), /forgeplan:deep-build (6-phase autonomous pipeline), cross-model-bridge.js (MCP/CLI/API modes), sweep crash recovery, sweep-mode enforcement, Layer 2 sweeping bypass.
+
+Sprint 6 hardening (same sprint, post-initial):
+- 12 sweep agents (was 6): added code-quality, test-quality, config-environment, frontend-ux, documentation, cross-node-integration (opus)
+- Progressive agent convergence: agents that return CLEAN twice are retired, cross-cutting agents re-run if any agent has findings
+- Anti-oscillation guard: force-converge agents stuck for 3 passes
+- /forgeplan:configure: automated cross-model setup wizard (Codex/Gemini MCP/CLI/API)
+- Graceful fallback on cross-model failure (continues with Claude-only)
+- Smart blocked-finding resolution: Category A (spec update, auto), B (shared extraction, auto), C (architecture decisions, persist and prompt)
+- Blocked decisions persistence across sessions (state.json → session-start detection → resume)
+- Plugin restructured for marketplace distribution (repo root = plugin root)
+- SSH keys + Codex MCP end-to-end working
+- Escape hatch for corrupted state.json deadlock
+- Atomic state writes (write tmp, rename)
+- False certification fix (bridge error no longer masks as "clean")
+- 15+ adversarial analysis fixes (cycle detection, token budget, path normalization, etc.)
+- Outside-project-path writes allowed (other plugins not blocked)
+- Dogfooded on client-portal: 60 findings, 53 auto-fixed, cross-model certified
 
 ### Sprint 7: Ambient Mode — Proactive Guidance
-**Goal:** ForgePlan becomes an ambient assistant (like superpowers) — detects project state and user activity, proactively suggests relevant commands without requiring explicit slash commands. Three pillars: contextual SessionStart, activity detection, guide skill.
+**Goal:** ForgePlan becomes an ambient assistant — detects project state, proactively suggests next steps, scores findings by confidence, and manages state resiliently.
+
+**Pillar 1: Ambient SessionStart**
+- Enhance session-start.js to detect full project state (not just stuck builds)
+- Show: node statuses, next recommended action, pending decisions, sweep progress
+- Suggest commands contextually ("auth is built but not reviewed → /forgeplan:review auth")
+- Non-blocking: fast checks sync, expensive analysis async
+
+**Pillar 2: Confidence Scoring**
+- Score each sweep finding 0-100 confidence based on code evidence strength
+- Filter findings below 75 before presenting to fix cycle
+- Reduces convergence from ~14 rounds to 3-4 by eliminating noise early
+- Apply to cross-model findings too (external model hallucinations get filtered)
+
+**Pillar 3: State Management Hardening**
+- Dedicated `update-state.js` script for atomic JSON read-modify-write (replaces fragile Edit/Write on complex JSON)
+- Support parallel fix agents with per-agent temp state files merged after completion
+- Change `active_node` to support array (multiple concurrent node fixes)
+- Session-end hook: persist session summary for cross-session context
+
+**Pillar 4: Hierarchical Documentation**
+- Refactor agents to < 300 lines each, point to detail docs
+- Shared sweep-base template for repeated logic across 12 agents
+- Progressive disclosure: agents load only what they need
+- `docs/` directory for detailed patterns (architect, builder, reviewer, sweep orchestration)
+
+**Pillar 5: Two-Stage Review**
+- Stage 1: Spec compliance (does code match every AC, constraint, interface?)
+- Stage 2: Code quality (bugs, error handling, test sufficiency)
+- If Stage 1 fails, skip Stage 2 (save tokens, spec must pass first)
+
+**Pillar 6: Guide Skill Enhancement**
+- /forgeplan:guide reads full state + sweep reports + blocked decisions
+- Explains what happened, what's next, and why
+- Detects common patterns: "3 previous nodes had similar interfaces — here's what worked"
 
 ### Sprint 8: Research Agents and Autonomous Greenfield
-**Goal:** Fully autonomous greenfield builds with research agents that search GitHub/npm for existing implementations, check licenses, and gather best practices before building.
+**Goal:** Fully autonomous greenfield builds with research agents that search for best practices, vet dependencies, and recommend architecture before building.
+
+**Pillar 1: Research Agents**
+- `/forgeplan:research [topic]` dispatches agents to search GitHub, npm, documentation
+- Check licenses (MIT/Apache/etc.), download counts, maintenance status
+- Gather best practices for common patterns (auth, payments, file storage, etc.)
+- Output: recommended dependencies, proven patterns, architecture constraints
+- Research results feed into the Architect agent as constraints during /forgeplan:discover
+
+**Pillar 2: Expanded Blueprints**
+- Research-backed blueprint generation: "e-commerce" → Stripe + Resend + Drizzle + established patterns
+- Community blueprints: users can contribute and share blueprints
+- Blueprint versioning: track which versions of dependencies/patterns a blueprint uses
+
+**Pillar 3: Autonomous Greenfield Pipeline**
+- `/forgeplan:discover "project description"` → research → architect → spec all → deep-build → certified
+- Full zero-to-deployed with one command
+- Research agents run before architecture to inform node structure and dependencies
+- Cross-model verification of the entire stack
+
+**Pillar 4: Semantic Memory**
+- Index past sweep reports, design decisions, rejected specs
+- Surface cross-session patterns: "you've built similar nodes before, here's what worked"
+- Episodic memory integration for project-local knowledge base
+- Search: "nodes using OAuth that had security issues" → relevant findings from past sweeps
+
+**Pillar 5: Preset Workflows**
+- Pre-configured tool connections for popular products (Supabase, Stripe, Vercel, etc.)
+- `/forgeplan:discover template:e-commerce` includes researched dependency stack
+- Integration with MCP servers for live API validation during builds
 
 ## Commands
 
@@ -94,8 +174,9 @@ Deliverables: sweep_state schema in state-schema.json, "sweeping" status across 
 | `/forgeplan:status` | 4 | Full project status visualization |
 | `/forgeplan:integrate` | 4 | Cross-node interface verification |
 | `/forgeplan:recover` | 3 | Crash recovery |
-| `/forgeplan:sweep` | 6 | Parallel codebase sweep + cross-model verification |
+| `/forgeplan:sweep` | 6 | 12-agent parallel sweep + progressive convergence + cross-model verification |
 | `/forgeplan:deep-build` | 6 | Full autonomous build→review→sweep→cross-check pipeline |
+| `/forgeplan:configure` | 6 | Automated cross-model setup wizard (Codex/Gemini MCP/CLI/API) |
 | `/forgeplan:research` | 8 | Research agents search for existing implementations, check licenses, gather docs |
 
 ## Three Agents
