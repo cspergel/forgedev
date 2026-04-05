@@ -1,13 +1,29 @@
 ---
 description: Begin building a node. Sets the active node, injects spec + interfaces + shared models into context, and starts the Builder agent with PreToolUse and PostToolUse enforcement hooks.
 user-invocable: true
-argument-hint: "[node-id]"
+argument-hint: "[node-id | --all]"
 allowed-tools: Read Write Edit Bash Glob Grep
 agent: builder
 context: fork
 ---
 
 # Build Node
+
+**Target:** $ARGUMENTS
+
+## Build All Mode (`--all`)
+
+If the argument is `--all`, build all eligible nodes sequentially in dependency order:
+
+1. Run `node "${CLAUDE_PLUGIN_ROOT}/scripts/topo-sort.js"` to get the build order
+2. Read `.forgeplan/state.json` to find nodes with status `"specced"`, `"built"`, `"reviewed"`, or `"revised"` whose dependencies are all satisfied
+3. For each eligible node in dependency order:
+   - Run the single-node build flow below
+   - After each build completes and the Stop hook verifies ACs, move to the next node
+   - If any node fails (Stop hook bounces 3 times), stop the batch and report progress
+4. After all nodes are built, suggest running `/forgeplan:review` on each or `/forgeplan:integrate` for full verification
+
+## Single Node Mode
 
 Build the specified node following its spec with layered enforcement:
 - **PreToolUse hook** — deterministic file scope blocking + shared model guard, then LLM spec compliance check
