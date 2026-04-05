@@ -115,12 +115,11 @@ Sprint 6 hardening (same sprint, post-initial):
   - Users: personal tool → small team → multi-tenant → enterprise/public
   - Data volume: trivial → needs indexing → needs caching → needs sharding
 
-  **Team complexity:**
-  - Solo dev → small team → multiple teams → cross-org
-
+- **Not all dimensions apply to every project type.** CLI tools, libraries, data pipelines, and non-web applications may have few applicable dimensions — score only what's relevant. Skip dimensions that don't apply rather than forcing every project into a web-app framework.
 - **The tier is the Architect's judgment call, not a formula.** A 3-entity project with HIPAA compliance and payment processing is LARGE. A 20-entity CRUD admin panel is MEDIUM. Entity count is a signal, not the answer.
-- After assessment, the Architect presents its reasoning: "I'd rate this MEDIUM because: simple auth but complex data relationships and one payment integration. The payment flow needs its own node with strict enforcement. Agree?"
+- After assessment, the Architect presents its reasoning AND the pipeline consequences: "I'd rate this MEDIUM, which means: 3-5 nodes, full specs per node, 6-8 sweep agents, cross-model optional. If that feels heavy, SMALL would mean: 1-2 nodes, quick specs, 3-4 agents. Which fits?"
 - User can always override.
+- **Tier upgrade/downgrade:** If the project changes mid-build (user adds OAuth, payments, new integrations), `/forgeplan:revise` should prompt: "This changes the project complexity. Current tier: SMALL. Reassess?" The `tier_override` field in config.yaml takes effect at the next command invocation. No need to re-run discovery — just update the manifest's `complexity_tier` and the pipeline adapts.
 
 - **What each tier means for the pipeline:**
   ```
@@ -132,8 +131,10 @@ Sprint 6 hardening (same sprint, post-initial):
       Architect drafts, user confirms, no multi-turn refinement
     → Single-pass build — builder generates all code in one session,
       including scaffolding
-    → 3 sweep agents (code-quality + auth-security + error-handling) — catches
-      the critical stuff without 12-agent overhead
+    → 3-4 sweep agents, content-adaptive:
+      Always: code-quality + auth-security + error-handling
+      If database in tech_stack: + sweep-database
+      If frontend nodes exist: + sweep-frontend-ux
     → No cross-model unless requested
     → Output: working, runnable app in one session
 
@@ -178,6 +179,8 @@ Sprint 6 hardening (same sprint, post-initial):
 - `commands/deep-build.md` — tier-aware pipeline (skip cross-model for SMALL)
 - `agents/builder.md` — tier-awareness, test co-updates
 - `agents/reviewer.md` — tier-aware abbreviated review for SMALL
+- `commands/guide.md` — tier-aware descriptions (don't hardcode "12 agents")
+- `commands/review.md` — tier-aware review depth for SMALL
 - `scripts/validate-manifest.js` — validate complexity_tier field
 
 ### Sprint 7B: Ambient Mode + Confidence Scoring
