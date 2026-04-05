@@ -1,5 +1,5 @@
 ---
-description: Sweep your entire codebase for cross-cutting issues. 7 parallel agents audit auth/security, type consistency, error handling, database, API contracts, imports, and general code quality. Findings are fixed with node-scoped enforcement, then cross-model verified.
+description: Sweep your entire codebase for cross-cutting issues. 12 parallel agents audit auth/security, type consistency, error handling, database, API contracts, imports, code quality, test quality, config/env, frontend UX, documentation, and cross-node integration. Agents that converge (return CLEAN) are dropped from subsequent passes. Findings are fixed with node-scoped enforcement, then cross-model verified.
 user-invocable: true
 argument-hint: "[--cross-check (also run cross-model verification)]"
 allowed-tools: Read Write Edit Bash Glob Grep Agent
@@ -7,7 +7,7 @@ allowed-tools: Read Write Edit Bash Glob Grep Agent
 
 # Codebase Sweep
 
-Run 7 parallel sweep agents across the entire codebase, then fix findings with node-scoped enforcement.
+Run up to 12 parallel sweep agents across the entire codebase, then fix findings with node-scoped enforcement. Agents that return CLEAN are progressively dropped from subsequent passes — only agents with findings re-run.
 
 ## Prerequisites
 
@@ -37,25 +37,16 @@ Run 7 parallel sweep agents across the entire codebase, then fix findings with n
        "max_passes": 10,
        "findings": { "pending": [], "resolved": [] },
        "modified_files_by_pass": {},
+       "agent_convergence": {},
        "integration_results": { "last_run": null, "passed": false, "failures": [] }
      }
    }
    ```
 5. Set `active_node` to `null`
 
-### Phase 2: Dispatch 7 parallel sweep agents
+### Phase 2: Dispatch sweep agents (progressive reduction)
 
-Use the Agent tool to dispatch ALL 7 sweep agents **in parallel** (single message, 7 Agent tool calls).
-
-**How to dispatch:** Read each agent's definition file from `${CLAUDE_PLUGIN_ROOT}/agents/sweep-*.md` and use its content as the system prompt for the Agent tool call. This ensures the prompts are maintained in separate files (easy to iterate) while still dispatching via the Agent tool for parallelism.
-
-For each agent, provide as context in the Agent tool prompt:
-- The agent's own system prompt (from its `.md` file)
-- The full manifest (read `.forgeplan/manifest.yaml`)
-- The full state (read `.forgeplan/state.json` — node statuses)
-- ALL implementation files (read every file listed in every node's `files` array in the manifest)
-- The shared types file (`src/shared/types/index.ts`)
-- ALL node specs (read each `.forgeplan/specs/[node-id].yaml`)
+**All 12 agents on the first pass. On subsequent passes, only re-run agents that had findings.**
 
 Agent definition files (read these, use as system prompts):
 - `agents/sweep-auth-security.md`
@@ -65,12 +56,44 @@ Agent definition files (read these, use as system prompts):
 - `agents/sweep-api-contracts.md`
 - `agents/sweep-imports.md`
 - `agents/sweep-code-quality.md`
+- `agents/sweep-test-quality.md`
+- `agents/sweep-config-environment.md`
+- `agents/sweep-frontend-ux.md` (skip if no frontend nodes in manifest)
+- `agents/sweep-documentation.md`
+- `agents/sweep-cross-node-integration.md`
+
+**Progressive agent reduction:**
+1. On **pass 1**: dispatch ALL agents (or all applicable — skip `frontend-ux` if no frontend nodes).
+2. After merging results, update `sweep_state.agent_convergence` for each agent:
+   ```json
+   "agent_convergence": {
+     "auth-security": { "status": "clean", "last_findings_pass": null, "consecutive_clean": 1 },
+     "type-consistency": { "status": "active", "last_findings_pass": 1, "consecutive_clean": 0 },
+     ...
+   }
+   ```
+   - `status`: `"clean"` (returned CLEAN), `"active"` (had findings), `"converged"` (2 consecutive clean passes — retired)
+   - `last_findings_pass`: which pass this agent last found something
+   - `consecutive_clean`: how many consecutive passes returned CLEAN
+3. On **pass 2+**: only dispatch agents where `status !== "converged"`. An agent that returned CLEAN on pass N gets re-run ONCE on pass N+1 to confirm. If clean again → `status: "converged"`, agent is retired for the rest of the sweep.
+4. **Exception:** `cross-node-integration` always re-runs if ANY other agent had findings (since fixes in one domain can break integration). It only converges when it returns CLEAN AND no other active agents had findings in the same pass.
+5. **Exception:** `code-quality` re-runs if ANY agent had findings (cross-cutting by nature). Same convergence rule as cross-node-integration.
+
+**How to dispatch:** Use the Agent tool to dispatch all active agents **in parallel** (single message, N Agent tool calls).
+
+For each agent, provide as context in the Agent tool prompt:
+- The agent's own system prompt (from its `.md` file)
+- The full manifest (read `.forgeplan/manifest.yaml`)
+- The full state (read `.forgeplan/state.json` — node statuses)
+- ALL implementation files (read every file listed in every node's `files` array in the manifest)
+- The shared types file (`src/shared/types/index.ts`)
+- ALL node specs (read each `.forgeplan/specs/[node-id].yaml`)
 
 Each agent returns findings in the structured FINDING format or CLEAN.
 
 ### Phase 3: Merge and deduplicate findings
 
-1. Collect all findings from the 7 agents
+1. Collect all findings from the dispatched agents
 2. **Validate node IDs:** Discard any finding whose `node` field is not in `Object.keys(manifest.nodes)`. Log a warning for each discarded finding ("Finding F[N] references unknown node '[id]' — discarding"). This prevents crashes in Phase 4 when PreToolUse tries to look up a nonexistent node's file_scope. Apply the same validation in Phase 6 for cross-model findings.
 3. **Re-number** all remaining findings sequentially as F1, F2, F3... (discard the agents' self-assigned IDs, which will collide across agents)
 4. Deduplicate: if two agents report the same file + same issue, keep the one with higher severity
@@ -190,6 +213,10 @@ node "${CLAUDE_PLUGIN_ROOT}/scripts/cross-model-bridge.js" ".forgeplan/sweeps/sw
    By category: [breakdown]
    Integration: [PASS/FAIL]
    Cross-model: [N consecutive clean passes / not run]
+
+   Agent Convergence:
+     [agent-name]: converged pass [N] | active (N findings) | skipped
+     ...
 
    Reports: .forgeplan/sweeps/sweep-[timestamp].md
    ```
