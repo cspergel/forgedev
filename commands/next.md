@@ -61,9 +61,22 @@ What you can do next:
 
 This is critical for discoverability — users need to see the available commands.
 
+### type: "sweep_active"
+```
+[operation] is in progress — pass [pass_number], phase: [current_phase].
+
+  → /forgeplan:recover   Resume or abort the operation
+  → /forgeplan:status    See current state
+```
+
 ### type: "blocked"
 ```
-No eligible nodes found. Check dependencies and node statuses.
+No nodes are ready. Possible causes: stuck nodes, circular dependencies, or unfinished builds.
+
+  → /forgeplan:status      See which nodes are blocking
+  → /forgeplan:recover     Fix stuck nodes
+  → /forgeplan:validate    Check for circular dependencies
+
 Progress: [completed]/[total] nodes complete
 ```
 

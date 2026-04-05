@@ -43,7 +43,7 @@ function main() {
           fs.writeFileSync(statePath, JSON.stringify(state, null, 2), "utf-8");
         } catch { /* best effort */ }
         warnings.push(
-          `WARNING: Cleared stale stop_hook_active flag and bounce_count from previous session.`
+          `Cleaned up stale build state from a previous session. No action needed.`
         );
       }
 
@@ -110,7 +110,7 @@ function main() {
       }
     } catch (err) {
       warnings.push(
-        `WARNING: Could not parse .forgeplan/state.json: ${err.message}`
+        `WARNING: .forgeplan/state.json is corrupted: ${err.message}. To fix: delete it with 'rm .forgeplan/state.json' then run /forgeplan:recover, or run /forgeplan:discover to reinitialize.`
       );
     }
   }

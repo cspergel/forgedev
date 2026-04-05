@@ -79,4 +79,19 @@ If all interfaces pass, suggest:
 - `/forgeplan:revise [node-id]` — if you need to change a single node's spec or interfaces
 - The project is ready for deployment or further testing
 
-If interfaces fail, suggest specific remediation for each failure based on the fault side.
+If interfaces fail, suggest specific remediation for each failure based on the fault side:
+
+- **Fault: SOURCE** — "The source node doesn't export what the spec promises."
+  - `/forgeplan:build [source-node-id]` to rebuild the source node
+  - `/forgeplan:review [source-node-id]` to audit the source implementation
+- **Fault: TARGET** — "The target node doesn't correctly import or use the interface."
+  - `/forgeplan:build [target-node-id]` to rebuild the target node
+  - `/forgeplan:review [target-node-id]` to audit the target implementation
+- **Fault: SPEC** — "The interface contract in the spec doesn't match reality on either side."
+  - `/forgeplan:revise [node-id]` to update the spec's interface definition
+  - `/forgeplan:spec [node-id]` to regenerate the spec if contracts are significantly wrong
+- **Fault: BOTH** — "Neither side has implemented the interface."
+  - `/forgeplan:build [source-node-id]` and `/forgeplan:build [target-node-id]` — both nodes need building
+  - `/forgeplan:next` to see the recommended build order
+- **Fault: MISSING_SPEC** — "One or both nodes don't have specs yet."
+  - `/forgeplan:spec [node-id]` to generate the missing spec

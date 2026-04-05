@@ -146,9 +146,16 @@ The node advances to `"reviewed"` regardless of the cross-model result. Cross-mo
 ### `enforcement.mode: "strict"`
 The node can only advance to `"reviewed"` if **both** the native review and the cross-model review pass:
 - If the native review recommends APPROVE **and** the cross-model review returns `status: "approved"` → advance to `"reviewed"`
-- If either review has failures → do NOT advance. Present the combined failures and recommend running `/forgeplan:build [node-id]` to address them, then re-running `/forgeplan:review`
+- If either review has failures → do NOT advance. **Restore node status before suggesting next steps:**
+  1. Set `nodes.[node-id].status` back to `nodes.[node-id].previous_status` (e.g., `"built"`)
+  2. Clear `nodes.[node-id].previous_status` to `null`
+  3. Clear `active_node` to `null`
+  4. Set `last_updated` to current ISO timestamp
+  Then present the combined failures and suggest:
+    - `/forgeplan:build [node-id]` to address the failures and rebuild
+    - `/forgeplan:review [node-id]` to re-review after fixes
 
-**If cross-model review errors** (network failure, misconfigured provider, timeout): In strict mode, warn the user that the cross-model gate could not be evaluated and offer two choices:
+**If cross-model review errors** (network failure, misconfigured provider, timeout): In strict mode, **restore node status first** (same steps as above — set status back to `previous_status`, clear `previous_status`, clear `active_node`), then warn the user that the cross-model gate could not be evaluated and offer two choices:
 1. Retry the cross-model review
 2. Override and advance to `"reviewed"` anyway (with a note in the review report that cross-model verification was skipped)
 
@@ -161,3 +168,11 @@ Update state.json:
 - Clear `nodes.[node-id].previous_status` to `null`
 - Clear `active_node` to `null`
 - Set `last_updated` to current ISO timestamp
+
+**After updating state, suggest next steps based on the review outcome:**
+
+- **If APPROVE:** Suggest:
+  - `/forgeplan:next` to see the next recommended action
+  - `/forgeplan:integrate` if all nodes are now reviewed (to verify cross-node interfaces)
+- **If REQUEST CHANGES:** Suggest:
+  - `/forgeplan:build [node-id]` to rebuild this node and address the findings

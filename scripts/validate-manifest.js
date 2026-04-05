@@ -81,7 +81,7 @@ function validateManifest(manifest) {
       errors.push(`Node "${nodeId}": invalid type "${node.type}" — must be one of: ${validNodeTypes.join(", ")}.`);
     }
     if (node.status && !validStatuses.includes(node.status)) {
-      errors.push(`Node "${nodeId}": invalid status "${node.status}".`);
+      errors.push(`Node "${nodeId}": invalid status "${node.status}" — must be one of: pending, specced, building, built, reviewing, reviewed, revising, revised, sweeping.`);
     }
     if (!Array.isArray(node.files)) {
       // files can start empty but must be an array

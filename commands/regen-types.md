@@ -22,3 +22,16 @@ Output: src/shared/types/index.ts
 ```
 
 This should be run after modifying shared_models in the manifest (e.g., after adding a field via `/forgeplan:revise --model`).
+
+## After Regeneration
+
+After presenting the regeneration result, warn:
+
+```
+Note: Nodes that import these shared types may need rebuilding to use the updated fields.
+```
+
+Suggest:
+- `/forgeplan:affected [ModelName]` to see which nodes use the changed model
+- `/forgeplan:build [node-id]` to rebuild affected nodes
+- `/forgeplan:integrate` to verify cross-node interfaces still connect correctly

@@ -164,6 +164,12 @@ All [N] nodes built, reviewed, and cross-model certified.
 [total] findings found and resolved across [passes] passes.
 Cross-model certified clean on [N] consecutive passes.
 Report: .forgeplan/deep-build-report.md
+
+Your project is ready:
+  → /forgeplan:status          Full project overview
+  → /forgeplan:measure         Verify quality metrics
+  → /forgeplan:revise [node]   Make changes
+  → /forgeplan:guide           Get guidance anytime
 ```
 
 ## Per-Pass Git Commits (Recommended)

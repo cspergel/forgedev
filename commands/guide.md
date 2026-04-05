@@ -246,6 +246,7 @@ ForgePlan tracks the dependency graph and knows which nodes are affected.
 
   → /forgeplan:next           See the recommended rebuild order
   → /forgeplan:build [node]   Rebuild each affected node
+  → /forgeplan:review [node]  Review a rebuilt node
   → /forgeplan:affected [model]   See which nodes a model change affects
 ```
 

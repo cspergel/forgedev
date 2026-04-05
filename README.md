@@ -37,6 +37,27 @@ ForgePlan fixes this by making the architecture the governing constraint, not ju
                   reviews the code. Alternates until both models agree.
 ```
 
+## Installation
+
+ForgePlan is a Claude Code plugin. To install:
+
+1. Make sure you have [Claude Code](https://claude.ai/claude-code) installed
+2. Add the ForgePlan marketplace:
+   ```bash
+   # In Claude Code settings, add the marketplace
+   # (this will be automated once published to the official marketplace)
+   ```
+3. Enable the plugin:
+   ```bash
+   # Start Claude Code in any project directory
+   claude
+
+   # The plugin loads automatically. Verify with:
+   /forgeplan:help
+   ```
+
+No additional dependencies needed — the plugin includes everything.
+
 ## Quick Start
 
 ForgePlan is installed as a Claude Code plugin via marketplace:
@@ -54,6 +75,25 @@ claude
 # Full autonomous pipeline (specs, builds, reviews, sweeps, certifies)
 /forgeplan:deep-build
 ```
+
+## Key Concepts
+
+New to ForgePlan? Here's what the terms mean:
+
+| Term | What it means |
+|------|--------------|
+| **Node** | A piece of your app — like the database, the login page, or the API. ForgePlan breaks your project into nodes so each piece gets built and tested independently. |
+| **Spec** | A detailed blueprint for a node: what it must do (acceptance criteria), what it must NOT do (non-goals), how to verify it works (tests), and how it connects to other nodes (interfaces). |
+| **Shared Model** | A data type used by multiple nodes (like "User" or "Document"). Defined once in the manifest, imported everywhere — never duplicated. |
+| **Manifest** | The master architecture file (`.forgeplan/manifest.yaml`). Lists every node, their dependencies, shared models, tech stack, and connections. |
+| **Acceptance Criteria** | Specific, testable requirements for a node. "AC1: Users can log in with email/password — test: login form submits and returns a session token." |
+| **File Scope** | The directory a node is allowed to write to (e.g., `src/auth/**`). The enforcement hook blocks writes outside this scope. |
+| **Sweep** | An automated codebase audit by 12 specialized agents running in parallel, each checking a different dimension (security, types, errors, etc.). |
+| **Cross-Model Review** | A second AI model (Codex, GPT, Gemini) independently reviews code that Claude built. Different models catch different blind spots. |
+| **Deep-Build** | The fully autonomous pipeline: specs every node, builds them, reviews them, sweeps for issues, fixes everything, and certifies with cross-model verification. |
+| **Enforcement** | ForgePlan's hook system that physically blocks bad writes — not suggestions, actual prevention. If you try to write outside your node's scope, the operation is rejected. |
+| **Non-Goal** | Something explicitly NOT in scope for a node. Non-goals become enforcement constraints — the builder is blocked from implementing them. |
+| **Convergence** | The process of alternating between AI models until both agree the code is clean. 2 consecutive clean passes = certified. |
 
 ## What Gets Enforced
 

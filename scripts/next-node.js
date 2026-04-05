@@ -272,7 +272,7 @@ function main() {
     } else {
       const result = {
         type: "blocked",
-        message: "No eligible nodes found. Some nodes may have unresolved dependencies.",
+        message: "No nodes are ready to build — all remaining nodes depend on unfinished nodes. Run /forgeplan:status to see which nodes are blocking, or /forgeplan:recover to fix stuck nodes.",
         progress: { completed, total: nodeIds.length },
       };
       console.log(JSON.stringify(result, null, 2));

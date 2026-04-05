@@ -322,6 +322,11 @@ node "${CLAUDE_PLUGIN_ROOT}/scripts/cross-model-bridge.js" ".forgeplan/sweeps/sw
      ...
 
    Reports: .forgeplan/sweeps/sweep-[timestamp].md
+
+   What's next:
+     → /forgeplan:measure    Check quality metrics
+     → /forgeplan:status     Full project overview
+     → /forgeplan:guide      Get guidance on next steps
    ```
 
 ## State Persistence

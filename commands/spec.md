@@ -88,3 +88,5 @@ If any gate fails, fix it before writing the spec file.
 ## Output
 
 Write the spec to `.forgeplan/specs/[node-id].yaml` and confirm with the user.
+
+Suggest next: `/forgeplan:build [node-id]` to build this node, or `/forgeplan:next` to see the recommended order.

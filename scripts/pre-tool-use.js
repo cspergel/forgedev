@@ -43,7 +43,7 @@ process.stdin.on("end", () => {
   } catch (err) {
     // On malformed input, block to be safe
     process.stderr.write(
-      `BLOCKED: ForgePlan PreToolUse could not parse hook input: ${err.message}.\n`
+      `BLOCKED: ForgePlan enforcement received unexpected input and could not verify this operation. Try the operation again, or run /forgeplan:recover if this persists.\n`
     );
     process.exit(2);
   }
@@ -142,9 +142,7 @@ function evaluate(input) {
       return {
         block: true,
         message:
-          `BLOCKED: Sweep analysis mode is active (${state.sweep_state.operation}, phase: ${state.sweep_state.current_phase}). ` +
-          `Only .forgeplan/ management files (specs, manifest, sweeps, state) can be written during analysis. ` +
-          `Assign the finding to a node for fixing before modifying source files.`,
+          `BLOCKED: A codebase sweep is analyzing your project. Source files can't be modified until the sweep assigns fixes to specific nodes. Wait for the sweep to continue, or run /forgeplan:recover to abort.`,
       };
     }
     // No active operation and no sweep — allow all writes
@@ -320,8 +318,7 @@ function evaluate(input) {
       return {
         block: true,
         message:
-          `BLOCKED: File "${relPath}" is already registered to node "${nodeId}". ` +
-          `Do not modify files owned by other nodes.`,
+          `BLOCKED: File "${relPath}" belongs to module "${nodeId}". During a build, you can only modify files in your current module's scope. To change this file, finish the current build first, then run /forgeplan:build ${nodeId}.`,
       };
     }
   }

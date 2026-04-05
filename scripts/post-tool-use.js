@@ -37,7 +37,7 @@ process.stdin.on("end", () => {
     processHook(input);
   } catch (err) {
     process.stderr.write(
-      `ForgePlan PostToolUse warning: ${err.message}\n`
+      `ForgePlan: Could not process file tracking after your last edit. This is non-blocking. If files are missing from the manifest, run /forgeplan:status to check.\n`
     );
   }
   process.exit(0);
@@ -197,7 +197,7 @@ function processHook(input) {
     }
   } catch (err) {
     process.stderr.write(
-      `ForgePlan PostToolUse: Could not classify file: ${err.message}\n`
+      `ForgePlan: Could not determine if this file is new or modified. File tracking may be incomplete — run /forgeplan:status to verify.\n`
     );
   }
 
@@ -222,7 +222,7 @@ function processHook(input) {
       }
     } catch (err) {
       process.stderr.write(
-        `ForgePlan PostToolUse: Could not track sweep modified file: ${err.message}\n`
+        `ForgePlan: Could not record this file change for the current sweep pass. The sweep's per-pass diff may be incomplete.\n`
       );
     }
   }
