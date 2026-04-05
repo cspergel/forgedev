@@ -86,7 +86,7 @@ function findAffectedNodes(modelName, forgePlanDir) {
     remediation: affected.map((n) => ({
       node: n.node,
       steps: [
-        `/forgeplan:spec ${n.node}  — update spec for changed model fields`,
+        `/forgeplan:spec ${n.node} — update spec for changed model fields`,
         `/forgeplan:build ${n.node} — rebuild against updated spec`,
       ],
     })),

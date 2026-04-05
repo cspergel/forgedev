@@ -223,10 +223,19 @@ function measureAbandonedStubs(projectDir) {
           result.details.push(`${relFile}:${lineNum}: throw "not implemented"`);
         }
 
-        // Empty function body: { } or {\n}
+        // Empty function body: single-line { } or multi-line with only whitespace
         if (/\)\s*\{\s*\}/.test(line)) {
           result.count++;
           result.details.push(`${relFile}:${lineNum}: empty function body`);
+        }
+        // Multi-line empty body: line has { and next non-blank line has only }
+        if (/\)\s*\{\s*$/.test(line)) {
+          let j = i + 1;
+          while (j < lines.length && lines[j].trim() === "") j++;
+          if (j < lines.length && /^\s*\}\s*$/.test(lines[j])) {
+            result.count++;
+            result.details.push(`${relFile}:${lineNum}: empty function body (multi-line)`);
+          }
         }
       }
     } catch {

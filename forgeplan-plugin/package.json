@@ -8,7 +8,10 @@
   "scripts": {
     "validate": "node -e \"console.log('Usage:\\n  node scripts/validate-manifest.js <manifest.yaml>\\n  node scripts/validate-spec.js <spec.yaml> [manifest.yaml]')\"",
     "validate:manifest": "node scripts/validate-manifest.js",
-    "validate:spec": "node scripts/validate-spec.js"
+    "validate:spec": "node scripts/validate-spec.js",
+    "measure": "node scripts/measure-quality.js",
+    "affected": "node scripts/find-affected-nodes.js",
+    "regen-types": "node scripts/regenerate-shared-types.js"
   },
   "dependencies": {
     "js-yaml": "^4.1.0",

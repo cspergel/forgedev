@@ -216,7 +216,9 @@ function main() {
           // Check each field exists in the interface
           for (const fieldName of Object.keys(fields)) {
             const fieldRegex = new RegExp(`\\b${fieldName}\\b\\s*[?:]`, "m");
-            // Extract the interface block
+            // Extract the interface block — assumes regenerate-shared-types.js output format
+            // where closing } is at column 0 on its own line. For hand-edited files,
+            // a brace-depth counter would be more robust.
             const ifaceStart = sharedTypesContent.search(ifaceRegex);
             if (ifaceStart === -1) continue;
             const afterIface = sharedTypesContent.slice(ifaceStart);
@@ -282,5 +284,5 @@ function main() {
 if (require.main === module) {
   main();
 } else {
-  module.exports = { main };
+  module.exports = { main, checkIntegration: main };
 }
