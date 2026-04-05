@@ -81,7 +81,7 @@ function main() {
   }
 
   // --- Priority 1: Stuck/crashed nodes ---
-  const stuckStatuses = ["building", "reviewing", "revising"];
+  const stuckStatuses = ["building", "reviewing", "review-fixing", "revising"];
   const stuck = [];
   for (const id of nodeIds) {
     const ns = nodeStates[id];
@@ -179,7 +179,7 @@ function main() {
     const status = ns ? ns.status : "pending";
 
     if (completedStatuses.includes(status)) continue;
-    if (status === "building" || status === "reviewing" || status === "revising") continue;
+    if (status === "building" || status === "reviewing" || status === "review-fixing" || status === "revising") continue;
 
     // Check all dependencies are completed
     const deps = manifest.nodes[id].depends_on || [];

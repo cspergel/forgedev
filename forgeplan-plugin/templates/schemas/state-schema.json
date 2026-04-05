@@ -23,8 +23,8 @@
         },
         "status": {
           "type": "string",
-          "enum": ["building", "reviewing", "revising"],
-          "description": "What operation is in progress"
+          "enum": ["building", "reviewing", "review-fixing", "revising"],
+          "description": "What operation is in progress. review-fixing is a transient status used during multi-agent review cycles when a fixer agent is writing code to address review findings."
         },
         "agent_status": {
           "type": "string",
@@ -46,8 +46,8 @@
         "properties": {
           "status": {
             "type": "string",
-            "enum": ["pending", "specced", "building", "built", "reviewing", "reviewed", "revising", "revised"],
-            "description": "Current node status (reviewing/revising are transient in-progress states)"
+            "enum": ["pending", "specced", "building", "built", "reviewing", "review-fixing", "reviewed", "revising", "revised"],
+            "description": "Current node status (reviewing/review-fixing/revising are transient in-progress states)"
           },
           "last_build_completed": {
             "type": ["string", "null"],

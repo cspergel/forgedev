@@ -7,7 +7,7 @@ allowed-tools: Read Write Edit Bash Glob Grep
 
 # Crash Recovery
 
-Detect and recover from interrupted builds, reviews, or revisions.
+Detect and recover from interrupted builds, reviews, revisions, or review-fix cycles.
 
 ## Process
 
@@ -15,6 +15,7 @@ Detect and recover from interrupted builds, reviews, or revisions.
 2. Identify nodes in inconsistent states:
    - Status "building" with no active session
    - Status "reviewing" with no active session
+   - Status "review-fixing" with no active session (fixer agent was mid-fix during multi-agent review)
    - Status "revising" with no active session
    - Active node set but session appears stale
 
@@ -51,6 +52,31 @@ Options:
 Choose [1/2/3]:
 ```
 
+### If crashed during `review-fixing`:
+
+A fixer agent was writing code to address review findings (part of a multi-agent review cycle). The node was mid-fix when the session ended. The fixer's partial changes remain on disk.
+
+```
+=== Recovery: [node-id] ===
+Status: review-fixing (started [timestamp])
+This was a multi-agent review cycle — a fixer agent was addressing review findings.
+The fixer's partial changes are on disk and may be incomplete.
+
+Options:
+  1. RESUME REVIEW — Set status back to "reviewing" and restart the review from scratch.
+     The fixer's partial changes remain on disk and will be included in the re-review.
+     If multi-agent review is enabled, a new fixer will address any issues found.
+  2. REVERT & RESUME — Use `git checkout` to revert implementation files in the node's
+     file_scope to their pre-fix state, then restart the review from scratch.
+     Only available if git is available and changes are uncommitted.
+  3. SKIP — Restore node to `nodes.[node-id].previous_status`, clear active_node.
+     WARNING: The fixer's partial changes remain on disk and may leave code in an
+     inconsistent state. Consider using `git checkout` to revert if the partial fixes
+     caused issues. Only available if `previous_status` is set.
+
+Choose [1/2/3]:
+```
+
 ### If crashed during `revising`:
 
 ```
@@ -70,6 +96,7 @@ Choose [1/2/3]:
 Resume behavior depends on the crashed operation. **Read** state.json, then **update** (do not overwrite):
 - **Building:** Set `active_node` to `{"node": "[node-id]", "status": "building", "started_at": "[current ISO timestamp]"}`, reset `nodes.[node-id].bounce_count` to `0`, set `last_updated`, start the **Builder agent** with existing files as context
 - **Reviewing:** Set `active_node` to `{"node": "[node-id]", "status": "reviewing", "started_at": "[current ISO timestamp]"}`, set `last_updated`, start the **Reviewer agent** from scratch
+- **Review-fixing:** Set `active_node` to `{"node": "[node-id]", "status": "reviewing", "started_at": "[current ISO timestamp]"}`, set `nodes.[node-id].status` to `"reviewing"`, set `last_updated`, start the **Reviewer agent** from scratch (same as Reviewing resume — the fixer's partial work remains on disk and will be re-reviewed)
 - **Revising:** Set `active_node` to `{"node": "[node-id]", "status": "revising", "started_at": "[current ISO timestamp]"}`, set `last_updated`, re-read spec and manifest, continue revision
 
 ## Reset (building only)

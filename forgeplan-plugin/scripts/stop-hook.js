@@ -66,7 +66,9 @@ function evaluate(input) {
   }
 
   // --- Layer 1 Check 1: Is there an active build? ---
-  // Stop hook only fires for builds, not reviews or revises
+  // Stop hook only fires for full builds, not reviews, revises, or review-fixing.
+  // review-fixing (fixer agents during multi-agent review cycles) is verified by the
+  // subsequent re-review, not by AC evaluation — so allow stop without checking.
   if (!state.active_node || state.active_node.status !== "building") {
     return { block: false };
   }

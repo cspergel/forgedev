@@ -43,7 +43,7 @@ function main() {
       }
 
       // Check if active_node was left in any in-progress status
-      const stuckStatuses = ["building", "reviewing", "revising"];
+      const stuckStatuses = ["building", "reviewing", "review-fixing", "revising"];
       if (
         state.active_node &&
         stuckStatuses.includes(state.active_node.status)

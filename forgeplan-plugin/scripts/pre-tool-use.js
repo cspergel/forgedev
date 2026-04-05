@@ -129,8 +129,15 @@ function evaluate(input) {
     };
   }
 
-  // Building: only specific .forgeplan/ paths allowed per builder contract
-  if (activeStatus === "building" && relPath.startsWith(".forgeplan/")) {
+  // Review-fixing: same enforcement as building (fixer agent writing code during multi-agent review cycle)
+  // Falls through to the building enforcement below
+  if (activeStatus === "review-fixing") {
+    // Treat review-fixing identically to building for write enforcement
+    // (same file_scope check, shared model guard, .forgeplan/ boundary)
+  }
+
+  // Building (and review-fixing): only specific .forgeplan/ paths allowed per builder contract
+  if ((activeStatus === "building" || activeStatus === "review-fixing") && relPath.startsWith(".forgeplan/")) {
     const activeNodeId_ = state.active_node.node;
     if (
       relPath === `.forgeplan/conversations/nodes/${activeNodeId_}.md` ||
@@ -165,8 +172,8 @@ function evaluate(input) {
     };
   }
 
-  // For non-building states we don't recognize, allow
-  if (activeStatus !== "building") {
+  // For non-building/non-review-fixing states we don't recognize, allow
+  if (activeStatus !== "building" && activeStatus !== "review-fixing") {
     return { block: false };
   }
 
@@ -361,7 +368,7 @@ function evaluateBash(toolInput, cwd) {
   }
 
   const activeStatus = state.active_node.status;
-  const inProgressStatuses = ["building", "reviewing", "revising"];
+  const inProgressStatuses = ["building", "reviewing", "review-fixing", "revising"];
 
   if (!inProgressStatuses.includes(activeStatus)) {
     return { block: false };

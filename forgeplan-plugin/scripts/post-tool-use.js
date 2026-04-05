@@ -61,7 +61,7 @@ function processHook(input) {
       const stateData = JSON.parse(fs.readFileSync(
         path.join(cwd, ".forgeplan", "state.json"), "utf-8"
       ));
-      if (stateData.active_node && stateData.active_node.status === "building") {
+      if (stateData.active_node && (stateData.active_node.status === "building" || stateData.active_node.status === "review-fixing")) {
         const nodeId = stateData.active_node.node;
         if (!stateData.shared_types_created_by) {
           stateData.shared_types_created_by = nodeId;
@@ -88,8 +88,8 @@ function processHook(input) {
     return;
   }
 
-  // Only register during active builds
-  if (!state.active_node || state.active_node.status !== "building") return;
+  // Only register during active builds (including review-fixing, which is a fixer agent writing code during multi-agent review cycles)
+  if (!state.active_node || (state.active_node.status !== "building" && state.active_node.status !== "review-fixing")) return;
 
   const activeNodeId = state.active_node.node;
 
@@ -102,7 +102,7 @@ function processHook(input) {
 
     if (!state.nodes) state.nodes = {};
     if (!state.nodes[activeNodeId]) {
-      state.nodes[activeNodeId] = { status: "building" };
+      state.nodes[activeNodeId] = { status: state.active_node.status };
     }
     if (!state.nodes[activeNodeId].files_created) {
       state.nodes[activeNodeId].files_created = [];

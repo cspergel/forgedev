@@ -648,6 +648,41 @@ When recovery detects an interrupted sweep or deep-build, it offers three option
 - `/forgeplan:deep-build` command chaining the full autonomous sequence: build all → node review → integrate → Claude sweep → fix → re-integrate → cross-check → fix → re-integrate → repeat → final integrate → report
 - Deep build report at `.forgeplan/deep-build-report.md` with findings tracked by source model, pass number, and resolution status
 
+#### Implementation Notes (from cross-model code review)
+
+These items were identified during independent code review of the Sprint 6 plan against the existing Sprint 1–4 codebase. They must be addressed during Sprint 6 implementation:
+
+**Hook updates — comprehensive file checklist for `"sweeping"` status:**
+- `state-schema.json` — add `"sweeping"` to `active_node.status` enum, add `sweep_state` as top-level object
+- `pre-tool-use.js` — add sweep analysis mode + node-scoped fix mode (lines 108-112 early return must check `sweep_state` before allowing all writes). Add `cross-model-bridge.js` to the Bash whitelist.
+- `post-tool-use.js` — activate during `"sweeping"` status (line 92 currently only fires for `"building"`). Add pass-level modified-file tracking to `sweep_state.modified_files_by_pass`.
+- `stop-hook.js` — **decide explicitly:** should the Stop hook fire during `"sweeping"` fixes? If no (sweep fixes are verified by cross-model re-check, not AC evaluation), document this decision and add `"sweeping"` to the allow-through statuses. If yes, add `"sweeping"` to the status check at line 70.
+- `session-start.js` — add `sweep_state` check alongside `active_node` check (line 34 stuck statuses list needs `"sweeping"`)
+- `next-node.js` — add `"sweeping"` to stuck status detection (line 84), return "sweep in progress" when `sweep_state` is active
+- `validate-manifest.js` — add `"sweeping"` to valid node statuses (line 71)
+
+**Shared types exception — simplify the mechanism:**
+The plan says sweep fixes MAY modify `src/shared/types/index.ts` for type-consistency findings. The implementation has two options:
+- **(A) Simple:** All sweep fixes may write to shared types (same as revise behavior). Simpler to implement, slightly less restrictive.
+- **(B) Category-gated:** PreToolUse checks `sweep_state.fixing_node`, looks up the associated finding in `sweep_state.findings.pending`, and only allows shared types writes if the finding's `category` is `"type-consistency"`. More precise but more complex.
+Choose one during implementation. Option A is recommended for V1.
+
+**cross-model-bridge.js relationship to cross-model-review.js:**
+Keep `cross-model-review.js` for single-node BYOK review (Sprint 4). Create `cross-model-bridge.js` as a new file that imports shared utilities (`assembleReviewPrompt`, `parseReviewResponse`, `collectNodeFiles`) from `cross-model-review.js` and adds sweep orchestration: multi-node file collection, sweep-style prompts, batch/parallel API calls, and finding extraction. This preserves backward compatibility with the review command.
+
+**integrate-check.js output mapping for sweep_state:**
+The current `integrate-check.js` outputs `verdict: "PASS"|"FAIL"|...` and `interfaces: [...]`. The `sweep_state.integration_results` expects `passed: boolean` and `failures: []`. The deep-build orchestrator must map between these:
+```
+passed = (verdict === "PASS" || verdict === "PASS_WITH_WARNINGS")
+failures = interfaces.filter(i => i.status === "FAIL")
+```
+
+**Deep-build report format:**
+Specify a concrete format (like the sweep/crosscheck reports). Should include: total passes, findings by source model, resolution timeline, final integration result, and wall-clock time.
+
+**Per-pass git commits (recommended):**
+Create a git commit after each completed fix cycle. This makes "abort to pre-sweep state" trivially safe (git reset) and provides a clean audit trail. Tag format: `forgeplan-sweep-pass-[N]`.
+
 **Test:** Run `/forgeplan:sweep` on a codebase with planted bugs. Verify Claude's agents find their issues. Fix. Verify re-integration runs after fixes. Run cross-check — verify it catches at least one issue Claude missed. Kill the terminal mid-sweep — verify `/forgeplan:recover` detects the interrupted sweep and offers resume/restart/abort. Run `/forgeplan:deep-build` end-to-end on the client portal. Verify two consecutive clean cross-model passes, re-integration at each gate, and documented findings by source.
 
 **Exit criteria:** `/forgeplan:deep-build` runs autonomously on the client portal. Codex certifies clean on two consecutive passes. Deep build report shows cross-model review caught issues single-model review missed. Re-integration passes at every gate point. Recovery from mid-sweep crash works correctly. Total autonomous build time under 90 minutes.
