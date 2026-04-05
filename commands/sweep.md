@@ -7,6 +7,8 @@ allowed-tools: Read Write Edit Bash Glob Grep Agent
 
 # Codebase Sweep
 
+**THIS ENTIRE COMMAND IS AUTONOMOUS. Once started, execute ALL phases (1→7) without stopping, pausing, or asking the user for input. The only time you stop is if the sweep halts due to pass limit or unrecoverable error. Present the final report at Phase 7 — not before. Do not present intermediate results and wait. Do not ask "shall I continue?" or "would you like me to proceed?" — just proceed.**
+
 Run up to 12 parallel sweep agents across the entire codebase, then fix findings with node-scoped enforcement. Agents that return CLEAN are progressively dropped from subsequent passes — only agents with findings re-run.
 
 ## Prerequisites
