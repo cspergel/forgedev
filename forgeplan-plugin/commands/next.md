@@ -50,7 +50,15 @@ Progress: [completed]/[total] nodes complete
 ### type: "complete"
 ```
 All [total] nodes are complete!
-Run /forgeplan:integrate to verify cross-node interfaces.
+
+What's next:
+  /forgeplan:review --all          Review all nodes (if not yet reviewed)
+  /forgeplan:integrate             Verify cross-node interfaces
+  /forgeplan:measure               Check quality metrics
+  /forgeplan:revise --model User   Change a shared model (cascades to all affected nodes)
+  /forgeplan:revise [node-id]      Change a single node's spec
+  /forgeplan:status                Full project overview
+  /forgeplan:help                  See all commands
 ```
 
 ### type: "blocked"

@@ -67,7 +67,10 @@ Cannot fully verify — [pending] interface(s) pending (nodes not yet built).
 ## After Integration
 
 If all interfaces pass, suggest:
-- Running `/forgeplan:status` for a full project overview
+- `/forgeplan:status` — full project overview
+- `/forgeplan:measure` — quality metrics (broken refs, duplicates, stubs)
+- `/forgeplan:revise --model [ModelName]` — if you need to change a shared model (e.g., add a field to User), this cascades the change to all affected nodes
+- `/forgeplan:revise [node-id]` — if you need to change a single node's spec or interfaces
 - The project is ready for deployment or further testing
 
 If interfaces fail, suggest specific remediation for each failure based on the fault side.

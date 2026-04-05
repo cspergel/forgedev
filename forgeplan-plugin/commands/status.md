@@ -47,3 +47,17 @@ Document: [fields] — used by [nodes]
 
 If any nodes are stuck or have issues, flag them prominently at the top.
 If there's an active node operation, show it.
+
+## Next Steps Suggestions
+
+Based on project state, suggest relevant next actions:
+
+- **All nodes pending:** `/forgeplan:spec --all` then `/forgeplan:build --all`
+- **Some nodes built, some pending:** `/forgeplan:next` to see what to build next
+- **All nodes built but not reviewed:** `/forgeplan:review --all`
+- **All nodes reviewed:** `/forgeplan:integrate` then `/forgeplan:measure`
+- **Project complete:** Suggest common changes:
+  - `/forgeplan:revise --model [ModelName]` to add/change a shared model field (cascades to all affected nodes)
+  - `/forgeplan:revise [node-id]` to change a single node
+  - `/forgeplan:measure` to check quality metrics
+  - `/forgeplan:help` for all available commands
