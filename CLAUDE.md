@@ -93,7 +93,23 @@ Sprint 6 hardening (same sprint, post-initial):
 - Dogfooded on client-portal: 60 findings, 53 auto-fixed, cross-model certified
 
 ### Sprint 7: Ambient Mode — Proactive Guidance
-**Goal:** ForgePlan becomes an ambient assistant — detects project state, proactively suggests next steps, scores findings by confidence, and manages state resiliently.
+**Goal:** ForgePlan becomes an ambient assistant — detects project state, proactively suggests next steps, scores findings by confidence, and manages state resiliently. Discovery becomes conversational and accepts external documents.
+
+**Pillar 0: Conversational Discovery & Document Import**
+- Make `/forgeplan:discover` support two onboarding paths:
+  - **Path A: Greenfield conversation** — user types `/forgeplan:discover` with no args. Architect agent starts a multi-turn brainstorming conversation: asks about users, scale, auth, core features, tech stack preferences. Goes back and forth until the user says "looks good." Then generates manifest. This is for people who want to explore the idea inside ForgePlan.
+  - **Path B: Document import** — user has already spent hours brainstorming with any AI (ChatGPT, Gemini, etc.) or has a written brief. They run:
+    ```
+    /forgeplan:discover --from "project-brief.md"
+    /forgeplan:discover --from "chat-export.txt"
+    /forgeplan:discover --from "requirements.pdf"
+    ```
+    Architect agent reads the document, extracts requirements, identifies nodes/shared models/interfaces, then asks targeted clarifying questions (not re-brainstorming — just filling gaps). After clarification, generates manifest.
+  - **Path C: Template + customization** — existing template path (`/forgeplan:discover template:client-portal`) but now the Architect asks "what would you like to customize?" instead of just generating.
+- Onboarding guide explains all three paths clearly: "You can brainstorm here, bring your own plan, or start from a template."
+- Document import supports: markdown, text, PDF, chat exports (ChatGPT JSON, Claude conversation exports)
+- Architect extracts: project name, user roles, core features, data models, node boundaries, tech stack, constraints
+- After extraction, Architect presents a summary and asks: "Does this capture your vision? What's missing?"
 
 **Pillar 1: Ambient SessionStart**
 - Enhance session-start.js to detect full project state (not just stuck builds)
@@ -145,10 +161,12 @@ Sprint 6 hardening (same sprint, post-initial):
 - Blueprint versioning: track which versions of dependencies/patterns a blueprint uses
 
 **Pillar 3: Autonomous Greenfield Pipeline**
-- `/forgeplan:discover "project description"` → research → architect → spec all → deep-build → certified
-- Full zero-to-deployed with one command
+- Any discovery path (conversation, document import, template) feeds into the full pipeline:
+  `/forgeplan:discover` → research → architect → spec all → deep-build → certified
+- Full zero-to-deployed: describe what you want (or import your brief), walk away
 - Research agents run before architecture to inform node structure and dependencies
 - Cross-model verification of the entire stack
+- Supports the "I brainstormed with ChatGPT for 2 hours, here's the doc" workflow natively
 
 **Pillar 4: Semantic Memory (Karpathy Wiki Pattern)**
 - Maintain a compiled project knowledge base at `.forgeplan/wiki/` (inspired by Karpathy's LLM Wiki)
