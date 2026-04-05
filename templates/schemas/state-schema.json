@@ -175,7 +175,9 @@
             "properties": {
               "status": { "type": "string", "enum": ["active", "clean", "converged", "force-converged", "skipped", "failed"] },
               "last_findings_pass": { "type": ["integer", "null"] },
-              "consecutive_clean": { "type": "integer", "default": 0 }
+              "consecutive_clean": { "type": "integer", "default": 0 },
+              "findings_history": { "type": "array", "items": { "type": "integer" }, "default": [], "description": "Finding count per pass for anti-oscillation detection" },
+              "consecutive_failures": { "type": "integer", "default": 0, "description": "Consecutive failed dispatch count — force-converge after 3" }
             }
           }
         },

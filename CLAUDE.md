@@ -199,15 +199,38 @@ Sprint 6 hardening (same sprint, post-initial):
 | `/forgeplan:sweep` | 6 | 12-agent parallel sweep + progressive convergence + cross-model verification |
 | `/forgeplan:deep-build` | 6 | Full autonomous build→review→sweep→cross-check pipeline |
 | `/forgeplan:configure` | 6 | Automated cross-model setup wizard (Codex/Gemini MCP/CLI/API) |
+| `/forgeplan:guide` | 6 | Evaluates project state, recommends best next step with explanations |
+| `/forgeplan:help` | 4 | All available commands |
+| `/forgeplan:affected` | 4 | Which nodes use a shared model — impact analysis |
+| `/forgeplan:measure` | 5 | Code quality metrics (broken refs, stubs, duplicates) |
+| `/forgeplan:regen-types` | 4 | Rebuild shared TypeScript types from manifest |
+| `/forgeplan:validate` | 4 | Check manifest/specs for cycles, orphans, consistency |
 | `/forgeplan:research` | 8 | Research agents search for existing implementations, check licenses, gather docs |
 
-## Three Agents
+## Core Agents
 
 | Agent | Role | Key Behaviors |
 |-------|------|--------------|
 | Architect | Discovery, manifest creation | Anti-collapse enforcement, shared model identification, text summaries |
 | Builder | Node code generation | Pre-build spec challenge, anchor comments, constraint directive |
 | Reviewer | Spec-diff audit | 7 audit dimensions, per-criterion PASS/FAIL, code evidence |
+
+### 12 Sweep Agents (dispatched in parallel by `/forgeplan:sweep`)
+
+| Agent | Model | Domain |
+|-------|-------|--------|
+| sweep-auth-security | opus | Auth, authz, sessions, input validation |
+| sweep-type-consistency | sonnet | Types, shared models, interface drift |
+| sweep-error-handling | sonnet | Try/catch, promises, error responses |
+| sweep-database | sonnet | Queries, migrations, connections |
+| sweep-api-contracts | sonnet | Endpoints, routes, request/response |
+| sweep-imports | sonnet | Import chains, circular deps |
+| sweep-code-quality | sonnet | Readability, performance, dead code, duplication |
+| sweep-test-quality | sonnet | Assertion quality, coverage gaps, flaky tests |
+| sweep-config-environment | sonnet | Env vars, config drift, secrets |
+| sweep-frontend-ux | sonnet | Accessibility, loading/error/empty states |
+| sweep-documentation | sonnet | README/JSDoc/API doc accuracy |
+| sweep-cross-node-integration | opus | Data flow across boundaries, field mismatches |
 
 ## Four Hook Types
 

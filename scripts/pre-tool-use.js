@@ -183,7 +183,7 @@ function evaluate(input) {
       relPath === `.forgeplan/conversations/nodes/${activeNodeId_}.md` ||
       relPath === ".forgeplan/state.json" ||
       // Sweep-only paths: only allow during sweeping, not during normal builds
-      (activeStatus === "sweeping" && (relPath.startsWith(".forgeplan/sweeps/") || relPath === ".forgeplan/deep-build-report.md"))
+      (activeStatus === "sweeping" && (relPath.startsWith(".forgeplan/sweeps/") || relPath.startsWith(".forgeplan/specs/") || relPath === ".forgeplan/manifest.yaml" || relPath === ".forgeplan/deep-build-report.md"))
     ) {
       return { block: false };
     }
@@ -401,8 +401,8 @@ function evaluateBash(toolInput, cwd) {
   try {
     state = JSON.parse(fs.readFileSync(statePath, "utf-8"));
   } catch (err) {
-    // ESCAPE HATCH: allow rm of state.json to break the deadlock
-    if (/\brm\b.*\.forgeplan[/\\]state\.json/.test(command)) {
+    // ESCAPE HATCH: allow rm of state.json to break the deadlock (strict: no chained commands)
+    if (/^\s*rm\s+(-[rf]+\s+)?["']?\.forgeplan[/\\]state\.json["']?\s*$/.test(command)) {
       return { block: false };
     }
     return {
@@ -478,15 +478,15 @@ function evaluateBash(toolInput, cwd) {
     };
   }
 
-  // Split command on chaining operators and validate EVERY segment
-  const segments = command.split(/\s*(?:;|&&|\|\||(?<!\|)\|(?!\|))\s*/).filter(Boolean);
+  // Split command on chaining operators AND newlines (newlines are command separators in shell)
+  const segments = command.split(/\s*(?:\r?\n|\r|;|&&|\|\||(?<!\|)\|(?!\|))\s*/).filter(Boolean);
 
   const allSegmentsSafe = segments.every((seg) => {
     const trimmed = seg.trim();
     if (!trimmed) return true;
     const matchesSafe = safePatterns.some((p) => p.test(trimmed));
-    // Strip safe fd redirections (2>&1, 2>/dev/null) before checking for file redirections
-    const stripped = trimmed.replace(/\d+>&\d+/g, "").replace(/\d+>\s*\/dev\/null/g, "");
+    // Strip safe redirections (2>&1, 2>/dev/null, >/dev/null) before checking for file redirections
+    const stripped = trimmed.replace(/\d+>&\d+/g, "").replace(/\d+>\s*\/dev\/null/g, "").replace(/>\s*\/dev\/null/g, "");
     const hasUnsafeRedirection = />\s*[^\s]/.test(stripped) || /\|\s*Out-File/i.test(stripped);
     return matchesSafe && !hasUnsafeRedirection;
   });
