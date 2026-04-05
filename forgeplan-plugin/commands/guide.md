@@ -83,7 +83,12 @@ All [N] nodes are specced with [N] acceptance criteria. Next:
 
   → /forgeplan:integrate      Verify all interfaces (recommended)
   → /forgeplan:measure        Check quality metrics
+  → /forgeplan:sweep          Sweep for cross-cutting issues (6 parallel agents)
+  → /forgeplan:sweep --cross-check   Same + cross-model verification
   → /forgeplan:status         See the full project overview
+
+Want a different AI model to double-check the code?
+  → /forgeplan:configure      Set up cross-model review (Codex/GPT/Gemini)
 
 Ready to make changes?
   → /forgeplan:revise --model [ModelName]   Change a shared data model (cascades to all affected nodes)

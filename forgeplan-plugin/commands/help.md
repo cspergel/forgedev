@@ -46,6 +46,7 @@ user-invocable: true
 
 | Command | What it does |
 |---------|-------------|
+| `/forgeplan:configure` | Set up cross-model review (Codex/GPT/Gemini), enforcement mode, and model tiering. Interactive setup wizard. |
 | `/forgeplan:affected [model]` | Which nodes use this data model? Shows dependencies and update steps. |
 | `/forgeplan:regen-types` | Rebuild shared TypeScript types from the manifest. |
 | `/forgeplan:validate [manifest\|spec node\|all]` | Is my architecture valid? Checks for cycles, orphans, and consistency. |
