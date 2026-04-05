@@ -144,8 +144,6 @@ ForgeDev/
 
 ## Development
 
-Built in a single session through 6 sprints with iterative cross-model review (Claude + Codex). The enforcement code was hardened through 14+ review rounds.
-
 ```bash
 # Run the plugin locally
 claude --plugin-dir ./forgeplan-plugin
