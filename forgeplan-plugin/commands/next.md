@@ -1,5 +1,5 @@
 ---
-description: What should I work on next? Shows the recommended next node based on dependencies, surfaces any stuck nodes, and guides you through the workflow with suggested commands.
+description: What should I do next? Evaluates your entire project state and recommends the best next action — whether that's building, reviewing, integrating, fixing something, or making changes. Your guide through the whole workflow.
 user-invocable: true
 allowed-tools: Read Bash
 ---

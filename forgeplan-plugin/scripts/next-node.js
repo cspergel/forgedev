@@ -140,8 +140,15 @@ function main() {
     process.exit(0);
   }
 
-  // --- Priority 3: Dependency-order next eligible node ---
+  // --- State summary for context-aware suggestions ---
   const completedStatuses = ["built", "reviewed", "revised"];
+  const allStatuses = {};
+  for (const id of nodeIds) {
+    const status = nodeStates[id]?.status || "pending";
+    allStatuses[status] = (allStatuses[status] || 0) + 1;
+  }
+
+  // --- Priority 3: Dependency-order next eligible node ---
 
   // Topological sort
   const inDegree = {};
