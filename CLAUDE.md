@@ -92,174 +92,147 @@ Sprint 6 hardening (same sprint, post-initial):
 - Outside-project-path writes allowed (other plugins not blocked)
 - Dogfooded on client-portal: 60 findings, 53 auto-fixed, cross-model certified
 
-### Sprint 7: Ambient Mode — Proactive Guidance
-**Goal:** ForgePlan becomes an ambient assistant — detects project state, proactively suggests next steps, scores findings by confidence, and manages state resiliently. Discovery becomes conversational and accepts external documents. **Critical: complexity calibration so the process scales to the project, not the other way around.**
+### Sprint 7: Complexity Calibration + Ambient Mode (Weeks 15-17)
+**Goal:** Scale the process to the project. Make ForgePlan usable for small projects (not just enterprise). Add ambient guidance and confidence scoring.
 
-**Pillar -1: Complexity Calibration (P0 — from dogfood feedback)**
+**Pillar 1: Complexity Calibration (P0 — from dogfood feedback)**
 - **The problem:** Full governance on a 3-page app took 10 hours. A single Claude prompt would take 30 minutes. ForgePlan must know when to get out of the way.
-- During discovery, assess project complexity based on: entity count, user roles, page count, integration count, team size
-- Three tiers:
+- First implementation task: add `complexity_tier` field to manifest schema. Everything reads from it.
+- During discovery, assess project complexity. Primary signal: entity count. Secondary: roles, pages.
+- **Explicit boundaries (no ambiguity):**
   ```
-  SMALL (< 5 entities, < 3 roles, < 10 pages):
-    → 1-2 coarse nodes (backend + frontend, not 7 feature nodes)
-    → Single-pass build (all code in one shot, including scaffolding)
-    → Lightweight audit (3-4 agents, not 12)
+  SMALL (1-4 entities, 1-2 roles, 1-9 pages):
+    → 1-2 coarse nodes (one broad-scope node with file_scope: "src/**")
+    → Single-pass build — builder generates all code in one session
+    → Auto-generate specs from manifest (skip spec conversation)
+    → Lightweight audit: 3-4 agents (auth-security, code-quality, test-quality, cross-node-integration)
     → No cross-model verification unless requested
-    → Skip formal spec conversation — generate specs from manifest automatically
-    → Output: working, runnable app
+    → Walkthrough: single summary confirmation, not per-feature
+    → Output: working, runnable app in one session
 
-  MEDIUM (5-15 entities, 3-5 roles, 10-30 pages):
+  MEDIUM (5-14 entities, 3-4 roles, 10-29 pages):
     → 3-5 nodes with sensible boundaries
     → Sequential build with review after each
     → 6-8 sweep agents (skip documentation, frontend-ux if no frontend)
     → Cross-model optional
     → Full specs but streamlined conversation
+    → Walkthrough: section-by-section (scope, non-goals, models, nodes)
 
-  LARGE (15+ entities, 5+ roles, 30+ pages, multi-team):
+  LARGE (15+ entities, 5+ roles, 30+ pages, or multi-team):
     → Full pipeline: fine-grained nodes, 12 agents, cross-model, deep-build
+    → Per-feature walkthrough during discovery
     → This is what ForgePlan was designed for
   ```
-- User can always override: "I know this is small but I want full governance" or "This is large but I want to move fast"
-- **Node granularity scales with complexity:** Don't decompose a 3-page CRUD app into 7 nodes. Suggest: backend (DB + auth + API + storage) and frontend (all pages). Let user override if they want finer control.
-- **Sweep scales with file count:** < 20 source files → 3-4 agents. 20-100 → 6-8 agents. 100+ → all 12.
-- **Deduplication before presentation:** 62% duplication rate in dogfood was unacceptable. Merge findings BEFORE showing to user, not after.
-- **Test update during rebuild:** When builder modifies a source file, it MUST also update the corresponding test file. Don't leave stale tests for the sweep to find — that's the process creating its own problems.
-- **"Make it runnable" gate:** After all nodes are built, verify: `npm run dev` works, all routes render, no import errors. If not, fix before proceeding to review/sweep.
+- **Resolution rule:** When dimensions disagree, tier = MAX across all dimensions. 3 entities + 4 roles = MEDIUM (roles push it up).
+- User can always override: "I know this is small but I want full governance" or "This is large but I want to move fast."
+- **Architect agent update (CRITICAL):** Replace absolute decomposition rules ("NEVER collapse auth/API/database") with tier-conditional rules. SMALL tier explicitly allows and encourages coarse nodes. LARGE tier keeps current rules. Test against all three tiers.
+- **Deep-build adapts to tier:** SMALL = single-pass build, lightweight audit, no cross-model. MEDIUM = current pipeline with fewer agents. LARGE = full pipeline.
 
-**Pillar 0: Conversational Discovery & Document Import**
-- Make `/forgeplan:discover` support two onboarding paths:
-  - **Path A: Greenfield conversation** — user types `/forgeplan:discover` with no args. Architect agent starts a multi-turn brainstorming conversation: asks about users, scale, auth, core features, tech stack preferences. Goes back and forth until the user says "looks good." Then generates manifest. This is for people who want to explore the idea inside ForgePlan.
-  - **Path B: Document import** — user has already spent hours brainstorming with any AI (ChatGPT, Gemini, etc.) or has a written brief. They run:
-    ```
-    /forgeplan:discover --from "project-brief.md"
-    /forgeplan:discover --from "chat-export.txt"
-    /forgeplan:discover --from "requirements.pdf"
-    ```
-    Architect agent reads the document, extracts requirements, identifies nodes/shared models/interfaces, then asks targeted clarifying questions (not re-brainstorming — just filling gaps). After clarification, generates manifest.
-  - **Path C: Template + customization** — existing template path (`/forgeplan:discover template:client-portal`) but now the Architect asks "what would you like to customize?" instead of just generating.
-- Onboarding guide explains all three paths clearly: "You can brainstorm here, bring your own plan, or start from a template."
-- Document import supports: markdown, text, PDF, chat exports (ChatGPT JSON, Claude conversation exports)
-- Architect extracts: project name, user roles, core features, data models, node boundaries, tech stack, constraints
-- **Mandatory walkthrough before manifest generation:**
-  - After reading the document (or completing the conversation), Architect walks through EVERY feature it understood, one by one
-  - For each feature: "My understanding: [summary]. → Correct?"
-  - Then presents: scope (what's IN), non-goals (what's OUT — these become enforcement constraints), shared models, node boundaries
-  - Then presents: recommended build phases based on dependency graph
-  - User confirms or corrects each section. Corrections loop back for clarification.
-  - Only after full walkthrough confirmation does Architect generate the manifest
-  - This is non-skippable. The walkthrough IS the architecture review. Discovery quality determines everything downstream — specs, enforcement, non-goals, acceptance criteria all flow from these decisions.
-  - Philosophy: **architecture down, not code up.** Design the system first, then the harness enforces it. If discovery gets it wrong, the harness perfectly enforces the wrong thing.
+**Tier-independent improvements (also P0):**
+- **Deduplication before presentation:** Semantic dedup in sweep Phase 3, not just file+line matching. Target: < 20% duplication rate (was 62%).
+- **Test co-update during rebuild:** Builder MUST update corresponding test files when modifying source. Don't create problems for the sweep to find.
+- **"Make it runnable" gate:** After all nodes built, verify `npm run dev` works. If not, fix before proceeding to review/sweep.
 
-**Pillar 1: Ambient SessionStart**
+**Pillar 2: Ambient SessionStart (P0)**
 - Enhance session-start.js to detect full project state (not just stuck builds)
+- For healthy projects: show one-line status summary + suggested next command
 - Show: node statuses, next recommended action, pending decisions, sweep progress
 - Suggest commands contextually ("auth is built but not reviewed → /forgeplan:review auth")
 - Non-blocking: fast checks sync, expensive analysis async
 
-**Pillar 2: Confidence Scoring**
-- Score each sweep finding 0-100 confidence based on code evidence strength
-- Filter findings below 75 before presenting to fix cycle
+**Pillar 3: Confidence Scoring (P0)**
+- Each sweep finding must include `confidence: 0-100` based on code evidence strength
+- Filter findings below 75 before entering fix cycle
+- Calibration guidance in each agent: what makes a finding 50 vs 90
 - Reduces convergence from ~14 rounds to 3-4 by eliminating noise early
-- Apply to cross-model findings too (external model hallucinations get filtered)
+- Cross-model findings scored by Claude after receipt (external model doesn't know the system)
 
-**Pillar 3: State Management Hardening**
-- Dedicated `update-state.js` script for atomic JSON read-modify-write (replaces fragile Edit/Write on complex JSON)
-- Support parallel fix agents with per-agent temp state files merged after completion
-- Change `active_node` to support array (multiple concurrent node fixes)
-- Session-end hook: persist session summary for cross-session context
+**Pillar 4: Conversational Discovery & Document Import (P1 — stretch goal)**
+- Three onboarding paths: greenfield conversation (Path A), document import (Path B), template (Path C)
+- `--from` argument for importing markdown, text, PDF files
+- Chat exports treated as plain text (best effort — formats change too often)
+- Walkthrough granularity is tier-dependent (SMALL = one confirmation, LARGE = per-feature)
+- For autonomous deep-build: walkthrough replaced by automatic validation (proceed if no ambiguities, halt if unclear)
+- Philosophy: **architecture down, not code up.**
 
-**Pillar 4: Hierarchical Documentation**
-- Refactor agents to < 300 lines each, point to detail docs
-- Shared sweep-base template for repeated logic across 12 agents
-- Progressive disclosure: agents load only what they need
-- `docs/` directory for detailed patterns (architect, builder, reviewer, sweep orchestration)
+**Deferred to later sprints (P2):**
+- State Management Hardening (update-state.js, parallel agents, active_node as array) → Sprint 9
+- Hierarchical Documentation (agent refactoring to < 300 lines) → anytime, maintenance task
+- Two-Stage Review (spec compliance then code quality) → Sprint 9
+- Guide Skill Enhancement (pattern detection from past sweeps) → Sprint 9
 
-**Pillar 5: Two-Stage Review**
-- Stage 1: Spec compliance (does code match every AC, constraint, interface?)
-- Stage 2: Code quality (bugs, error handling, test sufficiency)
-- If Stage 1 fails, skip Stage 2 (save tokens, spec must pass first)
+**Files that need changes (~20 for P0 pillars):**
+- `templates/schemas/manifest-schema.yaml` — add `complexity_tier` field
+- `templates/schemas/config-schema.yaml` — add `tier_override` option
+- `agents/architect.md` — tier-conditional decomposition rules (CRITICAL)
+- `commands/discover.md` — complexity assessment, tier-aware node recommendations
+- `commands/spec.md` — SMALL-tier auto-generate branch
+- `commands/build.md` — SMALL-tier single-pass mode
+- `commands/sweep.md` — tier-aware agent selection (3-4 / 6-8 / 12)
+- `commands/deep-build.md` — tier-aware pipeline (skip cross-model for SMALL)
+- `agents/builder.md` — tier-awareness, test co-updates
+- `agents/reviewer.md` — tier-aware abbreviated review for SMALL
+- `agents/sweep-*.md` (12 files) — add confidence score output
+- `scripts/session-start.js` — full state detection, status summary
+- `scripts/validate-manifest.js` — validate complexity_tier field
+- `templates/schemas/state-schema.json` — add confidence to finding schema
 
-**Pillar 6: Guide Skill Enhancement**
-- /forgeplan:guide reads full state + sweep reports + blocked decisions
-- Explains what happened, what's next, and why
-- Detects common patterns: "3 previous nodes had similar interfaces — here's what worked"
-
-### Sprint 8: Research Agents and Autonomous Greenfield
-**Goal:** Fully autonomous greenfield builds with research agents that search for best practices, vet dependencies, and recommend architecture before building.
+### Sprint 8: Research Agents + Greenfield Pipeline (Weeks 18-21)
+**Goal:** Research agents search for best practices before building. Greenfield deep-build from discovery to certified. (Per Execution Plan scope — focused, not inflated.)
 
 **Pillar 1: Research Agents**
-- `/forgeplan:research [topic]` dispatches agents to search GitHub, npm, documentation
+- `/forgeplan:research [topic]` dispatches 4 agent types: Researcher (GitHub/npm search), License Checker, Inspiration (find similar projects), Docs Agent (gather API documentation)
 - Check licenses (MIT/Apache/etc.), download counts, maintenance status
 - Gather best practices for common patterns (auth, payments, file storage, etc.)
 - Output: recommended dependencies, proven patterns, architecture constraints
-- Research results feed into the Architect agent as constraints during /forgeplan:discover
+- Results stored in `.forgeplan/research/` and fed into Architect during discovery
 
-**Pillar 2: Expanded Blueprints**
-- Research-backed blueprint generation: "e-commerce" → Stripe + Resend + Drizzle + established patterns
-- Community blueprints: users can contribute and share blueprints
-- Blueprint versioning: track which versions of dependencies/patterns a blueprint uses
+**Pillar 2: Autonomous Greenfield Pipeline**
+- Any discovery path feeds into: discover → research → spec all → deep-build → certified
+- `--with-research` flag on deep-build inserts research between discovery and spec
+- Full zero-to-deployed: describe what you want, walk away
+- Complexity tier determines how much governance the pipeline applies
+- Exit criteria: working app with passing integration check and sweep certification
 
-**Pillar 3: Autonomous Greenfield Pipeline**
-- Any discovery path (conversation, document import, template) feeds into the full pipeline:
-  `/forgeplan:discover` → research → architect → spec all → deep-build → certified
-- Full zero-to-deployed: describe what you want (or import your brief), walk away
-- Research agents run before architecture to inform node structure and dependencies
-- Cross-model verification of the entire stack
-- Supports the "I brainstormed with ChatGPT for 2 hours, here's the doc" workflow natively
+### Sprint 9: Semantic Memory + Polish (Weeks 22-24)
+**Goal:** Compiled knowledge base reduces token usage. Polish from Sprint 7 deferred items.
 
-**Pillar 4: Semantic Memory (Karpathy Wiki Pattern)**
-- Maintain a compiled project knowledge base at `.forgeplan/wiki/` (inspired by Karpathy's LLM Wiki)
-- Three layers: raw sources (specs, code) → wiki (compiled knowledge per node) → schema (rules)
-- Each sweep pass UPDATES the wiki instead of re-reading the entire codebase from scratch
-- Next pass, agents read the wiki first (cheap, compiled) and only drill into source code to verify
-- Node pages: `.forgeplan/wiki/nodes/[id].md` — what's known, past findings, resolved issues, patterns
-- Cross-cutting pages: patterns.md, decisions.md, log.md (append-only changelog)
-- Dramatically cuts token usage: agents read compiled summaries, not raw code
-- Index past sweep reports, design decisions, rejected specs
-- Surface cross-session patterns: "you've built similar nodes before, here's what worked"
-- Episodic memory integration for project-local knowledge base
-- Search: "nodes using OAuth that had security issues" → relevant findings from past sweeps
+**Pillar 1: Semantic Memory (Karpathy Wiki Pattern)**
+- `.forgeplan/wiki/` with per-node knowledge pages updated by each sweep pass
+- Three layers: raw sources (specs, code) → wiki (compiled knowledge) → schema (rules)
+- Agents read wiki first (cheap), drill into source only to verify
+- Cross-cutting pages: patterns.md, decisions.md, log.md
+- Cross-session pattern surfacing: "similar nodes had these issues before"
 
-**Pillar 5: Preset Workflows**
-- Pre-configured tool connections for popular products (Supabase, Stripe, Vercel, etc.)
-- `/forgeplan:discover template:e-commerce` includes researched dependency stack
-- Integration with MCP servers for live API validation during builds
+**Pillar 2: State Management Hardening**
+- `update-state.js` for atomic read-modify-write
+- Parallel fix agents with per-agent temp state
+- Session-end hook for cross-session context
 
-**Pillar 6: Skill-Augmented Building**
-- Builder agent detects node type (frontend, API, database, auth) and invokes relevant external skills
-- Frontend nodes: invoke `frontend-design` skill for polished UI, layout decisions, design system choices
-- User gets prompted for style/vibe preferences (or uses project-level defaults in config.yaml)
-- API nodes: invoke API design patterns skill for RESTful conventions, pagination, error response formats
-- Database nodes: invoke schema design skill for normalization, indexing strategy, migration patterns
-- Skills run during the pre-build spec challenge phase — design decisions become spec constraints
-- Extensible: users can register custom skills per node type in config.yaml
-  ```yaml
-  skills:
-    frontend: frontend-design    # invoke this skill for frontend nodes
-    api: api-patterns            # invoke for API nodes
-    database: schema-design      # invoke for database nodes
-  ```
+**Pillar 3: Two-Stage Review**
+- Stage 1: Spec compliance. Stage 2: Code quality. Skip Stage 2 if Stage 1 fails.
 
-**Pillar 7: Phantom Previews**
-- After each node build, generate a lightweight preview of the UI/output
-- Frontend nodes: render component previews (screenshots or iframe sandbox)
-- API nodes: show endpoint map with example request/response
-- Database nodes: show schema visualization (tables, relationships, migrations)
-- User sees their app taking shape as nodes are built — not just code files
-- Preview updates after each build/sweep pass so progress is visible
-- Supports the "watch it come together" experience during deep-build
-- Could use tools like Puppeteer/Playwright for screenshots, or iframe sandboxing for live preview
+### Sprint 10: Skills + Blueprints (Weeks 25-27)
+**Goal:** Builder invokes external skills. Blueprints backed by research.
 
-**Pillar 8: Node Visualization**
-- Interactive dependency graph visualization of the project architecture
-- Nodes colored by status: pending (gray) → specced (blue) → built (green) → reviewed (gold) → certified (emerald)
-- Edges show interfaces with type (read/write, outbound, inbound)
-- Click a node to see: spec summary, acceptance criteria status, sweep findings, build log
-- Real-time updates during deep-build — watch nodes light up as they complete
-- Shared models shown as central entities connected to all dependent nodes
-- Export as SVG/PNG for documentation
-- Could be a web UI served locally, or integrated into VS Code sidebar
-  ```
+- Skill-augmented building: builder detects node type, invokes `frontend-design`, API patterns, schema design skills
+- Configurable per-project: `skills:` section in config.yaml
+- Research-backed blueprint generation with vetted dependency stacks
+- Community blueprints with versioning
+
+### Sprint 11: Preset Workflows + MCP Integrations (Weeks 28-29)
+**Goal:** Pre-configured connections to popular products.
+
+- MCP server connections for Supabase, Stripe, Vercel, etc.
+- Live API validation during builds
+- Integration templates for popular stacks
+
+### Standalone App: Visual Features (Post-Plugin)
+**Goal:** Phantom previews and node visualization require a visual canvas — deferred to the standalone ForgePlan Workstation per Execution Plan.
+
+- **Phantom Previews:** Component renders for frontend, endpoint maps for API, schema diagrams for database. User watches app take shape during deep-build.
+- **Node Visualization:** Interactive dependency graph colored by status. Click nodes for details. Real-time updates during deep-build. Requires Tauri + React Flow + Monaco (per Execution Plan).
+- These are desktop/web app features, not CLI plugin features.
 
 ## Commands
 
