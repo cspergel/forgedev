@@ -19,21 +19,7 @@ First, set up the project directory for a greenfield build if needed:
 git init
 ```
 
-**2. Project scaffolding** (if no package.json exists):
-```bash
-npm init -y
-```
-Then add TypeScript and common dev dependencies:
-```bash
-npm install --save-dev typescript @types/node
-```
-If no `tsconfig.json` exists:
-```bash
-npx tsc --init --target ES2022 --module commonjs --outDir dist --rootDir src --strict --esModuleInterop --resolveJsonModule
-```
-Create `src/` directory if it doesn't exist.
-
-**3. Create the `.forgeplan/` directory structure:**
+**2. Create the `.forgeplan/` directory structure** (before any scaffolding — tech stack decisions happen during the conversation, not before):
 ```
 .forgeplan/
 ├── specs/
@@ -43,11 +29,11 @@ Create `src/` directory if it doesn't exist.
 └── sweeps/
 ```
 
-**4. Set up ForgePlan CLAUDE.md:**
+**3. Set up ForgePlan CLAUDE.md:**
 - If no `CLAUDE.md` exists: copy `${CLAUDE_PLUGIN_ROOT}/templates/forgeplan-claude.md` to `CLAUDE.md`
 - If a `CLAUDE.md` already exists: append the ForgePlan section under a `# ForgePlan Project` heading at the end, but only if it doesn't already contain that heading
 
-**5. Set up .gitignore:**
+**4. Set up .gitignore:**
 Append the entries from `${CLAUDE_PLUGIN_ROOT}/templates/forgeplan-gitignore` to the project's `.gitignore` if not already present. Also ensure these common entries are present:
 ```
 node_modules/
@@ -126,6 +112,21 @@ Follow the Architect agent's conversation framework:
 7. **Confirm** with user before finalizing
 
 After each node addition or major change, show an updated text-based architecture summary.
+
+**After tech stack is decided and manifest is written, scaffold the project:**
+
+If no `package.json` exists and tech_stack.runtime is `node` (or not set):
+```bash
+npm init -y
+```
+
+Install language tooling based on tech_stack.language:
+- TypeScript: `npm install --save-dev typescript @types/node` and `npx tsc --init` (if no tsconfig.json exists)
+- JavaScript: no additional tooling needed
+
+Create `src/` directory if it doesn't exist.
+
+This happens AFTER the tech stack conversation so the right tooling is installed.
 
 After writing the manifest, always run validation:
 ```bash

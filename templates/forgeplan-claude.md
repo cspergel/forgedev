@@ -4,12 +4,13 @@ This project uses **ForgePlan Core**, an architecture-governed build harness. Th
 
 ## Critical Rules
 
-1. **Always check for an active operation** before writing code. Read `.forgeplan/state.json` to see if a node is currently being built, reviewed, or revised.
+1. **Always check for an active operation** before writing code. Read `.forgeplan/state.json` to see if a node is currently being built, reviewed, revised, or swept.
 2. **Never write files outside the active node's `file_scope`** directory. The manifest defines which directories belong to which node. Permitted exceptions depend on the active operation:
-   - **Building:** `.forgeplan/conversations/nodes/[node].md`, `.forgeplan/state.json`, and `src/shared/types/index.ts` (creation only)
+   - **Building:** `.forgeplan/conversations/nodes/[node].md`, `.forgeplan/state.json`, `src/shared/types/index.ts` (creation only), `.env.example`, `package.json`
    - **Reviewing:** `.forgeplan/reviews/[node].md` and `.forgeplan/state.json` only
    - **Revising:** `.forgeplan/specs/[node].yaml`, `.forgeplan/manifest.yaml`, `.forgeplan/state.json`, and `src/shared/types/index.ts`
-3. **Never redefine shared models locally.** Shared models (User, Document, etc.) are defined canonically in `.forgeplan/manifest.yaml`. Import them — do not create local copies.
+   - **Sweeping:** `.forgeplan/sweeps/`, `.forgeplan/specs/`, `.forgeplan/manifest.yaml`, `.forgeplan/state.json`, and node files within the active node's scope
+3. **Never redefine shared models locally.** Shared models are defined canonically in `.forgeplan/manifest.yaml`. Import them — do not create local copies.
 4. **Follow the node spec exactly.** Each node's spec at `.forgeplan/specs/[node].yaml` defines what to build, what NOT to build (non_goals), and how to verify it (acceptance_criteria).
 5. **Use anchor comments in source code files** (`.ts`, `.js`, `.tsx`, `.jsx`):
    - `// @forgeplan-node: [node-id]` at the top of every source file
@@ -18,24 +19,28 @@ This project uses **ForgePlan Core**, an architecture-governed build harness. Th
 
 ## Available Commands
 
-Use ForgePlan commands in this order:
-
-1. `/forgeplan:discover` — Define the architecture (guided conversation → manifest + skeleton specs)
-2. `/forgeplan:spec [node]` — Detail each node's spec (`--all` for all nodes in dependency order)
-3. `/forgeplan:build [node]` — Build a node following its spec
-4. `/forgeplan:next` — Get the next recommended node based on dependency graph
-5. `/forgeplan:review [node]` — Audit a built node against its spec (7-dimension review)
-6. `/forgeplan:revise [node]` — Reopen a node with change impact analysis
-7. `/forgeplan:recover` — Fix crashed/stuck builds
-8. `/forgeplan:integrate` — Verify all cross-node interfaces
-9. `/forgeplan:status` — Full project status with dependency visualization
-
-**Note:** `/forgeplan:sweep` and `/forgeplan:deep-build` require Sprint 6 (plugin v0.6+).
+| Command | What it does |
+|---------|-------------|
+| `/forgeplan:discover` | Architecture discovery — conversation, document import, or template |
+| `/forgeplan:spec [node\|--all]` | Generate detailed specs |
+| `/forgeplan:build [node]` | Build a node with enforcement |
+| `/forgeplan:review [node]` | 7-dimension spec-diff review |
+| `/forgeplan:sweep [--cross-check]` | 12-agent parallel sweep with progressive convergence |
+| `/forgeplan:deep-build` | Full autonomous pipeline: spec → build → review → sweep → certify |
+| `/forgeplan:configure` | Set up cross-model review (Codex/GPT/Gemini) |
+| `/forgeplan:next` | Dependency-aware next recommendation |
+| `/forgeplan:revise [node]` | Change impact analysis + propagation |
+| `/forgeplan:integrate` | Cross-node interface verification |
+| `/forgeplan:recover` | Fix crashed/stuck operations |
+| `/forgeplan:status` | Full project status |
+| `/forgeplan:guide` | Where am I? Best next step with explanations |
 
 ## Key Files
 
-- `.forgeplan/manifest.yaml` — Central command file, defines all nodes and shared models
-- `.forgeplan/state.json` — Current session state, active node, build progress
-- `.forgeplan/specs/[node].yaml` — Detailed spec for each node
+- `.forgeplan/manifest.yaml` — Central architecture file: nodes, shared models, tech stack, connections
+- `.forgeplan/state.json` — Current session state, active node, build progress, sweep state
+- `.forgeplan/specs/[node].yaml` — Detailed spec for each node (the enforcement contract)
+- `.forgeplan/config.yaml` — Cross-model review configuration (optional)
 - `.forgeplan/conversations/discovery.md` — Architecture discovery rationale
 - `.forgeplan/reviews/[node].md` — Review reports
+- `.forgeplan/sweeps/` — Sweep and cross-model verification reports

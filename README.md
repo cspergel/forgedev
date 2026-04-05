@@ -13,8 +13,9 @@ ForgePlan fixes this by making the architecture the governing constraint, not ju
 ## How It Works
 
 ```
-1. DISCOVER   →  Describe your project. ForgePlan decomposes it into nodes
-                  with clear boundaries, shared models, and a dependency graph.
+1. DISCOVER   →  Describe your project (or import a planning document).
+                  ForgePlan decomposes it into nodes with clear boundaries,
+                  shared models, and a dependency graph.
 
 2. SPEC        →  Each node gets a detailed specification: acceptance criteria,
                   constraints, non-goals, failure modes, interface contracts.
@@ -27,30 +28,31 @@ ForgePlan fixes this by making the architecture the governing constraint, not ju
 4. REVIEW      →  7-dimension spec-diff review. Per-criterion PASS/FAIL with
                   code evidence. Optional cross-model verification via BYOK.
 
-5. INTEGRATE   →  Cross-node interface verification. Identifies which side
-                  is at fault when contracts don't match.
+5. SWEEP       →  12 parallel agents audit the entire codebase: security,
+                  types, errors, DB, APIs, imports, code quality, tests,
+                  config, frontend UX, docs, cross-node integration.
+                  Progressive convergence drops clean agents.
 
-6. REVISE      →  Change a spec and the system identifies every affected node,
-                  regenerates shared types, and guides remediation.
+6. CERTIFY     →  Cross-model verification (Codex/GPT/Gemini) independently
+                  reviews the code. Alternates until both models agree.
 ```
 
 ## Quick Start
 
+ForgePlan is installed as a Claude Code plugin via marketplace:
+
 ```bash
-# Start Claude Code with ForgePlan
-claude --plugin-dir ./forgeplan-plugin
+# Start Claude Code in your project directory
+claude
 
 # Create a project from a template
 /forgeplan:discover template:client-portal
 
-# Generate specs for all nodes
-/forgeplan:spec --all
+# Or describe your own project
+/forgeplan:discover I want to build a URL shortener with...
 
-# Build everything
-/forgeplan:build --all
-
-# Verify cross-node integration
-/forgeplan:integrate
+# Full autonomous pipeline (specs, builds, reviews, sweeps, certifies)
+/forgeplan:deep-build
 ```
 
 ## What Gets Enforced
@@ -58,7 +60,7 @@ claude --plugin-dir ./forgeplan-plugin
 ForgePlan doesn't just suggest — it blocks bad writes deterministically:
 
 - **File scope** — Builder can only write to its node's directory. Writes to other nodes are rejected.
-- **Shared models** — Types defined in the manifest (User, Document, etc.) must be imported from the canonical source. Local redefinitions are blocked.
+- **Shared models** — Types defined in the manifest must be imported from the canonical source. Local redefinitions are blocked.
 - **Shell commands** — During builds, only read-only commands are allowed via Bash. File-writing shell commands are blocked to prevent enforcement bypass.
 - **Acceptance criteria** — The Stop hook evaluates every criterion before allowing a build to complete. Unmet criteria bounce the builder back to keep working.
 - **Review boundaries** — Reviewers can only write review reports. They cannot touch implementation code.
@@ -68,15 +70,20 @@ ForgePlan doesn't just suggest — it blocks bad writes deterministically:
 
 | Command | Description |
 |---------|-------------|
-| `/forgeplan:discover` | Architecture discovery — guided conversation or template |
+| `/forgeplan:discover` | Architecture discovery — guided conversation, document import, or template |
 | `/forgeplan:spec [node\|--all]` | Generate detailed node specifications |
 | `/forgeplan:build [node\|--all]` | Build with full enforcement |
 | `/forgeplan:review [node]` | 7-dimension spec-diff review with evidence |
+| `/forgeplan:sweep [--cross-check]` | 12-agent parallel sweep + progressive convergence |
+| `/forgeplan:deep-build` | Full autonomous pipeline: spec → build → review → sweep → certify |
+| `/forgeplan:configure` | Set up cross-model review (Codex/GPT/Gemini) |
 | `/forgeplan:revise [node\|--model name]` | Change impact analysis + propagation |
 | `/forgeplan:next` | What to build next (dependency-aware) |
 | `/forgeplan:status` | Project overview with dependency graph |
 | `/forgeplan:integrate` | Cross-node interface verification |
 | `/forgeplan:recover` | Fix crashed/stuck operations |
+| `/forgeplan:guide` | Where am I? Recommends best next step |
+| `/forgeplan:help` | All commands |
 
 ## Blueprint Templates
 
@@ -90,17 +97,12 @@ Start from a template instead of a blank canvas:
 
 Configure a second LLM to independently review your code. Different models catch different blind spots.
 
-```yaml
-# .forgeplan/config.yaml
-review:
-  mode: "mcp"              # mcp | cli | api
-  mcp_server: "codex"      # uses your existing Codex subscription
-
-enforcement:
-  mode: "strict"            # both reviews must pass
+```bash
+# Interactive setup wizard
+/forgeplan:configure
 ```
 
-Supports: OpenAI, Google Gemini, Anthropic, and any CLI-based model.
+Supports: OpenAI (Codex/GPT), Google Gemini, Anthropic — via MCP, CLI, or direct API.
 
 ## The `.forgeplan/` Directory
 
@@ -108,13 +110,13 @@ The `.forgeplan/` directory IS the product. It's portable — any tool that read
 
 ```
 .forgeplan/
-├── manifest.yaml          # Architecture: nodes, shared models, connections
+├── manifest.yaml          # Architecture: nodes, shared models, connections, tech stack
 ├── config.yaml            # BYOK keys, model preferences (optional)
 ├── state.json             # Build progress, active operations
 ├── specs/                 # Per-node specifications (the enforcement contracts)
 ├── conversations/         # Design rationale and build logs
 ├── reviews/               # Structured review reports
-└── sweeps/                # Codebase sweep reports (coming in v0.6)
+└── sweeps/                # Codebase sweep reports
 ```
 
 ## What ForgePlan Proves
@@ -129,50 +131,27 @@ After dogfooding on real projects, ForgePlan-built codebases have:
 ## Project Structure
 
 ```
-ForgeDev/
-├── forgeplan-plugin/              # The Claude Code plugin
-│   ├── .claude-plugin/plugin.json
-│   ├── commands/                  # 9 slash commands
-│   ├── agents/                    # Architect, Builder, Reviewer
-│   ├── hooks/hooks.json           # SessionStart, PreToolUse, PostToolUse, Stop
-│   ├── scripts/                   # 14 enforcement and utility scripts
-│   ├── skills/                    # Specification skill
-│   └── templates/                 # Schemas, blueprints, project templates
-├── Planning Documents/            # Product vision and execution plan
-└── README.md                      # This file
+ForgeDev/                              # Repo root IS the plugin root
+├── .claude-plugin/                    # Plugin + marketplace manifests
+├── commands/                          # 18 slash commands
+├── agents/                            # 3 core + 12 sweep agents
+├── hooks/hooks.json                   # SessionStart, PreToolUse, PostToolUse, Stop
+├── scripts/                           # 15 enforcement and utility scripts
+├── skills/                            # Specification skill
+├── templates/                         # Schemas, blueprints, project templates
+├── Planning Documents/                # Product vision and execution plan
+└── README.md                          # This file
 ```
 
 ## Development
 
 ```bash
-# Run the plugin locally
-claude --plugin-dir ./forgeplan-plugin
-
 # Validate a manifest
-node forgeplan-plugin/scripts/validate-manifest.js .forgeplan/manifest.yaml
+node scripts/validate-manifest.js .forgeplan/manifest.yaml
 
 # Validate a spec
-node forgeplan-plugin/scripts/validate-spec.js .forgeplan/specs/auth.yaml .forgeplan/manifest.yaml
+node scripts/validate-spec.js .forgeplan/specs/auth.yaml .forgeplan/manifest.yaml
 
 # Measure code quality
-node forgeplan-plugin/scripts/measure-quality.js
-
-# Find nodes affected by a shared model change
-node forgeplan-plugin/scripts/find-affected-nodes.js User
-
-# Regenerate shared types from manifest
-node forgeplan-plugin/scripts/regenerate-shared-types.js
+node scripts/measure-quality.js
 ```
-
-## Roadmap
-
-- **v0.5** (current) — Full build→review→revise→integrate lifecycle with enforcement
-- **v0.6** — Autonomous Iterative Sweep: 6 parallel sweep agents + cross-model alternating verification loop. `/forgeplan:sweep` and `/forgeplan:deep-build` commands.
-
-## License
-
-MIT
-
-## Author
-
-Craig Spergel
