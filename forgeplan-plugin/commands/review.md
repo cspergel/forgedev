@@ -4,7 +4,6 @@ user-invocable: true
 argument-hint: "[node-id]"
 allowed-tools: Read Write Glob Grep Bash
 agent: reviewer
-context: fork
 ---
 
 # Review Node

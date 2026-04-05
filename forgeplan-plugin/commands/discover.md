@@ -4,7 +4,6 @@ user-invocable: true
 argument-hint: "[project description or 'template:client-portal']"
 allowed-tools: Read Write Edit Bash Glob Grep
 agent: architect
-context: fork
 ---
 
 # Architecture Discovery

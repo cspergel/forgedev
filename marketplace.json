@@ -1,0 +1,12 @@
+{
+  "name": "forgeplan-marketplace",
+  "description": "ForgePlan Core plugin marketplace",
+  "plugins": [
+    {
+      "name": "forgeplan",
+      "version": "0.5.0",
+      "description": "Architecture-governed AI build harness",
+      "path": "./forgeplan-plugin"
+    }
+  ]
+}

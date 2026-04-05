@@ -1,0 +1,21 @@
+{
+  "name": "forgeplan-marketplace",
+  "owner": {
+    "name": "Craig Spergel"
+  },
+  "plugins": [
+    {
+      "name": "forgeplan",
+      "source": {
+        "source": "github",
+        "repo": "cspergel/forgedev",
+        "path": "forgeplan-plugin"
+      },
+      "description": "Architecture-governed AI build harness",
+      "version": "0.5.0",
+      "author": {
+        "name": "Craig Spergel"
+      }
+    }
+  ]
+}
