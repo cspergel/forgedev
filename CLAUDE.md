@@ -93,7 +93,38 @@ Sprint 6 hardening (same sprint, post-initial):
 - Dogfooded on client-portal: 60 findings, 53 auto-fixed, cross-model certified
 
 ### Sprint 7: Ambient Mode — Proactive Guidance
-**Goal:** ForgePlan becomes an ambient assistant — detects project state, proactively suggests next steps, scores findings by confidence, and manages state resiliently. Discovery becomes conversational and accepts external documents.
+**Goal:** ForgePlan becomes an ambient assistant — detects project state, proactively suggests next steps, scores findings by confidence, and manages state resiliently. Discovery becomes conversational and accepts external documents. **Critical: complexity calibration so the process scales to the project, not the other way around.**
+
+**Pillar -1: Complexity Calibration (P0 — from dogfood feedback)**
+- **The problem:** Full governance on a 3-page app took 10 hours. A single Claude prompt would take 30 minutes. ForgePlan must know when to get out of the way.
+- During discovery, assess project complexity based on: entity count, user roles, page count, integration count, team size
+- Three tiers:
+  ```
+  SMALL (< 5 entities, < 3 roles, < 10 pages):
+    → 1-2 coarse nodes (backend + frontend, not 7 feature nodes)
+    → Single-pass build (all code in one shot, including scaffolding)
+    → Lightweight audit (3-4 agents, not 12)
+    → No cross-model verification unless requested
+    → Skip formal spec conversation — generate specs from manifest automatically
+    → Output: working, runnable app
+
+  MEDIUM (5-15 entities, 3-5 roles, 10-30 pages):
+    → 3-5 nodes with sensible boundaries
+    → Sequential build with review after each
+    → 6-8 sweep agents (skip documentation, frontend-ux if no frontend)
+    → Cross-model optional
+    → Full specs but streamlined conversation
+
+  LARGE (15+ entities, 5+ roles, 30+ pages, multi-team):
+    → Full pipeline: fine-grained nodes, 12 agents, cross-model, deep-build
+    → This is what ForgePlan was designed for
+  ```
+- User can always override: "I know this is small but I want full governance" or "This is large but I want to move fast"
+- **Node granularity scales with complexity:** Don't decompose a 3-page CRUD app into 7 nodes. Suggest: backend (DB + auth + API + storage) and frontend (all pages). Let user override if they want finer control.
+- **Sweep scales with file count:** < 20 source files → 3-4 agents. 20-100 → 6-8 agents. 100+ → all 12.
+- **Deduplication before presentation:** 62% duplication rate in dogfood was unacceptable. Merge findings BEFORE showing to user, not after.
+- **Test update during rebuild:** When builder modifies a source file, it MUST also update the corresponding test file. Don't leave stale tests for the sweep to find — that's the process creating its own problems.
+- **"Make it runnable" gate:** After all nodes are built, verify: `npm run dev` works, all routes render, no import errors. If not, fix before proceeding to review/sweep.
 
 **Pillar 0: Conversational Discovery & Document Import**
 - Make `/forgeplan:discover` support two onboarding paths:
