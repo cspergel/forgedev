@@ -131,7 +131,49 @@ For each node that has findings, in dependency order (use topological sort from 
 4. Set `sweep_state.fixing_node` to the node ID
 5. Read the node's spec and the relevant findings
 6. Fix each finding — writes are enforced by PreToolUse (node's file_scope) + Layer 1 deterministic. Layer 2 is bypassed for sweeping (see hooks.json update in Task 14).
-   - **If the fix agent returns BLOCKED:** Mark the finding as `unresolvable` (add `"blocked": true` to the finding object). Do NOT retry — move on to the next finding. Unresolvable findings stay in `pending` and appear in the final report with a note that they need manual attention. This prevents infinite retry loops since the Stop hook is bypassed during sweeping.
+   - **If the fix agent returns BLOCKED (file scope, cross-node write, etc.):** Classify the blocked finding:
+
+     **Category A — Needs spec update (auto-resolvable):**
+     The fix requires adding or changing acceptance criteria, constraints, or interfaces in a node's spec. Examples: adding pagination, adding input validation, changing error handling behavior.
+     → **Auto-resolve:** Update the spec YAML (`.forgeplan/specs/[node-id].yaml`) with the new/changed criterion, then retry the fix. The spec update is within `.forgeplan/` write scope so it won't be blocked. Log: "Auto-revised spec for [node-id]: added [criterion description]"
+
+     **Category B — Needs shared code extraction (manifest change):**
+     The fix requires extracting duplicated code to a shared location that multiple nodes can import. Examples: shared utility functions, shared validation logic, shared API helpers.
+     → **Auto-resolve:**
+     1. Check if a `shared` or `utils` directory already exists in the manifest's shared structure
+     2. If not, add a `shared_paths` entry or utility pattern to the manifest
+     3. Extract the shared code to the shared location
+     4. Update all affected nodes' imports
+     5. Register the new files in the manifest
+     Log: "Extracted shared code: [description] → [path]"
+
+     **Category C — Needs architectural decision (present to user):**
+     The fix requires a judgment call that changes product behavior. Examples: authentication policy changes (who can register?), removing a field from a data model, changing role-based access rules.
+     → **Do NOT auto-fix.** Add to a `blocked_decisions` list with:
+       - The finding ID and description
+       - Why it's blocked (what decision is needed)
+       - The recommended fix with a concrete `/forgeplan:revise` command
+       - What happens if the user says yes vs no
+
+     Present ALL Category C findings together at the end of Phase 4 (not one by one):
+     ```
+     === Decisions Needed ===
+
+     The sweep found [N] issues that need your input before they can be fixed:
+
+     [N]. [Finding description]
+         Why: [what architectural decision is needed]
+         Recommended: /forgeplan:revise [node] — [what to change]
+         Impact: [what changes if you say yes]
+
+     Reply with the numbers you want to fix (e.g., "1, 3, 5") or "all" or "skip".
+     After your decision, the sweep will apply the changes and re-verify.
+     ```
+
+     After the user responds:
+     - For each approved decision: run `/forgeplan:revise` on the affected node/spec, then re-fix
+     - For skipped decisions: mark as `"blocked": true, "reason": "user-skipped"` — they'll appear in the final report
+     - After all approved changes are applied: **re-run Phase 2 (sweep) with only the affected agents** to verify the changes didn't introduce new issues. This is a targeted re-sweep, not a full 12-agent pass.
 7. After fixing all findings for this node:
    - **Restore node status:** Set `nodes.[node-id].status` back to `nodes.[node-id].previous_status`
    - Clear `nodes.[node-id].previous_status` to null
