@@ -34,8 +34,12 @@ review:
 multi_agent_review:
   enabled: false                   # Set to true to enable iterative agent review cycles
   max_cycles: 3                    # Max review→fix cycles before escalating to user
-  reviewer_model: "opus"           # Model for independent review agents (opus recommended for catching subtle issues)
-  fixer_model: "sonnet"            # Model for fix agents (sonnet sufficient for directed fixes)
+  reviewer_model: "opus"           # Model for independent review agents (opus recommended)
+  fixer_model: "auto"              # "auto" (default) = agent picks model per fix complexity:
+                                   #   - Simple fixes (typos, missing imports, formatting): haiku
+                                   #   - Directed fixes (implement missing AC, add validation): sonnet
+                                   #   - Complex fixes (architectural, multi-file, logic rewrites): opus
+                                   # Or set to a specific model: "sonnet", "opus", "haiku"
   # When combined with cross-model review (review.mode != "native"), this runs FIRST,
   # then cross-model review runs after all same-model cycles converge.
 
