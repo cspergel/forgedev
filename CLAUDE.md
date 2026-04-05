@@ -92,7 +92,7 @@ Sprint 6 hardening (same sprint, post-initial):
 - Outside-project-path writes allowed (other plugins not blocked)
 - Dogfooded on client-portal: 60 findings, 53 auto-fixed, cross-model certified
 
-### Sprint 7: Complexity Calibration + Ambient Mode (Weeks 15-17)
+### Sprint 7: Complexity Calibration + Ambient Mode
 **Goal:** Scale the process to the project. Make ForgePlan usable for small projects (not just enterprise). Add ambient guidance and confidence scoring.
 
 **Pillar 1: Complexity Calibration (P0 — from dogfood feedback)**
@@ -177,7 +177,7 @@ Sprint 6 hardening (same sprint, post-initial):
 - `scripts/validate-manifest.js` — validate complexity_tier field
 - `templates/schemas/state-schema.json` — add confidence to finding schema
 
-### Sprint 8: Research Agents + Greenfield Pipeline (Weeks 18-21)
+### Sprint 8: Research Agents + Greenfield Pipeline
 **Goal:** Research agents search for best practices before building. Greenfield deep-build from discovery to certified. (Per Execution Plan scope — focused, not inflated.)
 
 **Pillar 1: Research Agents**
@@ -194,7 +194,7 @@ Sprint 6 hardening (same sprint, post-initial):
 - Complexity tier determines how much governance the pipeline applies
 - Exit criteria: working app with passing integration check and sweep certification
 
-### Sprint 9: Semantic Memory + Polish (Weeks 22-24)
+### Sprint 9: Semantic Memory + Polish
 **Goal:** Compiled knowledge base reduces token usage. Polish from Sprint 7 deferred items.
 
 **Pillar 1: Semantic Memory (Karpathy Wiki Pattern)**
@@ -212,7 +212,7 @@ Sprint 6 hardening (same sprint, post-initial):
 **Pillar 3: Two-Stage Review**
 - Stage 1: Spec compliance. Stage 2: Code quality. Skip Stage 2 if Stage 1 fails.
 
-### Sprint 10: Skills + Blueprints (Weeks 25-27)
+### Sprint 10: Skills + Blueprints
 **Goal:** Builder invokes external skills. Blueprints backed by research.
 
 - Skill-augmented building: builder detects node type, invokes `frontend-design`, API patterns, schema design skills
@@ -220,7 +220,7 @@ Sprint 6 hardening (same sprint, post-initial):
 - Research-backed blueprint generation with vetted dependency stacks
 - Community blueprints with versioning
 
-### Sprint 11: Preset Workflows + MCP Integrations (Weeks 28-29)
+### Sprint 11: Preset Workflows + MCP Integrations
 **Goal:** Pre-configured connections to popular products.
 
 - MCP server connections for Supabase, Stripe, Vercel, etc.
