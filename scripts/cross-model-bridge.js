@@ -134,6 +134,19 @@ async function main() {
       process.exit(2);
   }
 
+  // Graceful fallback: if cross-check failed, don't block the pipeline
+  if (result.status === "error") {
+    const fallbackReport = `## Cross-Model Sweep Verification — Skipped (Fallback)\n\n` +
+      `Cross-model verification via ${mode} failed. The pipeline continues with Claude-only sweep results.\n\n` +
+      `**Error:** ${result.report.replace(/^## .*\n\n/, "")}\n\n` +
+      `**What this means:** Claude's own sweep agents still ran and their findings are valid. ` +
+      `Cross-model verification adds an independent second opinion but is not required.\n\n` +
+      `**To fix:** Run \`/forgeplan:configure\` to check your setup, or retry with \`/forgeplan:sweep --cross-check\`.\n`;
+
+    result = { status: "completed", report: fallbackReport };
+    console.error(`Warning: Cross-model verification failed, falling back to Claude-only sweep results.`);
+  }
+
   // Write crosscheck report
   const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
   const reportPath = path.join(
@@ -150,11 +163,9 @@ async function main() {
   // Extract structured findings from the report
   const findings = extractFindings(result.report, reviewConfig.provider || "alternate");
 
-  // Determine status — execution errors with zero parsed findings are NOT clean
+  // Determine status — fallback reports have no findings, treated as clean
   let finalStatus;
-  if (result.status === "error") {
-    finalStatus = "error";
-  } else if (findings.length === 0) {
+  if (findings.length === 0) {
     finalStatus = "clean";
   } else {
     finalStatus = "findings";

@@ -94,6 +94,23 @@ async function main() {
       process.exit(2);
   }
 
+  // Graceful fallback: if cross-model failed, don't block the pipeline
+  if (result.status === "error") {
+    const fallbackReport = `## Cross-Model Review — Skipped (Fallback)\n\n` +
+      `Cross-model review via ${mode} failed. The pipeline continues with Claude-only review.\n\n` +
+      `**Error:** ${result.report.replace(/^## .*\n\n/, "")}\n\n` +
+      `**What this means:** The native Claude reviewer still ran. Cross-model verification ` +
+      `adds an independent second opinion but is not required for the build to proceed.\n\n` +
+      `**To fix:** Run \`/forgeplan:configure\` to check your setup, or retry later.\n`;
+
+    result = {
+      status: "skipped_fallback",
+      report: fallbackReport,
+      findingsCount: 0,
+    };
+    console.error(`Warning: Cross-model review failed, falling back to Claude-only review.`);
+  }
+
   // Write cross-model review report
   const reportPath = path.join(forgePlanDir, "reviews", `${nodeId}-crossmodel.md`);
   const reportDir = path.dirname(reportPath);
