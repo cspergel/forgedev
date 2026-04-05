@@ -6,13 +6,13 @@ allowed-tools: Read Write Edit Bash
 
 # ForgePlan Configuration
 
-Interactive setup for cross-model review and other settings.
+Automated setup for cross-model review and other settings.
 
 ## Process
 
 1. Check if `.forgeplan/config.yaml` already exists
 2. If it exists, read it and show current settings
-3. Walk the user through configuration options
+3. Present the menu, then **execute the setup automatically** — don't show manual steps
 
 ## Configuration Wizard
 
@@ -42,73 +42,129 @@ Which setup? [1-7]:
 
 ### If user picks 1 (OpenAI via MCP):
 
-First check if the MCP server is already registered:
+**AUTOMATE EVERYTHING. Run each step, read the output, handle errors, and keep going. Only ask the user if something truly requires human action (browser login). Show brief progress like "Checking Codex CLI... installed." for each step.**
+
+**Step 1: Check if MCP server is already registered.**
+Run:
 ```bash
 claude mcp list 2>&1
 ```
+- If output contains `codex-cli` with status "Connected" → tell user "Codex MCP already configured and connected!" → skip to writing config.
+- If output contains `codex-cli` with "Failed" or "Error" → remove it and continue from step 2:
+  ```bash
+  claude mcp remove codex-cli 2>&1
+  ```
 
-If `codex-cli` or similar OpenAI server is listed, skip to config write.
-
-If not, guide them through setup:
+**Step 2: Check if Codex CLI is installed.**
+Run:
+```bash
+which codex 2>/dev/null || where codex 2>/dev/null
 ```
-To use OpenAI/Codex via MCP, we need two things:
+- If found → "Codex CLI found." → continue.
+- If not found → "Installing Codex CLI..." then run:
+  ```bash
+  npm install -g @openai/codex 2>&1
+  ```
+  - Read the output. If it contains "added" or shows a version → success, continue.
+  - If it contains "ERR!" or "EACCES" → try with npx prefix instead and inform user:
+    ```
+    Global install failed. Trying alternative...
+    ```
+    If that also fails, tell user: "Could not install Codex CLI. Please run `npm install -g @openai/codex` manually, then run /forgeplan:configure again." and STOP.
 
-Step 1: Install the Codex CLI (if not already installed)
-  ! npm install -g @openai/codex
-
-Step 2: Authenticate Codex
-  ! codex login
-  This opens a browser for ChatGPT login (easiest).
-  Or use an API key directly: ! codex login --api-key "YOUR_OPENAI_API_KEY"
-  Check status: ! codex login status
-
-Step 3: Add the Codex MCP server to Claude Code
-  ! claude mcp add codex-cli -- codex mcp serve
-
-Step 4: Verify it's working
-  ! claude mcp list
-  Look for "codex-cli" with status "Connected"
+**Step 3: Check if Codex is authenticated.**
+Run:
+```bash
+codex login status 2>&1
 ```
+- If output contains "Logged in" → "Codex authenticated." → continue to step 4.
+- If output contains "not logged in" or error → tell user:
+  ```
+  Opening browser for ChatGPT login...
+  ```
+  Then run:
+  ```bash
+  codex login 2>&1
+  ```
+  This is interactive — the user completes the browser flow.
+  After it returns, verify by running `codex login status` again.
+  - If now "Logged in" → continue.
+  - If still not logged in → ask user: "Login didn't complete. Do you have an OpenAI API key you can paste instead?" If yes, run `codex login --api-key "THEIR_KEY"`. If no, suggest option 5 (Direct API mode) and STOP.
 
-After setup confirmed, write config:
-```yaml
-review:
-  mode: mcp
-  mcp_server: codex-cli
+**Step 4: Register the MCP server.**
+Run:
+```bash
+claude mcp add codex-cli -- codex mcp serve 2>&1
 ```
+- Read the output.
+- If success → "Codex MCP server registered." → continue.
+- If output contains "already exists" → remove and re-add:
+  ```bash
+  claude mcp remove codex-cli 2>&1 && claude mcp add codex-cli -- codex mcp serve 2>&1
+  ```
+- If output contains any other error → show the error to the user and suggest option 3 (CLI mode) as fallback:
+  ```
+  MCP registration failed: [error]. Falling back to CLI mode — this works just as well.
+  ```
+  Then write CLI config instead and skip to "After Writing Config".
 
-**Alternative (simpler OpenAI MCP — no Codex CLI needed):**
+**Step 5: Verify connection.**
+Run:
+```bash
+claude mcp list 2>&1
 ```
-If you just want OpenAI chat completions without the full Codex CLI:
+- If `codex-cli` shows "Connected" → "Codex MCP connected and working!" → continue.
+- If `codex-cli` shows "Failed" → diagnose:
+  - Run `codex --version 2>&1` to check if the CLI is accessible.
+  - If the CLI works but MCP doesn't, tell user:
+    ```
+    MCP connection failed but Codex CLI works fine. Switching to CLI mode instead — same functionality, different transport.
+    ```
+    Remove the broken MCP (`claude mcp remove codex-cli`) and write CLI config instead.
+- If `codex-cli` is missing from the list → the add command silently failed. Try again once, then fall back to CLI mode.
 
-  ! claude mcp add mcp-openai -e OPENAI_API_KEY=sk-your-key-here -- npx -y @mzxrai/mcp-openai@latest
-
-This exposes an openai_chat tool. Simpler but less feature-rich than Codex.
-```
+**Step 6: Write config and confirm.**
+Write `.forgeplan/config.yaml` and show the success message (see "After Writing Config" section).
 
 ### If user picks 2 (Gemini via MCP):
 
+**This requires an API key — ask for it, then automate everything else.**
+
+Ask: "Paste your Gemini API key (get one free at https://aistudio.google.com/apikey):"
+
+Once they provide the key:
+
+**Step 1: Check if MCP server is already registered.**
+Run:
+```bash
+claude mcp list 2>&1
 ```
-To use Google Gemini via MCP:
+- If `gemini` shows "Connected" → "Gemini MCP already configured!" → skip to writing config.
+- If `gemini` shows "Failed" → remove it: `claude mcp remove gemini 2>&1` and continue.
 
-Step 1: Get a Gemini API key (free)
-  Go to: https://aistudio.google.com/apikey
-  Create a key and copy it.
-
-Step 2: Add the Gemini MCP server to Claude Code
-  ! claude mcp add gemini -s user -- env GEMINI_API_KEY=YOUR_KEY npx -y @rlabs-inc/gemini-mcp
-
-  (Replace YOUR_KEY with your actual API key)
-
-  Optional: limit to text tools only (faster startup):
-  ! claude mcp add gemini -s user -- env GEMINI_API_KEY=YOUR_KEY env GEMINI_TOOL_PRESET=text npx -y @rlabs-inc/gemini-mcp
-
-Step 3: Verify it's working
-  ! claude mcp list
-  Look for "gemini" with status "Connected"
+**Step 2: Register the MCP server.**
+Run (substituting their actual key):
+```bash
+claude mcp add gemini -s user --env GEMINI_API_KEY=THEIR_KEY -- npx -y @rlabs-inc/gemini-mcp 2>&1
 ```
+- If success → continue.
+- If "already exists" → remove and re-add.
+- If other error → show error, suggest option 5 (Direct API with google provider) as fallback.
 
-After setup confirmed, write config:
+**Step 3: Verify connection.**
+Run:
+```bash
+claude mcp list 2>&1
+```
+- If `gemini` shows "Connected" → continue.
+- If "Failed" → the API key might be wrong. Ask user to double-check their key. If they provide a new one, remove and re-add. If they can't fix it, fall back to API mode:
+  ```
+  MCP connection failed. Setting up direct API mode instead — same functionality.
+  ```
+  Write API config with their key and `gemini-2.5-flash` model instead.
+
+**Step 4: Write config and confirm.**
+Write `.forgeplan/config.yaml`:
 ```yaml
 review:
   mode: mcp
@@ -117,29 +173,40 @@ review:
 
 ### If user picks 3 (OpenAI via CLI):
 
-```
-To use Codex CLI for cross-model review:
+**AUTOMATE EVERYTHING. Show brief progress for each step.**
 
-Step 1: Install the Codex CLI
-  ! npm install -g @openai/codex
-
-Step 2: Authenticate
-  ! codex login
-  (or: ! codex login --api-key "YOUR_OPENAI_API_KEY")
-
-Step 3: Verify it works
-  ! codex exec "Hello, respond with OK"
-
-Note: Codex CLI has experimental Windows support.
-If you're on Windows and it doesn't work, use API mode (option 5) instead.
-```
-
-Verify the CLI exists:
+**Step 1: Check if Codex CLI is installed.**
+Run:
 ```bash
 which codex 2>/dev/null || where codex 2>/dev/null
 ```
+- If found → "Codex CLI found." → continue.
+- If not found → "Installing Codex CLI..." then run `npm install -g @openai/codex 2>&1`.
+  - If install fails → tell user to install manually, STOP.
 
-If found, write config:
+**Step 2: Check if Codex is authenticated.**
+Run:
+```bash
+codex login status 2>&1
+```
+- If "Logged in" → continue.
+- If not → "Opening browser for ChatGPT login..." → run `codex login 2>&1`.
+  - After return, verify with `codex login status` again.
+  - If still not logged in → ask for API key, try `codex login --api-key`. If that fails → suggest option 5.
+
+**Step 3: Quick test.**
+Run:
+```bash
+codex exec "Respond with only the word OK" 2>&1
+```
+- If output contains "OK" → "Codex working!" → continue.
+- If it fails or times out → show the error. Common fixes:
+  - "rate limit" → tell user to wait and retry.
+  - "model not found" → Codex may need a config update. Try: `codex exec -c model="gpt-4o" "Respond with OK"`.
+  - Other error → show it and suggest option 5 (Direct API) as fallback.
+
+**Step 4: Write config and confirm.**
+Write `.forgeplan/config.yaml`:
 ```yaml
 review:
   mode: cli
@@ -149,26 +216,35 @@ review:
 
 ### If user picks 4 (Gemini via CLI):
 
-```
-To use Gemini CLI for cross-model review:
+**AUTOMATE EVERYTHING except the interactive auth step.**
 
-Step 1: Install the Gemini CLI (requires Node.js 20+)
-  ! npm install -g @google/gemini-cli
-
-Step 2: Authenticate (run once interactively)
-  ! gemini
-  Follow the Google account auth flow, then exit.
-
-Step 3: Verify it works
-  ! gemini -p "Hello, respond with OK"
-```
-
-Verify the CLI exists:
+**Step 1: Check if Gemini CLI is installed.**
+Run:
 ```bash
 which gemini 2>/dev/null || where gemini 2>/dev/null
 ```
+- If found → "Gemini CLI found." → continue.
+- If not found → "Installing Gemini CLI..." then run `npm install -g @google/gemini-cli 2>&1`.
+  - If install fails → tell user to install manually, STOP.
 
-If found, write config:
+**Step 2: Check authentication.**
+Run a quick test to see if already authenticated:
+```bash
+gemini -p "Respond with only the word OK" 2>&1
+```
+- If output contains "OK" → already authenticated, skip to step 4.
+- If output contains "auth" or "login" or "credential" error → tell user:
+  ```
+  Gemini needs a one-time Google login. Please run this command and complete the auth:
+    ! gemini
+  Then type /quit when done, and I'll continue setup.
+  ```
+  Wait for user to confirm, then re-test.
+  - If test passes → continue.
+  - If still fails → suggest option 5 (Direct API with google provider) as fallback.
+
+**Step 3: Write config and confirm.**
+Write `.forgeplan/config.yaml`:
 ```yaml
 review:
   mode: cli
@@ -210,7 +286,7 @@ Defaults and recommended models by provider:
 - Recommended: `claude-sonnet-4-6` (different perspective from Opus builder)
 - Note: This is Claude reviewing Claude — useful for model-tier diversity (Sonnet reviewing Opus's work) but not true cross-model verification
 
-Write:
+Write `.forgeplan/config.yaml`:
 ```yaml
 review:
   mode: api
@@ -221,7 +297,7 @@ review:
 
 ### If user picks 6 (Native Only):
 
-Write:
+Write `.forgeplan/config.yaml`:
 ```yaml
 review:
   mode: native
@@ -250,6 +326,8 @@ Run /forgeplan:configure to set up cross-model review.
 
 Confirm:
 ```
+=== Configuration Complete ===
+
 Config saved to .forgeplan/config.yaml
 
 Your setup:
