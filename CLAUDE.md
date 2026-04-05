@@ -209,6 +209,27 @@ Sprint 6 hardening (same sprint, post-initial):
     database: schema-design      # invoke for database nodes
   ```
 
+**Pillar 7: Phantom Previews**
+- After each node build, generate a lightweight preview of the UI/output
+- Frontend nodes: render component previews (screenshots or iframe sandbox)
+- API nodes: show endpoint map with example request/response
+- Database nodes: show schema visualization (tables, relationships, migrations)
+- User sees their app taking shape as nodes are built — not just code files
+- Preview updates after each build/sweep pass so progress is visible
+- Supports the "watch it come together" experience during deep-build
+- Could use tools like Puppeteer/Playwright for screenshots, or iframe sandboxing for live preview
+
+**Pillar 8: Node Visualization**
+- Interactive dependency graph visualization of the project architecture
+- Nodes colored by status: pending (gray) → specced (blue) → built (green) → reviewed (gold) → certified (emerald)
+- Edges show interfaces with type (read/write, outbound, inbound)
+- Click a node to see: spec summary, acceptance criteria status, sweep findings, build log
+- Real-time updates during deep-build — watch nodes light up as they complete
+- Shared models shown as central entities connected to all dependent nodes
+- Export as SVG/PNG for documentation
+- Could be a web UI served locally, or integrated into VS Code sidebar
+  ```
+
 ## Commands
 
 | Command | Sprint | Description |
