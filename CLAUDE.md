@@ -92,8 +92,8 @@ Sprint 6 hardening (same sprint, post-initial):
 - Outside-project-path writes allowed (other plugins not blocked)
 - Dogfooded on client-portal: 60 findings, 53 auto-fixed, cross-model certified
 
-### Sprint 7: Complexity Calibration + Ambient Mode
-**Goal:** Scale the process to the project. Make ForgePlan usable for small projects (not just enterprise). Add ambient guidance and confidence scoring.
+### Sprint 7A: Complexity Calibration
+**Goal:** Scale the process to the project. Make ForgePlan usable for small projects (not just enterprise). The tier system is the foundation — everything else builds on it.
 
 **Pillar 1: Complexity Calibration (P0 — from dogfood feedback)**
 - **The problem:** Full governance on a 3-page app took 10 hours. A single Claude prompt would take 30 minutes. ForgePlan must know when to get out of the way.
@@ -132,7 +132,8 @@ Sprint 6 hardening (same sprint, post-initial):
       Architect drafts, user confirms, no multi-turn refinement
     → Single-pass build — builder generates all code in one session,
       including scaffolding
-    → One sweep agent (code-quality) — catches the obvious stuff
+    → 3 sweep agents (code-quality + auth-security + error-handling) — catches
+      the critical stuff without 12-agent overhead
     → No cross-model unless requested
     → Output: working, runnable app in one session
 
@@ -166,21 +167,37 @@ Sprint 6 hardening (same sprint, post-initial):
 - **Test co-update during rebuild:** Builder MUST update corresponding test files when modifying source. Don't create problems for the sweep to find.
 - **"Make it runnable" gate:** After all nodes built, verify `npm run dev` works. If not, fix before proceeding to review/sweep.
 
-**Pillar 2: Ambient SessionStart (P0)**
+**Files that need changes for Sprint 7A (~15):**
+- `templates/schemas/manifest-schema.yaml` — add `complexity_tier` field
+- `templates/schemas/config-schema.yaml` — add `tier_override` option
+- `agents/architect.md` — tier-conditional decomposition rules (CRITICAL — the hardest change)
+- `commands/discover.md` — complexity assessment, tier-aware node recommendations, tier-aware walkthrough
+- `commands/spec.md` — SMALL-tier auto-generate branch
+- `commands/build.md` — SMALL-tier single-pass mode
+- `commands/sweep.md` — tier-aware agent selection (3 / 6-8 / 12)
+- `commands/deep-build.md` — tier-aware pipeline (skip cross-model for SMALL)
+- `agents/builder.md` — tier-awareness, test co-updates
+- `agents/reviewer.md` — tier-aware abbreviated review for SMALL
+- `scripts/validate-manifest.js` — validate complexity_tier field
+
+### Sprint 7B: Ambient Mode + Confidence Scoring
+**Goal:** Ambient guidance for returning users. Confidence scoring to reduce sweep noise. Document import for the "I brainstormed elsewhere" workflow.
+
+**Pillar 1: Ambient SessionStart**
 - Enhance session-start.js to detect full project state (not just stuck builds)
 - For healthy projects: show one-line status summary + suggested next command
 - Show: node statuses, next recommended action, pending decisions, sweep progress
 - Suggest commands contextually ("auth is built but not reviewed → /forgeplan:review auth")
 - Non-blocking: fast checks sync, expensive analysis async
 
-**Pillar 3: Confidence Scoring (P0)**
+**Pillar 2: Confidence Scoring**
 - Each sweep finding must include `confidence: 0-100` based on code evidence strength
 - Filter findings below 75 before entering fix cycle
 - Calibration guidance in each agent: what makes a finding 50 vs 90
 - Reduces convergence from ~14 rounds to 3-4 by eliminating noise early
 - Cross-model findings scored by Claude after receipt (external model doesn't know the system)
 
-**Pillar 4: Conversational Discovery & Document Import (P1 — stretch goal)**
+**Pillar 3: Conversational Discovery & Document Import**
 - Three onboarding paths: greenfield conversation (Path A), document import (Path B), template (Path C)
 - `--from` argument for importing markdown, text, PDF files
 - Chat exports treated as plain text (best effort — formats change too often)
@@ -188,27 +205,18 @@ Sprint 6 hardening (same sprint, post-initial):
 - For autonomous deep-build: walkthrough replaced by automatic validation (proceed if no ambiguities, halt if unclear)
 - Philosophy: **architecture down, not code up.**
 
-**Deferred to later sprints (P2):**
+**Files that need changes for Sprint 7B (~15):**
+- `agents/sweep-*.md` (12 files) — add confidence score output
+- `scripts/session-start.js` — full state detection, status summary
+- `templates/schemas/state-schema.json` — add confidence to finding schema
+- `commands/discover.md` — `--from` argument, document extraction mode
+- `agents/architect.md` — document-extraction mode (extract from existing text vs brainstorm)
+
+**Deferred to later sprints:**
 - State Management Hardening (update-state.js, parallel agents, active_node as array) → Sprint 9
 - Hierarchical Documentation (agent refactoring to < 300 lines) → anytime, maintenance task
 - Two-Stage Review (spec compliance then code quality) → Sprint 9
 - Guide Skill Enhancement (pattern detection from past sweeps) → Sprint 9
-
-**Files that need changes (~20 for P0 pillars):**
-- `templates/schemas/manifest-schema.yaml` — add `complexity_tier` field
-- `templates/schemas/config-schema.yaml` — add `tier_override` option
-- `agents/architect.md` — tier-conditional decomposition rules (CRITICAL)
-- `commands/discover.md` — complexity assessment, tier-aware node recommendations
-- `commands/spec.md` — SMALL-tier auto-generate branch
-- `commands/build.md` — SMALL-tier single-pass mode
-- `commands/sweep.md` — tier-aware agent selection (3-4 / 6-8 / 12)
-- `commands/deep-build.md` — tier-aware pipeline (skip cross-model for SMALL)
-- `agents/builder.md` — tier-awareness, test co-updates
-- `agents/reviewer.md` — tier-aware abbreviated review for SMALL
-- `agents/sweep-*.md` (12 files) — add confidence score output
-- `scripts/session-start.js` — full state detection, status summary
-- `scripts/validate-manifest.js` — validate complexity_tier field
-- `templates/schemas/state-schema.json` — add confidence to finding schema
 
 ### Sprint 8: Research Agents + Greenfield Pipeline
 **Goal:** Research agents search for best practices before building. Greenfield deep-build from discovery to certified. (Per Execution Plan scope — focused, not inflated.)
@@ -226,6 +234,9 @@ Sprint 6 hardening (same sprint, post-initial):
 - Full zero-to-deployed: describe what you want, walk away
 - Complexity tier determines how much governance the pipeline applies
 - Exit criteria: working app with passing integration check and sweep certification
+
+### Milestone: External Users
+**After Sprint 8, before Sprint 9.** Ship to 10+ external users. Get real feedback on the full pipeline (complexity calibration → research → greenfield → certified). Their feedback reshapes Sprint 9+ more than any amount of internal planning. The product has enough features by Sprint 8 — it needs distribution.
 
 ### Sprint 9: Semantic Memory + Polish
 **Goal:** Compiled knowledge base reduces token usage. Polish from Sprint 7 deferred items.
