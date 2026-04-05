@@ -63,7 +63,17 @@ Most deliverables were implemented during Sprint 1/2 hardening (review, revise, 
 
 Deliverables: cross-model-review.js (MCP/CLI/API modes, 3 providers, env var resolution, fetch-based), BYOK config with strict/advisory modes, integrate-check.js with fault-side ID, status-report.js with dependency graph, SaaS starter + internal dashboard blueprints, README.
 
-### Sprint 5: Dogfood and Ship (NEXT)
+### Sprint 5: Dogfood and Ship (CURRENT)
+**Goal:** Prove the four things. Run the change propagation test. Ship to marketplace.
+
+Tooling built:
+- measure-quality.js (broken refs via tsc, duplicate types, abandoned stubs)
+- find-affected-nodes.js (shared model dependency scanner)
+- regenerate-shared-types.js (deterministic TypeScript codegen from manifest)
+- integrate-check.js enhanced with shared model field consistency
+- Batch revise mode (--model flag for cascading changes)
+- review-fixing status for multi-agent review cycles
+- CHANGELOG.md, version 0.5.0
 ### Sprint 6: Autonomous Iterative Sweep
 
 ## Eleven Commands
