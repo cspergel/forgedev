@@ -61,6 +61,11 @@ Write the native review report to `.forgeplan/reviews/[node-id].md` using the st
 
 ```
 ## Review: [node-id]
+**Date:** [ISO timestamp]
+**Reviewer:** [model name, e.g. "Claude Opus 4.6" or "Claude Sonnet 4.6"]
+**Review type:** native | cross-model ([provider])
+**Cycle:** [1 if first review, 2+ if re-review after fixes]
+
 ### Acceptance Criteria
 - AC1: PASS/FAIL — [evidence]
 ...

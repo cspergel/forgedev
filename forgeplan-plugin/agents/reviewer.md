@@ -68,7 +68,9 @@ Write the review report to `.forgeplan/reviews/[node-id].md`:
 ```markdown
 ## Review: [node-id]
 **Date:** [ISO timestamp]
-**Reviewer:** ForgePlan Reviewer Agent
+**Reviewer:** [your model name, e.g. "Claude Opus 4.6" or "Claude Sonnet 4.6"]
+**Review type:** native
+**Cycle:** [1 if first review, 2+ if re-review]
 
 ### Acceptance Criteria
 - AC1: PASS/FAIL — [file:line] [evidence]
