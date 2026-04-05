@@ -48,6 +48,12 @@ Document: [fields] — used by [nodes]
 If any nodes are stuck or have issues, flag them prominently at the top.
 If there's an active node operation, show it.
 
+Also read `.forgeplan/state.json` directly and check for `sweep_state.blocked_decisions`. If `sweep_state` exists and `blocked_decisions` has items, show prominently before the node list:
+```
+=== Pending Decisions: [N] architectural choice(s) needed ===
+Run /forgeplan:sweep to review and resolve them.
+```
+
 ## Next Steps Suggestions
 
 Based on project state, suggest relevant next actions:

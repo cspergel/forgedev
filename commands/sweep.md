@@ -24,8 +24,34 @@ Run up to 12 parallel sweep agents across the entire codebase, then fix findings
 
 1. Read `.forgeplan/state.json` and verify no active operation
 2. **Check if `sweep_state` already exists with `operation: "deep-building"`.** If so, this sweep was invoked from within a deep-build — **skip Phase 1 initialization entirely** (preserve the existing deep-build state) and jump to Phase 2. Also skip Phase 7 finalization on exit (deep-build handles its own finalization). Set `sweep_state.current_phase` to `"claude-sweep"` and `sweep_state.current_model` to `"claude"` to indicate we're in the sweep portion.
-3. Create `.forgeplan/sweeps/` directory if it doesn't exist
-4. Set `sweep_state` in state.json (only when NOT called from deep-build):
+3. **Check if `sweep_state` already exists with `blocked_decisions.length > 0`.** If so, this is a resume from a previous sweep that paused for architectural decisions. Present the pending decisions to the user:
+
+   ```
+   === Pending Architectural Decisions ===
+
+   The previous sweep found [N] issues that need your input:
+
+   [For each blocked_decision, show:]
+   [N]. [finding_id]: [description]
+       Why: [reason — what architectural decision is needed]
+       Recommended: [recommended_action]
+       Affected nodes: [node list]
+
+   Reply with your decisions (e.g., "1: yes, 2: admin-only, 3: skip") or "all recommended" to accept all recommendations.
+   ```
+
+   After the user responds:
+   - For each approved decision:
+     1. Read the affected node's spec from `.forgeplan/specs/[node-id].yaml`
+     2. Update the spec with the new acceptance criterion or modified constraint based on the decision
+     3. Write the updated spec back
+     4. Set the node's status to "revised" in state.json so it gets rebuilt
+   - For skipped decisions: remove from `blocked_decisions`, add to `needs_manual_attention` with `"reason": "user-skipped"`
+   - Clear `blocked_decisions` array
+   - Set `sweep_state.current_phase` to "claude-sweep" and proceed to Phase 2 (re-sweep affected agents only — use the agent categories from the blocked findings to determine which agents to re-run)
+
+4. Create `.forgeplan/sweeps/` directory if it doesn't exist
+5. Set `sweep_state` in state.json (only when NOT called from deep-build):
    ```json
    {
      "sweep_state": {
@@ -44,7 +70,7 @@ Run up to 12 parallel sweep agents across the entire codebase, then fix findings
      }
    }
    ```
-5. Set `active_node` to `null`
+6. Set `active_node` to `null`
 
 ### Phase 2: Dispatch sweep agents (progressive reduction)
 
@@ -160,31 +186,47 @@ For each node that has findings, in dependency order (use topological sort from 
 
      **Category C — Needs architectural decision (present to user):**
      The fix requires a judgment call that changes product behavior. Examples: authentication policy changes (who can register?), removing a field from a data model, changing role-based access rules.
-     → **Do NOT auto-fix.** Add to a `blocked_decisions` list with:
-       - The finding ID and description
-       - Why it's blocked (what decision is needed)
-       - The recommended fix with a concrete `/forgeplan:revise` command
-       - What happens if the user says yes vs no
+     → **Do NOT auto-fix.** Persist each Category C finding to `sweep_state.blocked_decisions` in state.json with this structure:
+       ```json
+       {
+         "finding_id": "F7",
+         "description": "Accountant self-registration gating",
+         "reason": "Requires policy decision: should accountants self-register or be admin-invited only?",
+         "recommended_action": "Admin-invite only — add invitation flow to auth node",
+         "affected_nodes": ["auth", "frontend-login"],
+         "category": "auth-security",
+         "severity": "HIGH"
+       }
+       ```
+       Write `sweep_state` to state.json immediately after persisting (so decisions survive a crash or session end).
 
      Present ALL Category C findings together at the end of Phase 4 (not one by one):
      ```
-     === Decisions Needed ===
+     === Pending Architectural Decisions ===
 
-     The sweep found [N] issues that need your input before they can be fixed:
+     The sweep found [N] issues that need your input:
 
-     [N]. [Finding description]
-         Why: [what architectural decision is needed]
-         Recommended: /forgeplan:revise [node] — [what to change]
-         Impact: [what changes if you say yes]
+     [For each blocked_decision, show:]
+     [N]. [finding_id]: [description]
+         Why: [reason — what architectural decision is needed]
+         Recommended: [recommended_action]
+         Affected nodes: [node list]
 
-     Reply with the numbers you want to fix (e.g., "1, 3, 5") or "all" or "skip".
-     After your decision, the sweep will apply the changes and re-verify.
+     Reply with your decisions (e.g., "1: yes, 2: admin-only, 3: skip") or "all recommended" to accept all recommendations.
+     You can also say "later" to pause — decisions will be saved and you can resume with /forgeplan:sweep next session.
      ```
 
-     After the user responds:
-     - For each approved decision: run `/forgeplan:revise` on the affected node/spec, then re-fix
-     - For skipped decisions: mark as `"blocked": true, "reason": "user-skipped"` — they'll appear in the final report
-     - After all approved changes are applied: **re-run Phase 2 (sweep) with only the affected agents** to verify the changes didn't introduce new issues. This is a targeted re-sweep, not a full 12-agent pass.
+     **If the user responds immediately:** Process their decisions inline:
+     - For each approved decision:
+       1. Read the affected node's spec from `.forgeplan/specs/[node-id].yaml`
+       2. Update the spec with the new acceptance criterion or modified constraint based on the decision
+       3. Write the updated spec back
+       4. Set the node's status to "revised" in state.json so it gets rebuilt
+     - For skipped decisions: remove from `blocked_decisions`, add to `needs_manual_attention` with `"reason": "user-skipped"`
+     - Clear `blocked_decisions` array
+     - After all approved changes are applied: **re-run Phase 2 (sweep) with ONLY the agents whose categories match the resolved findings** to verify the changes didn't introduce new issues. This is a targeted re-sweep, not a full 12-agent pass. Continue through Phase 3 → 4 → 5 → 6 → 7 as normal.
+
+     **If the session ends before the user responds (or user says "later"):** The decisions are already persisted in state.json via `sweep_state.blocked_decisions`. Next session, `session-start.js` detects them and warns the user. The user can resume with `/forgeplan:sweep`, which checks for pending `blocked_decisions` in Phase 1 and presents them for resolution before continuing the sweep.
 7. After fixing all findings for this node:
    - **Restore node status:** Set `nodes.[node-id].status` back to `nodes.[node-id].previous_status`
    - Clear `nodes.[node-id].previous_status` to null

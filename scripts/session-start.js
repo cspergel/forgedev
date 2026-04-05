@@ -99,6 +99,15 @@ function main() {
           );
         }
       }
+
+      // Check for pending blocked decisions from a previous sweep
+      if (state.sweep_state && state.sweep_state.blocked_decisions && state.sweep_state.blocked_decisions.length > 0) {
+        const count = state.sweep_state.blocked_decisions.length;
+        warnings.push(
+          `PENDING: ${count} architectural decision(s) from the last sweep need your input before the pipeline can continue.`
+        );
+        warnings.push(`Run /forgeplan:sweep to review and resolve them, or see them with /forgeplan:status.`);
+      }
     } catch (err) {
       warnings.push(
         `WARNING: Could not parse .forgeplan/state.json: ${err.message}`
