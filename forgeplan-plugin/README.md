@@ -99,6 +99,19 @@ enforcement:
 └── sweeps/                # Codebase sweep reports (Sprint 6)
 ```
 
+## Subagent Model
+
+By default, forked agents (builder, reviewer) may use sonnet even if your session runs opus. To force opus on all subagents:
+
+```bash
+# PowerShell
+$env:CLAUDE_CODE_SUBAGENT_MODEL="opus"
+claude --plugin-dir ./forgeplan-plugin
+
+# Bash
+CLAUDE_CODE_SUBAGENT_MODEL=opus claude --plugin-dir ./forgeplan-plugin
+```
+
 ## Requirements
 
 - Claude Code CLI
