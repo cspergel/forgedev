@@ -1,7 +1,7 @@
 ---
 description: Reopen a completed node for revision. Analyzes change impact — whether changes are internal-only or affect interfaces — and flags dependent nodes that may need updating.
 user-invocable: true
-argument-hint: "[node-id]"
+argument-hint: "[node-id | --model model-name]"
 allowed-tools: Read Write Edit Bash Glob Grep
 ---
 
@@ -9,7 +9,17 @@ allowed-tools: Read Write Edit Bash Glob Grep
 
 Reopen a completed node for modification and analyze change impact.
 
-**Target node:** $ARGUMENTS
+**Target:** $ARGUMENTS
+
+## Batch Mode: `--model [model-name]`
+
+If the argument starts with `--model`, this is a shared model cascade:
+1. Run the affected-node finder: `node "${CLAUDE_PLUGIN_ROOT}/scripts/find-affected-nodes.js" [model-name]`
+2. Present the list of affected nodes to the user
+3. For each affected node, run the revision flow below (update spec, rebuild)
+4. After all nodes are revised, run `/forgeplan:integrate` to verify coherence
+
+## Single Node Mode
 
 ## Prerequisites
 

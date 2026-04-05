@@ -397,6 +397,9 @@ function evaluateBash(toolInput, cwd) {
     /^\s*node\s+[^\s]*status-report\.js/,     // our own status report script
     /^\s*node\s+[^\s]*integrate-check\.js/,   // our own integration checker
     /^\s*node\s+[^\s]*cross-model-review\.js/, // our own cross-model review script
+    /^\s*node\s+[^\s]*measure-quality\.js/,   // our own quality measurement script
+    /^\s*node\s+[^\s]*find-affected-nodes\.js/, // our own affected-node finder
+    /^\s*node\s+[^\s]*regenerate-shared-types\.js/, // our own type generator
     /^\s*npm\s+(test|run\s+test|run\s+lint|run\s+validate)\b/, // test/lint
     /^\s*npx\s+tsc\b/,                 // type checking
     /^\s*pwd\b/,                        // print working directory

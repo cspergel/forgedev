@@ -187,6 +187,80 @@ function main() {
     }
   }
 
+  // --- Shared Model Field Consistency Check ---
+  // Verify src/shared/types/index.ts matches manifest shared_models
+  if (manifest.shared_models) {
+    const sharedTypesPath = path.join(cwd, "src", "shared", "types", "index.ts");
+    if (fs.existsSync(sharedTypesPath)) {
+      try {
+        const sharedTypesContent = fs.readFileSync(sharedTypesPath, "utf-8");
+
+        for (const [modelName, modelDef] of Object.entries(manifest.shared_models)) {
+          const fields = modelDef.fields || {};
+
+          // Check the interface exists in the file
+          const ifaceRegex = new RegExp(`interface\\s+${modelName}\\s*\\{`, "m");
+          if (!ifaceRegex.test(sharedTypesContent)) {
+            results.push({
+              source: "shared_types",
+              target: modelName,
+              type: "shared_model",
+              contract: `${modelName} interface must be defined in src/shared/types/index.ts`,
+              status: "FAIL",
+              fault: "SHARED_TYPES",
+              detail: `Shared model "${modelName}" is in manifest but not defined in src/shared/types/index.ts. Run: node scripts/regenerate-shared-types.js`,
+            });
+            continue;
+          }
+
+          // Check each field exists in the interface
+          for (const fieldName of Object.keys(fields)) {
+            const fieldRegex = new RegExp(`\\b${fieldName}\\b\\s*[?:]`, "m");
+            // Extract the interface block
+            const ifaceStart = sharedTypesContent.search(ifaceRegex);
+            if (ifaceStart === -1) continue;
+            const afterIface = sharedTypesContent.slice(ifaceStart);
+            const closingBrace = afterIface.indexOf("\n}");
+            const ifaceBlock = closingBrace > 0 ? afterIface.slice(0, closingBrace + 2) : afterIface;
+
+            if (!fieldRegex.test(ifaceBlock)) {
+              results.push({
+                source: "shared_types",
+                target: modelName,
+                type: "shared_model_field",
+                contract: `${modelName}.${fieldName} must be in src/shared/types/index.ts`,
+                status: "FAIL",
+                fault: "SHARED_TYPES",
+                detail: `Field "${fieldName}" is in manifest ${modelName} but missing from src/shared/types/index.ts. Regenerate with: node scripts/regenerate-shared-types.js`,
+              });
+            }
+          }
+        }
+      } catch (err) {
+        results.push({
+          source: "shared_types",
+          target: "all",
+          type: "shared_model",
+          contract: "src/shared/types/index.ts must be parseable",
+          status: "FAIL",
+          fault: "SHARED_TYPES",
+          detail: `Could not read src/shared/types/index.ts: ${err.message}`,
+        });
+      }
+    } else {
+      // Shared types file doesn't exist but shared models are defined
+      results.push({
+        source: "shared_types",
+        target: "all",
+        type: "shared_model",
+        contract: "src/shared/types/index.ts must exist when shared_models are defined",
+        status: "FAIL",
+        fault: "SHARED_TYPES",
+        detail: "Manifest defines shared_models but src/shared/types/index.ts does not exist. Run: node scripts/regenerate-shared-types.js",
+      });
+    }
+  }
+
   // Summary
   const passed = results.filter((r) => r.status === "PASS").length;
   const failed = results.filter((r) => r.status === "FAIL").length;

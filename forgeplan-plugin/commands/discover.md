@@ -32,7 +32,9 @@ Also append the `.forgeplan/state.json` exclusion from `${CLAUDE_PLUGIN_ROOT}/te
 ## Template Mode
 
 If the user's argument starts with `template:`, load the corresponding blueprint:
-- `template:client-portal` → Load from `${CLAUDE_PLUGIN_ROOT}/templates/blueprints/client-portal.yaml`
+- `template:client-portal` → Load from `${CLAUDE_PLUGIN_ROOT}/templates/blueprints/client-portal.yaml` (7 nodes, 2 shared models — document upload portal)
+- `template:saas-starter` → Load from `${CLAUDE_PLUGIN_ROOT}/templates/blueprints/saas-starter.yaml` (8 nodes, 3 shared models — multi-tenant SaaS with Stripe)
+- `template:internal-dashboard` → Load from `${CLAUDE_PLUGIN_ROOT}/templates/blueprints/internal-dashboard.yaml` (6 nodes, 2 shared models — internal ops dashboard)
 
 When loading a template:
 1. Create the `.forgeplan/` directory structure and copy CLAUDE.md + .gitignore entries (per Setup above)
