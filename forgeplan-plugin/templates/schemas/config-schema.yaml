@@ -27,6 +27,18 @@ review:
   # --- Common Settings ---
   # timeout: 120000               # Timeout in ms for cross-model calls (default: 2 minutes)
 
+# --- Multi-Agent Review (same model, fresh agents) ---
+# For users without cross-model API keys who still want independent review agents.
+# Each cycle spawns a FRESH Claude subagent (no shared context with the builder)
+# to review the code. Better than self-review because of same-context blindness.
+multi_agent_review:
+  enabled: false                   # Set to true to enable iterative agent review cycles
+  max_cycles: 3                    # Max review→fix cycles before escalating to user
+  reviewer_model: "opus"           # Model for independent review agents (opus recommended for catching subtle issues)
+  fixer_model: "sonnet"            # Model for fix agents (sonnet sufficient for directed fixes)
+  # When combined with cross-model review (review.mode != "native"), this runs FIRST,
+  # then cross-model review runs after all same-model cycles converge.
+
 # --- Enforcement Mode ---
 enforcement:
   # "strict" — cross-model review must pass before node can advance to "reviewed"

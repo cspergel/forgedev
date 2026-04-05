@@ -67,9 +67,26 @@ Write the native review report to `.forgeplan/reviews/[node-id].md` using the st
 ### Recommendation: APPROVE | REQUEST CHANGES ([count] failures: [list])
 ```
 
+## Step 1.5: Multi-Agent Review Cycles (if configured)
+
+Check `multi_agent_review.enabled` in config.yaml. If true and the native review found issues (REQUEST CHANGES):
+
+1. Spawn a **fresh Builder agent** (using `multi_agent_review.fixer_model`, default sonnet) with:
+   - The original node spec
+   - The current code on disk
+   - The specific review findings to address
+   - Instruction: fix ONLY the cited issues, do not refactor or add features
+2. After fixes, spawn a **fresh Reviewer agent** (using `multi_agent_review.reviewer_model`, default opus) to re-review
+3. If still REQUEST CHANGES and cycle count < `max_cycles` (default 3), repeat from step 1
+4. If APPROVE or max cycles reached, proceed to Step 2
+
+Each cycle uses a FRESH agent — no shared context with the builder that wrote the original code or the previous fix agent. This eliminates same-context blindness.
+
+The cycle reports are appended to `.forgeplan/reviews/[node-id].md` with cycle numbers.
+
 ## Step 2: Cross-Model Review (if BYOK configured)
 
-After the native review completes, check the `review.mode` from config.yaml:
+After the native review (and optional multi-agent cycles) completes, check the `review.mode` from config.yaml:
 
 - **If `review.mode` is `"native"` or config doesn't exist:** Skip cross-model review. Proceed to Completion.
 - **If `review.mode` is `"mcp"`, `"cli"`, or `"api"`:** Run the cross-model review script:
