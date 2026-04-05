@@ -56,12 +56,14 @@ To use OpenAI/Codex via MCP, we need two things:
 Step 1: Install the Codex CLI (if not already installed)
   ! npm install -g @openai/codex
 
-Step 2: Authenticate Codex with your OpenAI API key
-  ! codex login --api-key "YOUR_OPENAI_API_KEY"
-  (or set the OPENAI_API_KEY environment variable)
+Step 2: Authenticate Codex
+  ! codex login
+  This opens a browser for ChatGPT login (easiest).
+  Or use an API key directly: ! codex login --api-key "YOUR_OPENAI_API_KEY"
+  Check status: ! codex login status
 
 Step 3: Add the Codex MCP server to Claude Code
-  ! claude mcp add codex-cli -- npx -y codex-mcp-server
+  ! claude mcp add codex-cli -- codex mcp serve
 
 Step 4: Verify it's working
   ! claude mcp list
@@ -122,7 +124,8 @@ Step 1: Install the Codex CLI
   ! npm install -g @openai/codex
 
 Step 2: Authenticate
-  ! codex login --api-key "YOUR_OPENAI_API_KEY"
+  ! codex login
+  (or: ! codex login --api-key "YOUR_OPENAI_API_KEY")
 
 Step 3: Verify it works
   ! codex exec "Hello, respond with OK"
