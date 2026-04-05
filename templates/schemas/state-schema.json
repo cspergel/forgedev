@@ -173,11 +173,26 @@
           "additionalProperties": {
             "type": "object",
             "properties": {
-              "status": { "type": "string", "enum": ["active", "clean", "converged", "skipped"] },
+              "status": { "type": "string", "enum": ["active", "clean", "converged", "force-converged", "skipped", "failed"] },
               "last_findings_pass": { "type": ["integer", "null"] },
               "consecutive_clean": { "type": "integer", "default": 0 }
             }
           }
+        },
+        "needs_manual_attention": {
+          "type": "array",
+          "default": [],
+          "description": "Findings from force-converged agents that need manual review"
+        },
+        "failed_agents": {
+          "type": "array",
+          "default": [],
+          "description": "Agents that returned unstructured responses — re-dispatched on next pass"
+        },
+        "blocked_decisions": {
+          "type": "array",
+          "default": [],
+          "description": "Category C findings requiring architectural decisions from the user"
         },
         "findings": {
           "type": "object",

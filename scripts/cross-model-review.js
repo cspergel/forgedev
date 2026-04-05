@@ -228,7 +228,7 @@ function reviewViaCli(config, prompt, cwd) {
   try {
     fs.writeFileSync(tmpPrompt, prompt, "utf-8");
 
-    const fullArgs = [...args, tmpPrompt];
+    const fullArgs = [...args, `"${tmpPrompt}"`];
     const result = execSync(
       `${command} ${fullArgs.join(" ")}`,
       { encoding: "utf-8", timeout, cwd, stdio: ["pipe", "pipe", "pipe"] }

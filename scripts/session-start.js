@@ -33,7 +33,11 @@ function main() {
       // Clear stale stop_hook_active flag and bounce_count from crashed sessions
       if (state.stop_hook_active) {
         state.stop_hook_active = false;
-        state.bounce_count = 0;
+        // Reset per-node bounce_count for the active node (stop-hook reads this, not top-level)
+        if (state.active_node && state.active_node.node && state.nodes && state.nodes[state.active_node.node]) {
+          state.nodes[state.active_node.node].bounce_count = 0;
+        }
+        delete state.bounce_count; // Remove spurious top-level field if it exists
         state.last_updated = new Date().toISOString();
         try {
           fs.writeFileSync(statePath, JSON.stringify(state, null, 2), "utf-8");

@@ -216,9 +216,11 @@ async function main() {
   // Extract structured findings from the report
   const findings = extractFindings(result.report, reviewConfig.provider || "alternate");
 
-  // Determine status — fallback reports have no findings, treated as clean
+  // Determine status — preserve error status, don't mask it as clean
   let finalStatus;
-  if (findings.length === 0) {
+  if (result.status === "error") {
+    finalStatus = "error";
+  } else if (findings.length === 0) {
     finalStatus = "clean";
   } else {
     finalStatus = "findings";
