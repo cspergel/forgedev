@@ -98,10 +98,33 @@ Sprint 6 hardening (same sprint, post-initial):
 **Pillar 1: Complexity Calibration (P0 — from dogfood feedback)**
 - **The problem:** Full governance on a 3-page app took 10 hours. A single Claude prompt would take 30 minutes. ForgePlan must know when to get out of the way.
 - First implementation task: add `complexity_tier` field to manifest schema. Everything reads from it.
-- During discovery, assess project complexity. Primary signal: entity count. Secondary: roles, pages.
-- **Explicit boundaries (no ambiguity):**
+- **Complexity is not just size — it's multi-dimensional.** The Architect assesses during discovery based on judgment across these dimensions:
+
+  **Technical complexity:**
+  - Auth: none → basic login → OAuth/SSO → multi-tenant with RBAC
+  - Data: flat CRUD → relational with joins → real-time sync → event sourcing
+  - Integrations: none → 1-2 APIs → payment/billing → multi-provider orchestration
+  - Infrastructure: static site → single server → microservices → distributed
+
+  **Domain complexity:**
+  - Business rules: simple CRUD → validation logic → state machines → regulatory compliance
+  - User flows: linear → branching → concurrent → collaborative real-time
+  - Data sensitivity: public → user data → PII/financial → healthcare/legal
+
+  **Scale complexity:**
+  - Users: personal tool → small team → multi-tenant → enterprise/public
+  - Data volume: trivial → needs indexing → needs caching → needs sharding
+
+  **Team complexity:**
+  - Solo dev → small team → multiple teams → cross-org
+
+- **The tier is the Architect's judgment call, not a formula.** A 3-entity project with HIPAA compliance and payment processing is LARGE. A 20-entity CRUD admin panel is MEDIUM. Entity count is a signal, not the answer.
+- After assessment, the Architect presents its reasoning: "I'd rate this MEDIUM because: simple auth but complex data relationships and one payment integration. The payment flow needs its own node with strict enforcement. Agree?"
+- User can always override.
+
+- **What each tier means for the pipeline:**
   ```
-  SMALL (1-4 entities, 1-2 roles, 1-9 pages):
+  SMALL (simple CRUD, basic/no auth, no third-party integrations):
     → 1-2 coarse nodes (one broad-scope node with file_scope: "src/**")
     → Single-pass build — builder generates all code in one session
     → Auto-generate specs from manifest (skip spec conversation)
@@ -110,7 +133,7 @@ Sprint 6 hardening (same sprint, post-initial):
     → Walkthrough: single summary confirmation, not per-feature
     → Output: working, runnable app in one session
 
-  MEDIUM (5-14 entities, 3-4 roles, 10-29 pages):
+  MEDIUM (auth flows, 1-2 integrations, business rules, role-based access):
     → 3-5 nodes with sensible boundaries
     → Sequential build with review after each
     → 6-8 sweep agents (skip documentation, frontend-ux if no frontend)
@@ -118,13 +141,11 @@ Sprint 6 hardening (same sprint, post-initial):
     → Full specs but streamlined conversation
     → Walkthrough: section-by-section (scope, non-goals, models, nodes)
 
-  LARGE (15+ entities, 5+ roles, 30+ pages, or multi-team):
+  LARGE (multi-tenant, payments, state machines, compliance, multi-team):
     → Full pipeline: fine-grained nodes, 12 agents, cross-model, deep-build
     → Per-feature walkthrough during discovery
     → This is what ForgePlan was designed for
   ```
-- **Resolution rule:** When dimensions disagree, tier = MAX across all dimensions. 3 entities + 4 roles = MEDIUM (roles push it up).
-- User can always override: "I know this is small but I want full governance" or "This is large but I want to move fast."
 - **Architect agent update (CRITICAL):** Replace absolute decomposition rules ("NEVER collapse auth/API/database") with tier-conditional rules. SMALL tier explicitly allows and encourages coarse nodes. LARGE tier keeps current rules. Test against all three tiers.
 - **Deep-build adapts to tier:** SMALL = single-pass build, lightweight audit, no cross-model. MEDIUM = current pipeline with fewer agents. LARGE = full pipeline.
 
