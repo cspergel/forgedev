@@ -5,6 +5,7 @@ argument-hint: "[node-id | --all]"
 allowed-tools: Read Write Edit Bash Glob Grep
 agent: builder
 context: fork
+model: opus
 ---
 
 # Build Node
