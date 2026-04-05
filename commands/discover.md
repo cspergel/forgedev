@@ -106,10 +106,31 @@ Follow the Architect agent's conversation framework:
    ```
    Always make a recommendation. Don't leave the user stuck choosing.
 3. **Decompose** into nodes (3-5 questions, enforce granularity)
-4. **Identify** shared models (entities used by 2+ nodes)
-5. **Map** connections and dependencies. For each interface, establish the **import convention**: how Node B imports from Node A. Use the pattern `src/[node-name]/index.ts` as the canonical export point for every node. Document this in each interface's `contract` field.
-6. **Validate** and present summary
-7. **Confirm** with user before finalizing
+4. **Auto-add an "app-shell" node** based on the tech stack. Every project needs infrastructure glue that no feature node provides. Based on `tech_stack`, automatically include:
+   - **For any project:** root `package.json` with scripts (dev, build, test, start), `.env.example`
+   - **For React/Vue/Svelte:** entry point (`main.tsx`/`main.ts`), `App.tsx` with router, `index.html`, build config (Vite/webpack)
+   - **For Express/Fastify:** `src/server.ts` entry point that wires all API nodes together
+   - **For Tailwind:** `tailwind.config.ts`, `postcss.config.js`, global CSS
+   - **For TypeScript:** `tsconfig.json` with correct paths
+
+   The app-shell node has `file_scope: "src/app/**"` (or the project root for config files) and `depends_on` all other nodes. It is built LAST in dependency order. Its acceptance criteria: "project starts with `npm run dev`", "all routes render", "build produces no errors."
+
+   If the user doesn't want an app-shell node (e.g., they're building a library), they can remove it during confirmation.
+
+5. **Ask about mock mode.** If the project depends on external services (databases, auth providers, payment APIs, file storage), ask:
+   ```
+   Your project uses Supabase. For local development, would you like:
+     1. Mock mode — fake in-memory data, no external services needed.
+        Flip one env var to switch between mock and real.
+     2. Local mode — run Supabase locally via Docker (npx supabase start)
+     3. Cloud only — connect to a real Supabase project from the start
+   ```
+   If mock mode is chosen, add it as a constraint on the relevant nodes: "Must support MOCK_MODE=true env var that substitutes mock implementations for all external service calls." This becomes an enforced spec constraint.
+
+6. **Identify** shared models (entities used by 2+ nodes)
+7. **Map** connections and dependencies. For each interface, establish the **import convention**: how Node B imports from Node A. Use the pattern `src/[node-name]/index.ts` as the canonical export point for every node. Document this in each interface's `contract` field.
+8. **Validate** and present summary
+9. **Confirm** with user before finalizing
 
 After each node addition or major change, show an updated text-based architecture summary.
 
