@@ -109,7 +109,15 @@ Sprint 6 hardening (same sprint, post-initial):
 - Onboarding guide explains all three paths clearly: "You can brainstorm here, bring your own plan, or start from a template."
 - Document import supports: markdown, text, PDF, chat exports (ChatGPT JSON, Claude conversation exports)
 - Architect extracts: project name, user roles, core features, data models, node boundaries, tech stack, constraints
-- After extraction, Architect presents a summary and asks: "Does this capture your vision? What's missing?"
+- **Mandatory walkthrough before manifest generation:**
+  - After reading the document (or completing the conversation), Architect walks through EVERY feature it understood, one by one
+  - For each feature: "My understanding: [summary]. → Correct?"
+  - Then presents: scope (what's IN), non-goals (what's OUT — these become enforcement constraints), shared models, node boundaries
+  - Then presents: recommended build phases based on dependency graph
+  - User confirms or corrects each section. Corrections loop back for clarification.
+  - Only after full walkthrough confirmation does Architect generate the manifest
+  - This is non-skippable. The walkthrough IS the architecture review. Discovery quality determines everything downstream — specs, enforcement, non-goals, acceptance criteria all flow from these decisions.
+  - Philosophy: **architecture down, not code up.** Design the system first, then the harness enforces it. If discovery gets it wrong, the harness perfectly enforces the wrong thing.
 
 **Pillar 1: Ambient SessionStart**
 - Enhance session-start.js to detect full project state (not just stuck builds)
