@@ -150,7 +150,14 @@ Sprint 6 hardening (same sprint, post-initial):
 - Research agents run before architecture to inform node structure and dependencies
 - Cross-model verification of the entire stack
 
-**Pillar 4: Semantic Memory**
+**Pillar 4: Semantic Memory (Karpathy Wiki Pattern)**
+- Maintain a compiled project knowledge base at `.forgeplan/wiki/` (inspired by Karpathy's LLM Wiki)
+- Three layers: raw sources (specs, code) → wiki (compiled knowledge per node) → schema (rules)
+- Each sweep pass UPDATES the wiki instead of re-reading the entire codebase from scratch
+- Next pass, agents read the wiki first (cheap, compiled) and only drill into source code to verify
+- Node pages: `.forgeplan/wiki/nodes/[id].md` — what's known, past findings, resolved issues, patterns
+- Cross-cutting pages: patterns.md, decisions.md, log.md (append-only changelog)
+- Dramatically cuts token usage: agents read compiled summaries, not raw code
 - Index past sweep reports, design decisions, rejected specs
 - Surface cross-session patterns: "you've built similar nodes before, here's what worked"
 - Episodic memory integration for project-local knowledge base
