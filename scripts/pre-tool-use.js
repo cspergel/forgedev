@@ -76,6 +76,14 @@ function evaluate(input) {
     .relative(cwd, absPath)
     .replace(/\\/g, "/");
 
+  // If the target path is outside the project directory, allow it.
+  // ForgePlan only governs files within the project. Other plugins
+  // (superpowers, episodic-memory, etc.) write to ~/.claude/ paths
+  // which should never be blocked by ForgePlan enforcement.
+  if (relPath.startsWith("..")) {
+    return { block: false };
+  }
+
   // --- Load state and manifest ---
   const forgePlanDir = path.join(cwd, ".forgeplan");
   const statePath = path.join(forgePlanDir, "state.json");
