@@ -39,7 +39,7 @@ process.stdin.on("end", () => {
     }
     process.exit(0);
   } catch (err) {
-    // On parse error, allow stop (fail-open for stop is safer than trapping the user)
+    // On parse error, allow stop (fail-open — don't trap the user)
     process.stderr.write(
       `ForgePlan Stop hook warning: ${err.message}\n`
     );

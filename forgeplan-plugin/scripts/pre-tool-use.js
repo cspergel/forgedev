@@ -41,10 +41,9 @@ process.stdin.on("end", () => {
     }
     process.exit(0);
   } catch (err) {
-    // On malformed input (can't parse JSON from Claude), block to be safe
+    // On malformed input, block to be safe
     process.stderr.write(
-      `BLOCKED: ForgePlan PreToolUse could not parse hook input: ${err.message}. ` +
-      `This is a safety block — enforcement cannot verify this operation.\n`
+      `BLOCKED: ForgePlan PreToolUse could not parse hook input: ${err.message}.\n`
     );
     process.exit(2);
   }
