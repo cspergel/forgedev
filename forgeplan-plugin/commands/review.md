@@ -76,11 +76,16 @@ Check `multi_agent_review.enabled` in config.yaml. If true and the native review
    - The current code on disk
    - The specific review findings to address
    - Instruction: fix ONLY the cited issues, do not refactor or add features
-   - **Model selection** (if `fixer_model` is `"auto"`, classify each finding's complexity):
-     - **Simple** (missing import, typo, formatting fix) → use `haiku`
-     - **Directed** (implement missing AC, add validation, wire interface) → use `sonnet`
-     - **Complex** (architectural change, multi-file logic rewrite, security fix) → use `opus`
-   - If `fixer_model` is a specific model name, use that for all fixes
+   - **Model selection** based on `fixer_model` config:
+     - `"opus"` — use opus for all fixes
+     - `"auto-high"` (default, recommended) — classify each finding:
+       - **Simple** (missing import, typo, one-line fix) → `sonnet`
+       - **Complex** (architectural, multi-file, logic rewrite, security) → `opus`
+     - `"auto"` — three-tier classification:
+       - **Trivial** (typo, formatting) → `haiku`
+       - **Directed** (missing AC, add validation, wire interface) → `sonnet`
+       - **Complex** (architectural, multi-file, security) → `opus`
+     - `"sonnet"` or `"haiku"` — use that model for all fixes
 2. After fixes, spawn a **fresh Reviewer agent** (using `multi_agent_review.reviewer_model`, default opus) to re-review
 3. If still REQUEST CHANGES and cycle count < `max_cycles` (default 3), repeat from step 1
 4. If APPROVE or max cycles reached, proceed to Step 2

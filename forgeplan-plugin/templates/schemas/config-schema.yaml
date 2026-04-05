@@ -35,12 +35,12 @@ multi_agent_review:
   enabled: false                   # Set to true to enable iterative agent review cycles
   max_cycles: 3                    # Max review→fix cycles before escalating to user
   reviewer_model: "opus"           # Model for independent review agents (opus recommended)
-  fixer_model: "auto"              # How to select the model for fix agents:
-                                   #   "opus"  — use opus for everything (maximum quality, highest cost)
-                                   #   "auto"  — pick per fix complexity (default):
-                                   #             simple fixes → haiku, directed → sonnet, complex → opus
-                                   #   "sonnet" — use sonnet for everything (good balance)
-                                   #   "haiku"  — use haiku for everything (fastest, cheapest)
+  fixer_model: "auto-high"          # How to select the model for fix agents:
+                                   #   "opus"      — opus for everything (max quality, highest cost)
+                                   #   "auto-high" — opus for complex, sonnet for simple (default, recommended)
+                                   #   "auto"      — opus for complex, sonnet for directed, haiku for trivial
+                                   #   "sonnet"    — sonnet for everything (good balance, lower cost)
+                                   #   "haiku"     — haiku for everything (fastest, cheapest, least reliable)
   # When combined with cross-model review (review.mode != "native"), this runs FIRST,
   # then cross-model review runs after all same-model cycles converge.
 
