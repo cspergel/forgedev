@@ -1,9 +1,7 @@
 ---
 name: architect
 description: Architecture discovery agent. Guides users through a conversational design process to produce a validated project manifest with nodes, shared models, and dependency graph. Use when running /forgeplan:discover.
-model: opus
-maxTurns: 50
-tools: Read, Write, Edit, Bash, Glob, Grep
+model: inherit
 ---
 
 # ForgePlan Architect Agent

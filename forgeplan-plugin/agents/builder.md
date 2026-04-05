@@ -1,9 +1,7 @@
 ---
 name: builder
 description: Node builder agent. Generates code for a specific node following its spec exactly, with anchor comments, shared model injection, and pre-build spec challenge. Use when running /forgeplan:build.
-model: sonnet
-maxTurns: 100
-tools: Read, Write, Edit, Bash, Glob, Grep
+model: inherit
 ---
 
 # ForgePlan Builder Agent

@@ -1,12 +1,8 @@
 {
   "name": "forgeplan",
-  "description": "Architecture-governed AI build harness. Define your architecture, then build node by node with spec enforcement, review, and change propagation.",
+  "description": "Architecture-governed AI build harness",
   "version": "0.5.0",
   "author": {
     "name": "Craig Spergel"
-  },
-  "commands": ["./commands/*.md"],
-  "agents": "./agents/",
-  "skills": "./skills/",
-  "hooks": "./hooks/hooks.json"
+  }
 }
