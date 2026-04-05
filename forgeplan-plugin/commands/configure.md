@@ -29,95 +29,183 @@ catching issues the builder model missed. This powers:
 
 Choose your setup:
 
-  1. MCP Mode (recommended)
-     Uses an MCP server you've already configured.
-     Best for: Codex, Gemini, or any MCP-compatible model.
-     Requires: `claude mcp add <server-name>` already done.
+  1. OpenAI (Codex/GPT) via MCP     — recommended if you use OpenAI
+  2. Google Gemini via MCP            — recommended if you use Gemini
+  3. OpenAI (Codex/GPT) via CLI       — uses Codex CLI subprocess
+  4. Google Gemini via CLI             — uses Gemini CLI subprocess
+  5. Direct API (any provider)         — HTTP API calls with your key
+  6. Native Only (no cross-model)      — Claude reviews its own work
+  7. Show current config
 
-  2. CLI Mode
-     Spawns another AI CLI as a subprocess.
-     Best for: Codex CLI, Gemini CLI.
-     Requires: The CLI tool installed and on your PATH.
-
-  3. API Mode
-     Direct HTTP API calls to OpenAI, Google, or Anthropic.
-     Best for: When you have an API key.
-     Requires: An API key (can reference env vars).
-
-  4. Native Only (no cross-model)
-     All review done by Claude only. No alternate model.
-     You can still use /forgeplan:review and /forgeplan:sweep,
-     but --cross-check will be skipped.
-
-  5. Show current config
-     Display what's currently configured.
-
-Which setup? [1/2/3/4/5]:
+Which setup? [1-7]:
 ```
 
-### If user picks 1 (MCP Mode):
+### If user picks 1 (OpenAI via MCP):
 
-Ask: "What's the name of your MCP server? (e.g., 'codex', 'gemini')"
-
-If they don't have one set up, guide them:
+First check if the MCP server is already registered:
+```bash
+claude mcp list 2>&1
 ```
-You need to register an MCP server first. Run this in your terminal:
 
-  ! claude mcp add <server-name>
+If `codex-cli` or similar OpenAI server is listed, skip to config write.
 
-For example:
-  ! claude mcp add codex
+If not, guide them through setup:
+```
+To use OpenAI/Codex via MCP, we need two things:
 
-After that, come back and run /forgeplan:configure again.
+Step 1: Install the Codex CLI (if not already installed)
+  ! npm install -g @openai/codex
 
-To see what MCP servers you have:
+Step 2: Authenticate Codex with your OpenAI API key
+  ! codex login --api-key "YOUR_OPENAI_API_KEY"
+  (or set the OPENAI_API_KEY environment variable)
+
+Step 3: Add the Codex MCP server to Claude Code
+  ! claude mcp add codex-cli -- npx -y codex-mcp-server
+
+Step 4: Verify it's working
   ! claude mcp list
+  Look for "codex-cli" with status "Connected"
 ```
 
-If they have one, write the config:
+After setup confirmed, write config:
 ```yaml
 review:
   mode: mcp
-  mcp_server: [their-server-name]
+  mcp_server: codex-cli
 ```
 
-### If user picks 2 (CLI Mode):
+**Alternative (simpler OpenAI MCP — no Codex CLI needed):**
+```
+If you just want OpenAI chat completions without the full Codex CLI:
 
-Ask: "What CLI command runs your alternate model? (e.g., 'codex', 'gemini')"
+  ! claude mcp add mcp-openai -e OPENAI_API_KEY=sk-your-key-here -- npx -y @mzxrai/mcp-openai@latest
 
-Verify it exists:
+This exposes an openai_chat tool. Simpler but less feature-rich than Codex.
+```
+
+### If user picks 2 (Gemini via MCP):
+
+```
+To use Google Gemini via MCP:
+
+Step 1: Get a Gemini API key (free)
+  Go to: https://aistudio.google.com/apikey
+  Create a key and copy it.
+
+Step 2: Add the Gemini MCP server to Claude Code
+  ! claude mcp add gemini -s user -- env GEMINI_API_KEY=YOUR_KEY npx -y @rlabs-inc/gemini-mcp
+
+  (Replace YOUR_KEY with your actual API key)
+
+  Optional: limit to text tools only (faster startup):
+  ! claude mcp add gemini -s user -- env GEMINI_API_KEY=YOUR_KEY env GEMINI_TOOL_PRESET=text npx -y @rlabs-inc/gemini-mcp
+
+Step 3: Verify it's working
+  ! claude mcp list
+  Look for "gemini" with status "Connected"
+```
+
+After setup confirmed, write config:
+```yaml
+review:
+  mode: mcp
+  mcp_server: gemini
+```
+
+### If user picks 3 (OpenAI via CLI):
+
+```
+To use Codex CLI for cross-model review:
+
+Step 1: Install the Codex CLI
+  ! npm install -g @openai/codex
+
+Step 2: Authenticate
+  ! codex login --api-key "YOUR_OPENAI_API_KEY"
+
+Step 3: Verify it works
+  ! codex exec "Hello, respond with OK"
+
+Note: Codex CLI has experimental Windows support.
+If you're on Windows and it doesn't work, use API mode (option 5) instead.
+```
+
+Verify the CLI exists:
 ```bash
-which [command] 2>/dev/null || where [command] 2>/dev/null
+which codex 2>/dev/null || where codex 2>/dev/null
 ```
 
-If not found, tell them to install it first. If found, write:
+If found, write config:
 ```yaml
 review:
   mode: cli
-  cli_command: [their-command]
+  cli_command: codex
+  cli_args: ["exec"]
 ```
 
-### If user picks 3 (API Mode):
+### If user picks 4 (Gemini via CLI):
+
+```
+To use Gemini CLI for cross-model review:
+
+Step 1: Install the Gemini CLI (requires Node.js 20+)
+  ! npm install -g @google/gemini-cli
+
+Step 2: Authenticate (run once interactively)
+  ! gemini
+  Follow the Google account auth flow, then exit.
+
+Step 3: Verify it works
+  ! gemini -p "Hello, respond with OK"
+```
+
+Verify the CLI exists:
+```bash
+which gemini 2>/dev/null || where gemini 2>/dev/null
+```
+
+If found, write config:
+```yaml
+review:
+  mode: cli
+  cli_command: gemini
+  cli_args: ["-p"]
+```
+
+### If user picks 5 (Direct API):
 
 Ask: "Which provider? [openai / google / anthropic]"
 
 Then ask: "API key — paste it or use an env var reference like $OPENAI_API_KEY"
 
-If they paste a raw key, warn:
+If they paste a raw key (starts with `sk-`, `AIza`, or `ant-`), warn:
 ```
 For security, consider using an environment variable instead:
   1. Set the env var: export OPENAI_API_KEY=sk-...
   2. Reference it in config: $OPENAI_API_KEY
 
-This keeps your key out of config files that might get committed.
+This keeps your key out of config files that might get committed to git.
 ```
 
 Ask: "Which model? (leave blank for default)"
 
-Defaults by provider:
-- openai: gpt-4o
-- google: gemini-2.0-flash
-- anthropic: claude-sonnet-4-20250514
+Defaults and recommended models by provider:
+
+**OpenAI:**
+- Default: `gpt-4o` (proven, widely available)
+- Recommended: `gpt-4o` or newer if available
+- Budget: `gpt-4o-mini`
+
+**Google:**
+- Default: `gemini-2.5-flash` (best price-performance)
+- Recommended: `gemini-2.5-pro` for thorough reviews
+- Budget: `gemini-2.5-flash-lite`
+
+**Anthropic (Claude reviewing Claude):**
+- Default: `claude-sonnet-4-6` (balanced)
+- Recommended: `claude-sonnet-4-6` (different perspective from Opus builder)
+- Note: This is Claude reviewing Claude — useful for model-tier diversity (Sonnet reviewing Opus's work) but not true cross-model verification
 
 Write:
 ```yaml
@@ -128,7 +216,7 @@ review:
   model: [model-or-default]
 ```
 
-### If user picks 4 (Native Only):
+### If user picks 6 (Native Only):
 
 Write:
 ```yaml
@@ -138,7 +226,7 @@ review:
 
 Tell them: "Cross-model review disabled. You can always re-run /forgeplan:configure to enable it later."
 
-### If user picks 5 (Show Current):
+### If user picks 7 (Show Current):
 
 Read `.forgeplan/config.yaml` and display it formatted:
 ```
@@ -149,6 +237,12 @@ Review mode: [mode]
 To change: run /forgeplan:configure again.
 ```
 
+If no config exists:
+```
+No .forgeplan/config.yaml found. Using defaults (native review only).
+Run /forgeplan:configure to set up cross-model review.
+```
+
 ## After Writing Config
 
 Confirm:
@@ -157,10 +251,16 @@ Config saved to .forgeplan/config.yaml
 
 Your setup:
   Review mode: [mode]
-  [details]
+  [provider/server details]
 
-To test it: /forgeplan:review [any-built-node]
-To run a full sweep with cross-model: /forgeplan:sweep --cross-check
+To test it:
+  /forgeplan:review [any-built-node]
+
+To run a full sweep with cross-model verification:
+  /forgeplan:sweep --cross-check
+
+To run the full autonomous pipeline:
+  /forgeplan:deep-build
 ```
 
 ## Additional Settings
@@ -181,4 +281,10 @@ models:
   architect: inherit    # inherit session model
   builder: opus         # most capable for complex nodes
   reviewer: inherit     # inherit session model
+```
+
+### Timeout
+```yaml
+review:
+  timeout: 300000    # milliseconds (default: 300000 = 5 min for sweep, 120000 = 2 min for single node)
 ```

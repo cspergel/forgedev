@@ -265,7 +265,7 @@ async function reviewViaApi(config, prompt) {
       break;
 
     case "google":
-      url = `https://generativelanguage.googleapis.com/v1beta/models/${model || "gemini-2.0-flash"}:generateContent?key=${apiKey}`;
+      url = `https://generativelanguage.googleapis.com/v1beta/models/${model || "gemini-2.5-flash"}:generateContent?key=${apiKey}`;
       headers = { "Content-Type": "application/json" };
       body = JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
@@ -280,7 +280,7 @@ async function reviewViaApi(config, prompt) {
         "Content-Type": "application/json",
       };
       body = JSON.stringify({
-        model: model || "claude-sonnet-4-20250514",
+        model: model || "claude-sonnet-4-6",
         max_tokens: 4096,
         messages: [{ role: "user", content: prompt }],
       });
