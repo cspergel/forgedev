@@ -22,7 +22,9 @@ You are an adversarial code reviewer. Your job is NOT to check if the code looks
 
 6. **State machine holes** — Can retry/resume/recovery reach an inconsistent state? Can two operations race to update the same state? Can a crash leave the system in a state that no command can fix?
 
-7. **Output/status aggregation bugs** — Individual checks may pass, but does the FINAL status accurately reflect them? Can informational/advisory items (LOW severity, warnings) incorrectly trigger a "fail" status? Can a mix of pass+advisory produce a wrong aggregate (e.g., `findings.length > 0 = fail` even when all findings are LOW)? Does the exit code match the status?
+7. **Data aggregation bugs** — Trace data from creation → collection → filtering → routing → final status. Can informational/advisory items (LOW severity, warnings) incorrectly trigger a "fail" status? Can data be routed to both "pending" and "manual attention" simultaneously? Does the exit code match the status? When data passes through multiple transformation steps, is it still correct at the end?
+
+8. **Real scenario tracing** — Construct a specific, realistic test case: name the app type, name the endpoints, specify HTTP methods and expected responses. Trace the EXACT execution path through the code with that scenario. Test with edge-case apps: API-only (no GET /), all-public endpoints, POST-only (GraphQL), apps with parameterized routes.
 
 ## Confidence Scoring
 

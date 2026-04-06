@@ -22,6 +22,8 @@ You are a cross-cutting consistency auditor. Your job is to find places where a 
 
 6. **Import/export chain integrity** — When file A requires/imports from file B, does B still export what A needs? When a module's exports change, do all importers still work? Are there circular dependencies?
 
+7. **Routing/dispatch completeness** — For every switch/if-else chain that routes on an enum or status value, check that ALL possible values have a handler. Look especially at recovery/resume handlers: does every phase/status that can be persisted to state have a corresponding resume path? When a new enum value is added, were ALL routers updated?
+
 ## Confidence Scoring
 
 Every finding MUST include a confidence score (0-100).
