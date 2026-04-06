@@ -835,7 +835,7 @@ Ambient mode is the foundation for the non-technical builder experience describe
 | Docs Agent | Fetch API documentation, framework guides, best practices for the tech stack | WebSearch, WebFetch |
 
 **Integration with existing pipeline:**
-- Research runs AFTER spec but BEFORE build: `discover → spec → research → build → review → ...`
+- **NOTE: CLAUDE.md supersedes this sequencing.** CLAUDE.md says: `discover → research → spec → build → review → ...` (research before spec, so findings inform the spec). This original plan said research after spec. Follow CLAUDE.md.
 - Research findings are saved to `.forgeplan/research/[node].md`
 - Builder agent receives research findings as additional context alongside the spec
 - The architect agent can also trigger research during discovery to validate that a proposed architecture is feasible
@@ -893,7 +893,7 @@ That's day one through day three. If the discovery flow produces a good manifest
 
 ## Relationship to the Grand Vision
 
-This execution plan is **Sprint 1 through Sprint 8** of the plugin's development. Sprints 1–5 deliver the architecture-governed build harness. Sprint 6 delivers the autonomous iterative sweep system. Sprint 7 makes ForgePlan an ambient assistant that guides users proactively. Sprint 8 adds research agents for fully autonomous greenfield builds. Everything in Sections 1–16 and 18–23 of the concept document remains the long-term product direction. The concept document is the north star. This document is the directions to get on the road.
+This execution plan covers **Sprints 1 through 6** of the plugin's development. Sprints 1–5 deliver the architecture-governed build harness. Sprint 6 delivers the autonomous iterative sweep system. **For Sprint 7+ roadmap, see CLAUDE.md** — it is the living authority reflecting dogfood feedback, code reviews, and product decisions made after this document was written. The Sprint 7/8 sections below are the original plans and are **superseded by CLAUDE.md** where they differ.
 
 The arc: **Sprint 5 proved the harness works** (dogfood with data). **Sprint 6 makes it autonomous** (cross-model sweep). **Sprint 7 makes it discoverable** (ambient guidance). **Sprint 8 makes it intelligent** (research before building). Together, they deliver the concept doc's vision: a user describes what they want, walks away, and comes back to a fully built, fully reviewed, fully researched application — without ever reading a manual.
 
