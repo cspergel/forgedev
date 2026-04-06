@@ -72,6 +72,7 @@ This is a sequential loop using existing commands:
      Run /forgeplan:recover to resume or abort.
      ```
    - `"rebuild_needed"`: for each listed node, run `/forgeplan:build [node-id]` then `/forgeplan:review [node-id]` (same build+review pattern as the recommendation branch — no unreviewed nodes in the autonomous pipeline), then re-run next-node.js
+   - `"sweep_active"`: a sweep is still active from an interrupted run. Clear `sweep_state` to null, clear `active_node` to null, then re-run next-node.js. This resets the stale sweep so the build loop can proceed.
 3. Repeat until `"complete"`.
 
 All existing enforcement (PreToolUse, PostToolUse, Builder agent, Stop hook) applies exactly as in manual builds. The deep-build orchestrator just drives the loop.
