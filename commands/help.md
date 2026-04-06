@@ -26,6 +26,8 @@ user-invocable: true
 |---------|-------------|
 | `/forgeplan:sweep [--cross-check]` | Sweep your codebase for cross-cutting issues — 3-12 parallel agents (tier-aware) audit security, types, errors, database, API contracts, imports, code quality, tests, config, frontend UX, docs, and cross-node integration. Progressive convergence drops clean agents. Add `--cross-check` for cross-model verification. |
 | `/forgeplan:deep-build` | Full autonomous pipeline: build all → verify-runnable → review → sweep → certify (tier-aware). Describe what you want, walk away. |
+| `/forgeplan:greenfield [description]` | Full pipeline from idea to certified app: describe → discover → research → spec → build → verify → review → sweep → certify. One confirmation, then walk away. |
+| `/forgeplan:research [topic]` | Search npm, GitHub, and docs for best practices, packages, and reference implementations. 4 agents in parallel: researcher, license checker, inspiration, docs. |
 
 ## Evolving Your Project
 

@@ -463,6 +463,7 @@ function evaluateBash(toolInput, cwd) {
     /^\s*git\s+worktree\b/,                      // worktree operations for parallel fixes
     /^\s*deno\b/,                             // Deno runtime commands
     /^\s*bun\b/,                              // Bun runtime commands
+    /^\s*curl\s/,                             // HTTP requests for research agents (npm registry API)
     /^\s*codex\b/,                        // cross-model review via Codex CLI
     /^\s*gemini\b/,                       // cross-model review via Gemini CLI
     /^\s*claude\s+mcp\s+(call|list)\b/,   // cross-model review via MCP
