@@ -16,7 +16,18 @@ function main() {
 
   // Check if .forgeplan/ exists in the current project
   if (!fs.existsSync(forgePlanDir)) {
-    // No ForgePlan project — nothing to do
+    // No ForgePlan project — show first-run welcome
+    process.stderr.write(
+      "\n" +
+      "--- ForgePlan Core ---\n" +
+      "Architecture-governed AI build harness.\n" +
+      "\n" +
+      "No project detected in this directory. Quick start:\n" +
+      "  /forgeplan:discover    Describe what you want to build\n" +
+      "  /forgeplan:guide       Walkthrough of how ForgePlan works\n" +
+      "  /forgeplan:help        See all commands\n" +
+      "---------------------------\n"
+    );
     process.exit(0);
   }
 
