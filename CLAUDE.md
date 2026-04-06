@@ -441,8 +441,27 @@ Deliverables: 4 research agents (researcher, license-checker, inspiration, docs-
 - Parallel fix agents with per-agent temp state
 - Session-end hook for cross-session context
 
-**Pillar 3: Two-Stage Review**
-- Stage 1: Spec compliance. Stage 2: Code quality. Skip Stage 2 if Stage 1 fails.
+**Pillar 3: Five-Team Review Model**
+Upgrade the review/sweep pipeline with team-colored agents that catch fundamentally different bug classes. Proven during Sprint 7B-8 hardening where the Red Team caught a CRITICAL security bypass (deno/bun eval) that 35 Claude agents + 7 Codex rounds + 2 Qwen rounds all missed.
+
+- **Three new sweep agents:**
+  - `sweep-adversarial` (Red Team, model: opus) — Tests adversarial inputs: empty strings, injection payloads, boundary violations. For each whitelisted tool/command, checks if it can bypass enforcement. For each pass condition, tries to find an input that passes incorrectly.
+  - `sweep-user-flows` (Blue Team, model: sonnet) — Traces each user journey from spec acceptance criteria through actual code. Finds dead-end error paths, misleading messages, recovery failures, and states where no command helps.
+  - `sweep-contract-drift` (Orange Team, model: sonnet) — Checks every enum, schema field, import/export, and producer/consumer contract for cross-file consistency. Finds values added in one place but missing in another.
+
+- **Review command enhancement:**
+  - `/forgeplan:review [node] --deep` dispatches Base (7-dimension) + Red + Blue review passes
+  - Default `/forgeplan:review` stays as current Base-only (fast, cheap)
+  - Sweep automatically includes team agents for MEDIUM/LARGE tier (3 team agents join the 6-12 domain agents)
+
+- **Tier-aware dispatch:**
+  ```
+  SMALL:  No team agents in sweep (3-5 domain agents sufficient)
+  MEDIUM: Add sweep-contract-drift (Orange) to the domain agents
+  LARGE:  Add all 3 team agents (Red + Blue + Orange) to the domain agents
+  ```
+
+- **Green Team (efficiency) deferred to Sprint 10** — token usage optimization requires semantic memory (Sprint 9 Pillar 1) to measure what agents actually read vs what they were sent.
 
 **Pillar 4: Node Splitting** (deferred from Sprint 7A)
 - `/forgeplan:split [node-id]` — decompose an existing node into finer-grained nodes
@@ -551,6 +570,14 @@ Deliverables: 4 research agents (researcher, license-checker, inspiration, docs-
 | sweep-frontend-ux | sonnet | Accessibility, loading/error/empty states |
 | sweep-documentation | sonnet | README/JSDoc/API doc accuracy |
 | sweep-cross-node-integration | opus | Data flow across boundaries, field mismatches |
+
+### Team-Colored Sweep Agents (Sprint 9)
+
+| Agent | Model | Team | Domain |
+|-------|-------|------|--------|
+| sweep-adversarial | opus | Red | Security boundaries, adversarial inputs, false-pass/fail |
+| sweep-user-flows | sonnet | Blue | User journey tracing, recovery paths, error message quality |
+| sweep-contract-drift | sonnet | Orange | Cross-file enum/schema/contract consistency |
 
 ## Six Hook Types
 
