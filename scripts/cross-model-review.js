@@ -221,8 +221,7 @@ function reviewViaMcp(config, prompt, cwd) {
  * Works with Codex CLI, Gemini CLI, or any CLI that accepts a prompt.
  */
 function reviewViaCli(config, prompt, cwd) {
-  // Sanitize: strip shell metacharacters but allow path chars (: \ / . - _ spaces)
-  const command = (config.cli_command || "codex").replace(/[;&|`$(){}!#<>]/g, "");
+  const command = config.cli_command || "codex";
   const args = config.cli_args || [];
   const timeout = config.timeout || 120000;
   const tmpPrompt = path.join(cwd, ".forgeplan", ".tmp-review-prompt.md");
@@ -230,12 +229,12 @@ function reviewViaCli(config, prompt, cwd) {
   try {
     fs.writeFileSync(tmpPrompt, prompt, "utf-8");
 
-    const fullArgs = [...args, `"${tmpPrompt}"`];
-    // Only quote the command if it contains spaces (paths like C:\Program Files\...).
-    // Quoting shim commands like "npm" breaks .cmd resolution on Windows.
+    // Quote each argument that contains spaces, plus the prompt path
+    const quotedArgs = args.map(a => a.includes(" ") ? `"${a}"` : a);
+    quotedArgs.push(`"${tmpPrompt}"`);
     const quotedCmd = command.includes(" ") ? `"${command}"` : command;
     const result = execSync(
-      `${quotedCmd} ${fullArgs.join(" ")}`,
+      `${quotedCmd} ${quotedArgs.join(" ")}`,
       { encoding: "utf-8", timeout, cwd, stdio: ["pipe", "pipe", "pipe"] }
     );
 

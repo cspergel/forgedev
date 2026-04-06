@@ -193,12 +193,20 @@ When multiple nodes need fixes and their file_scopes don't overlap, fix agents c
    node "${CLAUDE_PLUGIN_ROOT}/scripts/worktree-manager.js" merge [node-id]
    ```
 6. **After each successful merge**, update state.json: restore `nodes.[node-id].previous_status`, set `sweep_state.fixing_node` to null, move findings from pending to resolved.
-7. If a merge conflict occurs (exit code 1), fall back to sequential fix for that node in the main working tree. The node is already in `"sweeping"` status with `previous_status` saved from step 1. Execute these sequential steps for the conflicted node:
-   - Set `active_node` to `{"node": "[node-id]", "status": "sweeping", "started_at": "[ISO]"}` (step 3 of sequential)
-   - Set `sweep_state.fixing_node` to the node ID (step 4 of sequential)
-   - Run pre-fix validation: confirm findings exist, validate files exist (step 6 of sequential)
-   - Fix each validated finding (step 7 of sequential)
-   - Do NOT re-save `previous_status` (step 1) or re-set status to sweeping (step 2) — those were already done by the parallel setup and overwriting would corrupt the restore path.
+7. If a merge conflict occurs (exit code 1), handle the conflicted node:
+   a. **Abort the failed merge** in the main working tree: run `git merge --abort`
+   b. **Clean up the conflicted worktree**: run `node "${CLAUDE_PLUGIN_ROOT}/scripts/worktree-manager.js" cleanup` for that node
+   c. **Enter sequential fix** for this node. The node is already in `"sweeping"` status with `previous_status` saved from step 1 — do NOT re-save those. Execute:
+      - Set `active_node` to `{"node": "[node-id]", "status": "sweeping", "started_at": "[ISO]"}`
+      - Set `sweep_state.fixing_node` to the node ID
+      - Run pre-fix validation: confirm findings exist, validate files exist
+      - Fix each validated finding with a fresh agent
+   d. **Close out the node** after fixing (same as sequential step 8):
+      - Restore `nodes.[node-id].status` from `nodes.[node-id].previous_status`
+      - Clear `nodes.[node-id].previous_status` to null
+      - Clear `active_node` to null
+      - Set `sweep_state.fixing_node` to null
+      - Move findings from `pending` to `resolved`
 8. After all merges, clean up: `node "${CLAUDE_PLUGIN_ROOT}/scripts/worktree-manager.js" cleanup`
 
 **When NOT to parallelize:** If nodes share file_scope (e.g., SMALL tier with `src/**`), or if findings in one node reference files owned by another node, fall back to sequential mode. When in doubt, use sequential.

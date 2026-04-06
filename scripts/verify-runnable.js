@@ -85,30 +85,23 @@ function runStep(name, command, timeoutMs) {
 }
 
 // --- PID tracking for safe process cleanup ---
-// Format: "timestamp:pid" per line. Timestamp prevents killing reused PIDs from stale sessions.
-const PID_MAX_AGE_MS = 10 * 60 * 1000; // 10 minutes — no verify-runnable run lasts longer
+// DESIGN: Only kill PIDs spawned during THIS run. Never kill cross-session PIDs.
+// Stale PID files from crashed sessions are deleted without killing — the PIDs
+// may have been reused by unrelated processes. If a stale dev server holds a port,
+// verify-runnable detects EADDRINUSE and reports it as an environment error.
+//
+// The PID file is overwritten (not appended) at each run start to prevent
+// accumulation of stale entries.
+const currentRunPids = []; // In-memory tracking for this run only
 
 function writePid(pid) {
-  const entries = readPidEntries();
-  entries.push({ ts: Date.now(), pid });
-  fs.writeFileSync(pidFile, entries.map(e => `${e.ts}:${e.pid}`).join("\n"), "utf-8");
-}
-
-function readPidEntries() {
-  if (!fs.existsSync(pidFile)) return [];
-  return fs
-    .readFileSync(pidFile, "utf-8")
-    .split("\n")
-    .filter(Boolean)
-    .map(line => {
-      const [ts, pid] = line.split(":");
-      return { ts: parseInt(ts, 10) || 0, pid: parseInt(pid, 10) };
-    })
-    .filter(e => e.pid > 0);
+  currentRunPids.push(pid);
+  fs.writeFileSync(pidFile, currentRunPids.join("\n"), "utf-8");
 }
 
 function readPids() {
-  return readPidEntries().map(e => e.pid);
+  // Only returns PIDs from the current run (in-memory list)
+  return [...currentRunPids];
 }
 
 function killPid(pid) {
@@ -170,15 +163,11 @@ function killPidTree(pid) {
 }
 
 function cleanupPids() {
-  const entries = readPidEntries();
-  const now = Date.now();
-  for (const { ts, pid } of entries) {
-    if (now - ts > PID_MAX_AGE_MS) {
-      // Stale entry — PID was likely reused by another process. Do NOT kill.
-      continue;
-    }
+  // Kill only PIDs from the current run (safe — we spawned them)
+  for (const pid of currentRunPids) {
     killPidTree(pid);
   }
+  // Delete the PID file (may contain stale entries from a crashed run — safe to remove)
   try {
     fs.unlinkSync(pidFile);
   } catch {}
@@ -236,8 +225,8 @@ async function main() {
   let hasCodeErrors = false;
   let hasEnvErrors = false;
 
-  // Cleanup any stale PIDs from previous runs
-  cleanupPids();
+  // Delete stale PID file from previous runs (do NOT kill — PIDs may be reused)
+  try { fs.unlinkSync(pidFile); } catch {}
 
   // --- Step 1: Install dependencies ---
   let installCmd;

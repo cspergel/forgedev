@@ -460,19 +460,18 @@ function crossCheckViaMcp(config, prompt, cwd) {
 }
 
 function crossCheckViaCli(config, prompt, cwd) {
-  // Sanitize: strip shell metacharacters but allow path chars (: \ / . - _ spaces)
-  const command = (config.cli_command || "codex").replace(/[;&|`$(){}!#<>]/g, "");
+  const command = config.cli_command || "codex";
   const args = config.cli_args || [];
   const timeout = config.timeout || 300000;
   const tmpPrompt = path.join(cwd, ".forgeplan", ".tmp-crosscheck-prompt.md");
 
   try {
     fs.writeFileSync(tmpPrompt, prompt, "utf-8");
-    // Quote tmpPrompt to handle paths with spaces (e.g., "Coding Projects")
-    const fullArgs = [...args, `"${tmpPrompt}"`];
-    // Only quote if command contains spaces — quoting shim commands like "npm" breaks .cmd on Windows
+    // Quote each argument that contains spaces, plus the prompt path
+    const quotedArgs = args.map(a => a.includes(" ") ? `"${a}"` : a);
+    quotedArgs.push(`"${tmpPrompt}"`);
     const quotedCmd = command.includes(" ") ? `"${command}"` : command;
-    const result = execSync(`${quotedCmd} ${fullArgs.join(" ")}`, {
+    const result = execSync(`${quotedCmd} ${quotedArgs.join(" ")}`, {
       encoding: "utf-8",
       timeout,
       cwd,
