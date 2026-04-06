@@ -236,6 +236,7 @@ Sprint 6 hardening (same sprint, post-initial):
 - `scripts/validate-manifest.js` — validate complexity_tier field
 
 **Edge cases and implementation notes (from 50-case adversarial review):**
+*Note: These cover Sprints 7A, 7B, 8, and 9. They are grouped by topic, not by sprint, because edge cases often span multiple sprints.*
 
 VERIFICATION PIPELINE:
 - If project has no tests: detect before running test suite. Check for test files matching runner glob. If none exist, create a single finding "no tests written" — don't burn 3 retries on empty test suite.
@@ -374,15 +375,17 @@ SWEEP AND CROSS-MODEL:
 - Complexity tier determines how much governance the pipeline applies
 - **Exit criteria are tier-aware:**
   ```
-  SMALL: verify-runnable passes (install + tests + dev server) + 3-4 agent sweep clean.
-         No cross-model required. "Certified" = it runs and basic sweep is clean.
+  SMALL: verify-runnable Phase A passes (install + tests + dev server) + 3-4 agent sweep clean.
+         No Phase B runtime testing. No cross-model.
+         "Certified" = it runs, tests pass, basic sweep is clean.
 
-  MEDIUM: verify-runnable passes + 6-8 agent sweep clean + integration check passes.
-          Cross-model optional. "Certified" = runs + thorough sweep + interfaces verified.
+  MEDIUM: verify-runnable Phase A passes + Phase B runtime verification (endpoints + responses) +
+          6-8 agent sweep clean + integration check passes. Cross-model optional.
+          "Certified" = runs + endpoints work + thorough sweep + interfaces verified.
 
-  LARGE: verify-runnable passes + 12-agent sweep converged + integration passes +
-         cross-model verified (2 consecutive clean passes).
-         "Certified" = full pipeline, maximum confidence.
+  LARGE: verify-runnable Phase A passes + Phase B runtime verification (endpoints + auth boundaries + stress) +
+         12-agent sweep converged + integration passes + cross-model verified (2 consecutive clean passes).
+         "Certified" = full pipeline, everything tested at every level.
   ```
 
 ### Milestone: External Users
@@ -405,6 +408,15 @@ SWEEP AND CROSS-MODEL:
 
 **Pillar 3: Two-Stage Review**
 - Stage 1: Spec compliance. Stage 2: Code quality. Skip Stage 2 if Stage 1 fails.
+
+**Pillar 4: Node Splitting** (deferred from Sprint 7A)
+- `/forgeplan:split [node-id]` — decompose an existing node into finer-grained nodes
+- Required for tier upgrades (SMALL→MEDIUM) to work end-to-end
+- Preserves existing code, state, and enforcement integrity during split
+
+**Pillar 5: Guide Skill Enhancement** (deferred from Sprint 7B)
+- Pattern detection from past sweeps: "similar nodes had these issues"
+- Read sweep reports + blocked decisions for smarter recommendations
 
 ### Sprint 10: Skills + Blueprints
 **Goal:** Builder invokes external skills. Blueprints backed by research.
@@ -441,7 +453,7 @@ SWEEP AND CROSS-MODEL:
 | `/forgeplan:status` | 4 | Full project status visualization |
 | `/forgeplan:integrate` | 4 | Cross-node interface verification |
 | `/forgeplan:recover` | 3 | Crash recovery |
-| `/forgeplan:sweep` | 6 | 12-agent parallel sweep + progressive convergence + cross-model verification |
+| `/forgeplan:sweep` | 6 | Tier-aware parallel sweep (3-12 agents) + progressive convergence + cross-model verification |
 | `/forgeplan:deep-build` | 6 | Full autonomous build→review→sweep→cross-check pipeline |
 | `/forgeplan:configure` | 6 | Automated cross-model setup wizard (Codex/Gemini MCP/CLI/API) |
 | `/forgeplan:guide` | 6 | Evaluates project state, recommends best next step with explanations |
