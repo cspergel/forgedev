@@ -1,0 +1,11 @@
+project:
+  name: t
+nodes:
+  auth:
+    name: Auth
+    type: service
+    status: pending
+    file_scope: src/auth/**
+    depends_on: []
+    files: []
+    spec: specs/auth.yaml

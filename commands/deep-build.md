@@ -53,7 +53,13 @@ This is a sequential loop using existing commands:
      - If status is `"built"`: node was built but not yet reviewed. Run `/forgeplan:review [node-id]` only.
      - After each build, run `/forgeplan:review [node-id]`
    - `"complete"`: all nodes done, proceed to Phase 3
-   - `"stuck"`: auto-recover stuck nodes (set status back to "specced" for building nodes, "built" for reviewing nodes, clear `active_node`), then re-run next-node.js. Do NOT invoke interactive `/forgeplan:recover` — deep-build must stay autonomous.
+   - `"stuck"`: auto-recover stuck nodes based on their current status, then re-run next-node.js. Do NOT invoke interactive `/forgeplan:recover` — deep-build must stay autonomous.
+     - `"building"` → reset to `"specced"` (rebuild from scratch)
+     - `"reviewing"` → reset to `"built"` (re-review)
+     - `"review-fixing"` → reset to `"built"` (re-review after fix attempt)
+     - `"revising"` → reset to `"reviewed"` (re-revise)
+     - `"sweeping"` → restore `previous_status` if set, otherwise reset to `"reviewed"`
+     - Always clear `active_node` after reset.
    - `"blocked"` or `"error"`: halt deep-build with error message, preserve `sweep_state` for recovery:
      ```
      Deep build halted: [message from next-node.js]

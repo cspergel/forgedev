@@ -4,7 +4,7 @@
 
 **Author:** Craig Spergel
 **Date:** April 2026
-**Status:** Ready to Build
+**Status:** Sprints 1-6 Complete. **For Sprint 7+ roadmap, see CLAUDE.md** — it is the living authority reflecting dogfood feedback, code reviews, and product decisions made during development. This Execution Plan remains the authority for Sprints 1-6 implementation details only.
 **Grand Vision:** See ForgePlan Concept Document v4.1
 
 ---
