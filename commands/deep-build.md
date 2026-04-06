@@ -127,6 +127,8 @@ After Claude sweep fixes, re-integrate (Phase 3 logic).
 
 **Re-anchor:** Re-read `.forgeplan/manifest.yaml` for complexity_tier and node specs.
 
+Update `sweep_state.current_phase` to `"runtime-verify"` before proceeding (for crash recovery).
+
 **Tier gate:** Read `complexity_tier` (with config.yaml `tier_override` check):
 - **SMALL:** Skip Phase B entirely. Log: "Skipping runtime verification — SMALL tier (Phase A sufficient)." Proceed to Phase 5.
 - **MEDIUM/LARGE:** Run runtime verification.

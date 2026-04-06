@@ -464,8 +464,8 @@ function evaluateBash(toolInput, cwd) {
     /^\s*git\s+worktree\s+(add|remove|list|prune)\b/, // worktree: only safe subcommands
     /^\s*deno\s+(cache|--version|test|task\s+(dev|build|test|start))\b/, // Deno: safe subcommands only (no eval, no run)
     /^\s*bun\s+(install|--version|test|run\s+(dev|build|test|start))\b/, // Bun: safe subcommands only (no -e, no eval)
-    /^\s*codex\s+(".*"|'.*')\s*$/,        // Codex: only quoted prompt string, no flags like --auto-edit
-    /^\s*gemini\s+(".*"|'.*')\s*$/,       // Gemini: only quoted prompt string
+    /^\s*codex\s+("[^"]*"|'[^']*')\s*$/,  // Codex: single quoted prompt only (no flags — [^"]* prevents greedy match across --auto-edit)
+    /^\s*gemini\s+("[^"]*"|'[^']*')\s*$/, // Gemini: single quoted prompt only
     /^\s*claude\s+mcp\s+(call|list)\b/,   // cross-model review via MCP
     /^\s*npm\s+(test|run\s+test|run\s+lint|run\s+validate|install)\b/, // test/lint/install — NOTE: npm install can execute pre/postinstall scripts; tradeoff accepted since blocking installs breaks build workflows
     /^\s*npx\s+tsc\b/,                 // type checking

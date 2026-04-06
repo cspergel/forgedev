@@ -90,7 +90,7 @@ Run tier-selected sweep agents (3-16) in parallel across the entire codebase: 12
   - If project has 5+ nodes: add `sweep-cross-node-integration`
   - **Team agent:** `sweep-contract-drift` (Orange — catches cross-file enum/schema drift)
 
-- **LARGE tier (or no tier set):** Dispatch all 12 domain agents + 3 team agents:
+- **LARGE tier (or no tier set):** Dispatch all 12 domain agents + 4 team agents:
   - All 12 domain agents
   - **Team agents:** `sweep-adversarial` (Red — security boundaries, adversarial inputs), `sweep-user-flows` (Blue — user journey tracing), `sweep-contract-drift` (Orange — cross-file consistency), `sweep-holistic` (Architect — 10,000ft system coherence)
 

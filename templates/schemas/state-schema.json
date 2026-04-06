@@ -179,7 +179,7 @@
         "agent_convergence": {
           "type": "object",
           "default": {},
-          "description": "Per-agent convergence tracking. Keys are agent categories. Agents with status 'converged' are not re-dispatched.",
+          "description": "Per-agent convergence tracking. Keys are agent names (e.g., 'sweep-auth-security', NOT category names). Agents with status 'converged' are not re-dispatched.",
           "additionalProperties": {
             "type": "object",
             "properties": {
