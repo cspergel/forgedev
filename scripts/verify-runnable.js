@@ -32,6 +32,17 @@ const forgePlanDir = path.join(cwd, ".forgeplan");
 const pidFile = path.join(forgePlanDir, ".verify-pids");
 const skipServer = process.argv.includes("--skip-server");
 
+// Synchronous sleep that works in all Node.js environments.
+function sleepSync(ms) {
+  try {
+    const buf = new SharedArrayBuffer(4);
+    Atomics.wait(new Int32Array(buf), 0, 0, ms);
+  } catch {
+    const end = Date.now() + ms;
+    while (Date.now() < end) { /* spin */ }
+  }
+}
+
 // --- Load tech_stack from manifest ---
 function loadTechStack() {
   const manifestPath = path.join(forgePlanDir, "manifest.yaml");
@@ -127,8 +138,7 @@ function killPid(pid) {
       return; // Process is gone
     }
     // Synchronous sleep via Atomics (no shell, no CPU spin)
-    const buf = new SharedArrayBuffer(4);
-    Atomics.wait(new Int32Array(buf), 0, 0, 500);
+    sleepSync(500);
   }
 
   // Still alive — force kill
@@ -152,8 +162,7 @@ function killPidTree(pid) {
     } else {
       // Try process group kill first (negative PID), fall back to single PID
       try { process.kill(-pid, "SIGTERM"); } catch { process.kill(pid, "SIGTERM"); }
-      const buf = new SharedArrayBuffer(4);
-      Atomics.wait(new Int32Array(buf), 0, 0, 3000);
+      sleepSync(3000);
       try { process.kill(-pid, "SIGKILL"); } catch {}
       try { process.kill(pid, "SIGKILL"); } catch {}
     }
@@ -507,8 +516,7 @@ async function main() {
           } else {
             // Unix: kill the process group (negative PID) created by detached:true
             process.kill(-child.pid, "SIGTERM");
-            const buf = new SharedArrayBuffer(4);
-            Atomics.wait(new Int32Array(buf), 0, 0, 3000);
+            sleepSync(3000);
             try { process.kill(-child.pid, "SIGKILL"); } catch {}
           }
         } catch {

@@ -23,6 +23,19 @@ const { spawn, execSync } = require("child_process");
 const cwd = process.cwd();
 const forgePlanDir = path.join(cwd, ".forgeplan");
 
+// Synchronous sleep that works in all Node.js environments.
+// Atomics.wait requires SharedArrayBuffer which may throw in some configs.
+function sleepSync(ms) {
+  try {
+    const buf = new SharedArrayBuffer(4);
+    Atomics.wait(new Int32Array(buf), 0, 0, ms);
+  } catch {
+    // Fallback: busy-wait with Date.now() — less efficient but universal
+    const end = Date.now() + ms;
+    while (Date.now() < end) { /* spin */ }
+  }
+}
+
 // Parse --tier argument
 function parseTier() {
   const idx = process.argv.indexOf("--tier");
@@ -199,14 +212,12 @@ function killProcess(pid, isWindows) {
     if (isWindows) {
       // Graceful first (no /F), then force after 5s
       try { execSync(`taskkill /T /PID ${pid}`, { stdio: "pipe", timeout: 5000 }); } catch {}
-      const buf = new SharedArrayBuffer(4);
-      Atomics.wait(new Int32Array(buf), 0, 0, 5000);
+      sleepSync(5000);
       try { execSync(`taskkill /T /F /PID ${pid}`, { stdio: "pipe", timeout: 5000 }); } catch {}
     } else {
       // SIGTERM to process group, wait 5s, then SIGKILL
       try { process.kill(-pid, "SIGTERM"); } catch { process.kill(pid, "SIGTERM"); }
-      const buf = new SharedArrayBuffer(4);
-      Atomics.wait(new Int32Array(buf), 0, 0, 5000);
+      sleepSync(5000);
       try { process.kill(-pid, "SIGKILL"); } catch {}
       try { process.kill(pid, "SIGKILL"); } catch {}
     }
@@ -237,8 +248,10 @@ async function runLevel2(baseUrl, endpoints) {
         opts.body = JSON.stringify({});
       }
       const res = await fetch(`${baseUrl}${ep.path}`, opts);
+      // 2xx/3xx = pass, 401 = auth required (expected without token), 404 = route not registered (fail for defined endpoints), 5xx = server error (fail)
+      const pass = res.status < 400 || res.status === 401;
       results.push({
-        pass: res.status < 500,
+        pass,
         endpoint: `${ep.method} ${ep.path}`,
         status: res.status,
         node: ep.node,
