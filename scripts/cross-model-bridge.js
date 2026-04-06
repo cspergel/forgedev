@@ -325,7 +325,7 @@ function assembleCrossCheckPrompt(
   prompt += `   - Auth/security, type consistency, error handling, database, API contracts, imports\n`;
   prompt += `   - Code quality, test quality, config/environment, frontend UX, documentation, cross-node integration\n`;
   prompt += `3. Report findings in this EXACT format (one field per line, NO multiline values, keep Description and Fix on a single line each):\n\n`;
-  prompt += `\`\`\`\nFINDING: F[N]\nNode: [node-id]\nCategory: [auth-security|type-consistency|error-handling|database|api-contracts|imports|code-quality|test-quality|config-environment|frontend-ux|documentation|cross-node-integration]\nSeverity: HIGH | MEDIUM | LOW\nConfidence: [0-100]\nDescription: [what's wrong — single line]\nFile: [exact file path]\nLine: [approximate line number]\nFix: [specific remediation — single line]\n\`\`\`\n\n`;
+  prompt += `\`\`\`\nFINDING: F[N]\nNode: [node-id or "project" for cross-cutting issues]\nCategory: [auth-security|type-consistency|error-handling|database|api-contracts|imports|code-quality|test-quality|config-environment|frontend-ux|documentation|cross-node-integration|runtime-verification]\nSeverity: HIGH | MEDIUM | LOW\nConfidence: [0-100]\nDescription: [what's wrong — single line]\nFile: [exact file path]\nLine: [approximate line number]\nFix: [specific remediation — single line]\n\`\`\`\n\n`;
   prompt += `IMPORTANT: Each field MUST be exactly one line. The parser uses line-by-line extraction.\n\n`;
   prompt += `If everything is clean, report: CLEAN: No findings. All fixes verified.\n`;
 

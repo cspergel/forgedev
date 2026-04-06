@@ -185,7 +185,7 @@ This phase follows the **exact same logic as sweep Phase 6** (Task 9). All statu
 
    **If `status: "findings"`:**
    - Re-number IDs with `X` prefix. Set `pass_found` on each.
-   - Add to `sweep_state.findings.pending`
+   - Route by node type (same as sweep Phase 3): real node IDs → `pending`, `"project"` → `needs_manual_attention`
    - Set `consecutive_clean_passes` to 0
    - Increment `sweep_state.pass_number`
    - Set `sweep_state.current_phase` to `"cross-fix"`

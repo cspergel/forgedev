@@ -198,8 +198,16 @@ async function startServer(techStack) {
     env,
   });
 
-  // Track PID for crash recovery (same file as verify-runnable)
+  // Register cleanup BEFORE writing PID — so Ctrl+C during startup wait can kill the child
   const pidFile = path.join(forgePlanDir, ".verify-pids");
+  const earlyCleanup = () => {
+    killProcess(child.pid, isWindows);
+    try { fs.unlinkSync(pidFile); } catch {}
+  };
+  process.on("SIGINT", () => { earlyCleanup(); process.exit(1); });
+  process.on("SIGTERM", () => { earlyCleanup(); process.exit(1); });
+
+  // Track PID for crash recovery
   try {
     fs.writeFileSync(pidFile, `${Date.now()}:${child.pid}\n`, "utf-8");
   } catch {}
@@ -213,9 +221,15 @@ async function startServer(techStack) {
     let resolved = false;
     const done = (val) => { if (!resolved) { resolved = true; clearTimeout(logTimeout); clearTimeout(probeTimeout); resolve(val); } };
 
-    // Require URL/port context to avoid false-positives on error messages.
-    // Removed bare "port\s+\d+" which matched "Error: port 3000 in use"
-    const readyPattern = /(?:listening|ready|started|running)\s+(?:on|at)\s+\S*:\d+|https?:\/\/(?:localhost|127\.0\.0\.1|0\.0\.0\.0):\d+|(?:listening|serving|started)\s+(?:on\s+)?port\s+\d+/i;
+    // Server ready detection patterns. Must balance:
+    // - Catch: "listening on :3000", "ready 3217", "started on port 3000", "http://localhost:3000"
+    // - Reject: "Error: port 3000 in use", "ready for retry", "running migration failed"
+    const readyPattern = new RegExp([
+      /(?:listening|serving|started)\s+(?:on\s+)?(?:port\s+)?\d{2,5}/.source,  // "listening 3000", "started on port 3000"
+      /(?:listening|ready|started|running)\s+(?:on|at)\s+\S*:\d+/.source,       // "listening on :3000", "running at 0.0.0.0:3000"
+      /https?:\/\/(?:localhost|127\.0\.0\.1|0\.0\.0\.0):\d+/.source,            // "http://localhost:3000"
+      /ready\s+\d{2,5}/.source,                                                  // "ready 3217"
+    ].join("|"), "i");
 
     child.stdout.on("data", (data) => {
       serverOutput += data.toString();
@@ -306,8 +320,12 @@ async function runLevel1(baseUrl, endpoints) {
     if (res.ok || res.status === 302 || res.status === 301) {
       return { pass: true, detail: `GET / -> ${res.status}` };
     }
-    // GET / returned 404 — this is normal for API-only apps. Try the first spec endpoint with its actual method.
-    if (res.status === 404 && endpoints.length > 0) {
+    // 401/403 on GET / means the server IS running but the root is protected — that's fine
+    if (res.status === 401 || res.status === 403) {
+      return { pass: true, detail: `GET / -> ${res.status} (protected root — server is responding)` };
+    }
+    // GET / returned 404 or other non-success — try the first spec endpoint with its actual method.
+    if (res.status >= 400 && endpoints.length > 0) {
       const fallback = endpoints[0];
       const opts = { method: fallback.method, signal: AbortSignal.timeout(10000) };
       if (fallback.method !== "GET" && fallback.method !== "DELETE") {
