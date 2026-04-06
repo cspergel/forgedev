@@ -367,17 +367,22 @@ const CATEGORY_ALIASES = {
   "cross-node": "cross-node-integration",
 };
 
+const VALID_CATEGORIES = ["auth-security", "type-consistency", "error-handling", "database", "api-contracts", "imports", "code-quality", "test-quality", "config-environment", "frontend-ux", "documentation", "cross-node-integration", "runtime-verification"];
+
 function normalizeCategory(raw) {
   const lower = raw.trim().toLowerCase();
-  return CATEGORY_ALIASES[lower] || lower;
+  const mapped = CATEGORY_ALIASES[lower] || lower;
+  // Ensure we always return a valid enum value — default to code-quality for unknowns
+  return VALID_CATEGORIES.includes(mapped) ? mapped : "code-quality";
 }
 
 function normalizeSeverity(raw) {
   const upper = raw.trim().toUpperCase();
   if (["HIGH", "MEDIUM", "LOW"].includes(upper)) return upper;
   if (upper === "CRITICAL" || upper === "SEVERE") return "HIGH";
-  if (upper === "MINOR" || upper === "INFO") return "LOW";
-  return upper;
+  if (upper === "MINOR" || upper === "INFO" || upper === "WARNING") return "LOW";
+  if (upper === "MODERATE" || upper === "IMPORTANT") return "MEDIUM";
+  return "MEDIUM"; // Default to MEDIUM for unknown severity (must be a valid enum value)
 }
 
 function extractFindings(report, sourceModel) {

@@ -440,7 +440,7 @@ function evaluateBash(toolInput, cwd) {
     /^\s*more\s/,                       // pager
     /^\s*grep\s/,                       // search
     /^\s*rg\s/,                         // ripgrep
-    /^\s*find\s/,                       // find files
+    /^\s*find\s(?!.*(-exec|-execdir|-delete|-ok)\b)/,  // find files (block -exec/-delete which write/execute)
     /^\s*wc\s/,                         // word count
     /^\s*diff\s/,                       // diff
     /^\s*git\s+(status|log|diff|show|branch|remote|tag|stash\s+list)\b/,
@@ -467,8 +467,9 @@ function evaluateBash(toolInput, cwd) {
     /^\s*codex\s+("[^"]*"|'[^']*')\s*$/,  // Codex: single quoted prompt only (no flags — [^"]* prevents greedy match across --auto-edit)
     /^\s*gemini\s+("[^"]*"|'[^']*')\s*$/, // Gemini: single quoted prompt only
     /^\s*claude\s+mcp\s+(call|list)\b/,   // cross-model review via MCP
-    /^\s*npm\s+(test|run\s+test|run\s+lint|run\s+validate|install)\b/, // test/lint/install — NOTE: npm install can execute pre/postinstall scripts; tradeoff accepted since blocking installs breaks build workflows
-    /^\s*npx\s+tsc\b/,                 // type checking
+    /^\s*npm\s+(test|run\s+test|run\s+lint|run\s+validate)\b/, // test/lint/validate — execute user-defined scripts (accepted tradeoff)
+    /^\s*npm\s+install\s*$/,             // npm install (no args only — blocks npm install <pkg> which runs arbitrary postinstall)
+    /^\s*npx\s+tsc(\s+--noEmit)?\s*$/,   // tsc type checking only (block --init and other write flags)
     /^\s*pwd\b/,                        // print working directory
     /^\s*echo\s/,                       // echo without redirection (checked below)
     /^\s*Get-Content\b/i,              // PowerShell read
@@ -495,7 +496,7 @@ function evaluateBash(toolInput, cwd) {
     // Block ALL command substitution — $() and backticks expand in the shell BEFORE the
     // command runs, so even "safe" commands like git commit can execute arbitrary code via
     // git commit -m "$(malicious)". No exemptions.
-    if (/\$\(|`[^`]*`|<\(|>\(/.test(command)) {
+    if (/\$\(|`|<\(|>\(/.test(command)) {
       return {
         block: true,
         message:
