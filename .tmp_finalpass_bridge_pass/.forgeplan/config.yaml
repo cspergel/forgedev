@@ -1,0 +1,8 @@
+review:
+  mode: cli
+  provider: test
+  cli_command: powershell
+  cli_args:
+    - -NoProfile
+    - -File
+    - emit.ps1

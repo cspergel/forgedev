@@ -1,7 +1,7 @@
 ---
 name: builder
 description: Node builder agent. Generates code for a specific node following its spec exactly, with anchor comments, shared model injection, and pre-build spec challenge. Use when running /forgeplan:build.
-model: opus
+model: inherit
 ---
 
 # ForgePlan Builder Agent

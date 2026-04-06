@@ -65,7 +65,13 @@ The Builder agent receives:
 - Shared model definitions from the manifest
 - The constraint directive (see Builder agent prompt)
 
-**Model selection:** Default is `sonnet`. Override via `models.builder` in `.forgeplan/config.yaml`. For complex integration nodes, consider `models.builder_override.[node-id]: "opus"`. The architect uses `opus` by default because discovery requires the strongest reasoning.
+**Model selection — tier-aware with user override:**
+- **SMALL tier:** defaults to `sonnet` (fast, sufficient for simple builds)
+- **MEDIUM tier:** defaults to `sonnet`, consider `opus` for nodes with complex integrations
+- **LARGE tier:** defaults to `opus` (strongest reasoning for complex code generation)
+- **Always configurable:** override via `models.builder` in `.forgeplan/config.yaml`
+- **Per-node override:** `models.builder_override.[node-id]: "opus"` for specific complex nodes
+- The Architect always uses `opus` because discovery requires the strongest reasoning regardless of tier.
 
 ## Completion — Stop Hook Owns This Transition
 

@@ -1,0 +1,12 @@
+project:
+  name: temp
+  complexity_tier: MEDIUM
+nodes:
+  auth:
+    name: auth
+    type: backend
+    status: reviewed
+    file_scope: src/auth/**
+    spec: .forgeplan/specs/auth.yaml
+    files:
+      - src/auth/index.ts

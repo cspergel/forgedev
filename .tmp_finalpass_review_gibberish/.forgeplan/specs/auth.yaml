@@ -1,0 +1,17 @@
+node: auth
+name: Auth
+description: test
+inputs: []
+outputs: []
+acceptance_criteria:
+  - id: AC1
+    description: test
+    test: test
+constraints: []
+interfaces: []
+shared_dependencies: []
+data_models: {}
+non_goals: []
+failure_modes: []
+depends_on: []
+file_scope: src/auth/**
