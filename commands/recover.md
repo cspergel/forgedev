@@ -153,6 +153,18 @@ Choose [1/2/3]:
   - This handles edge cases where the crash happened between setting node status and setting active_node
 - Sweep reports remain in `.forgeplan/sweeps/` for reference
 
+**After any recovery action, suggest next steps:**
+```
+Recovery complete. Next:
+  After RESUME:  The operation will continue automatically.
+  After RESET:   → /forgeplan:build [node-id]   Restart the build
+  After SKIP:    → /forgeplan:next               See what to do next
+  After REVIEW:  → /forgeplan:review [node-id]   Check what was built
+  After ABORT:   → /forgeplan:status             See project state
+                 → /forgeplan:sweep              Re-run the sweep
+                 → /forgeplan:guide              Get guidance
+```
+
 ## Resume
 
 Resume behavior depends on the crashed operation. **Read** state.json, then **update** (do not overwrite):

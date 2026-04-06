@@ -25,7 +25,7 @@ This project uses **ForgePlan Core**, an architecture-governed build harness. Fo
 | `/forgeplan:spec [node\|--all]` | Generate detailed specs |
 | `/forgeplan:build [node]` | Build a node with enforcement |
 | `/forgeplan:review [node]` | 7-dimension spec-diff review |
-| `/forgeplan:sweep [--cross-check]` | 12-agent parallel sweep with progressive convergence |
+| `/forgeplan:sweep [--cross-check]` | Tier-aware parallel sweep (3-12 agents) with progressive convergence |
 | `/forgeplan:deep-build` | Full autonomous pipeline: spec → build → review → sweep → certify |
 | `/forgeplan:configure` | Set up cross-model review (Codex/GPT/Gemini) |
 | `/forgeplan:next` | Dependency-aware next recommendation |
@@ -33,7 +33,12 @@ This project uses **ForgePlan Core**, an architecture-governed build harness. Fo
 | `/forgeplan:integrate` | Cross-node interface verification |
 | `/forgeplan:recover` | Fix crashed/stuck operations |
 | `/forgeplan:status` | Full project status |
+| `/forgeplan:measure` | Code quality metrics (broken refs, stubs, duplicates) |
+| `/forgeplan:affected [model]` | Which nodes use a shared model — impact analysis |
+| `/forgeplan:validate` | Check manifest/specs for cycles, orphans, consistency |
+| `/forgeplan:regen-types` | Rebuild shared TypeScript types from manifest |
 | `/forgeplan:guide` | Where am I? Best next step with explanations |
+| `/forgeplan:help` | All available commands |
 
 ## Key Files
 

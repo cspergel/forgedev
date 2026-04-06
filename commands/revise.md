@@ -68,6 +68,26 @@ If the argument starts with `--model`, this is a shared model cascade:
    - Set `last_updated` to current ISO timestamp
 6. Log the revision in `nodes.[node-id].revision_history` in state.json
 
+## After Revision
+
+Present next steps based on what changed:
+
+For single-node revision:
+```
+Revision complete. Next:
+  → /forgeplan:build [node-id]    Rebuild this node with the updated spec
+  → /forgeplan:affected [model]   See if other nodes are impacted (if shared model changed)
+  → /forgeplan:next               See the recommended build order
+```
+
+For shared model revision (--model):
+```
+Shared model updated. [N] nodes affected. Next:
+  → /forgeplan:build [node-id]    Rebuild each affected node (in dependency order)
+  → /forgeplan:integrate          Verify all interfaces after rebuilding
+  → /forgeplan:next               See the recommended order
+```
+
 ## The Killer Proof
 
 This command is what proves ForgePlan is materially better than ad hoc AI coding. When a shared model field changes, the system identifies every affected node and guides remediation rather than leaving the user to find breakage manually.
