@@ -172,7 +172,12 @@ function main() {
   }
 
   // --- State summary for context-aware suggestions ---
-  const completedStatuses = ["built", "reviewed", "revised"];
+  // Two levels of "done":
+  // - depSatisfiedStatuses: a dependency is satisfied once built (downstream can start building)
+  // - fullyCompleteStatuses: a node is truly done only when reviewed/revised (for "all complete" check)
+  // This prevents deep-build from advancing to sweep/certify with unreviewed nodes.
+  const depSatisfiedStatuses = ["built", "reviewed", "revised"];
+  const fullyCompleteStatuses = ["reviewed", "revised"];
   const allStatuses = {};
   for (const id of nodeIds) {
     const status = nodeStates[id]?.status || "pending";
@@ -216,21 +221,21 @@ function main() {
     const ns = nodeStates[id];
     const status = ns ? ns.status : "pending";
 
-    if (completedStatuses.includes(status)) continue;
+    if (fullyCompleteStatuses.includes(status)) continue;
     if (status === "building" || status === "reviewing" || status === "review-fixing" || status === "revising" || status === "sweeping") continue;
 
     // Check all dependencies are completed
     const deps = manifest.nodes[id].depends_on || [];
     const depsComplete = deps.every((dep) => {
       const depState = nodeStates[dep];
-      return depState && completedStatuses.includes(depState.status);
+      return depState && depSatisfiedStatuses.includes(depState.status);
     });
 
     if (depsComplete) {
       // Count how many downstream nodes this unblocks
       const unblocks = (adjacency[id] || []).filter((downstream) => {
         const ds = nodeStates[downstream];
-        return !ds || !completedStatuses.includes(ds.status);
+        return !ds || !fullyCompleteStatuses.includes(ds.status);
       }).length;
 
       eligible.push({ id, status, unblocks });
@@ -240,7 +245,7 @@ function main() {
   // Count progress
   const completed = nodeIds.filter((id) => {
     const ns = nodeStates[id];
-    return ns && completedStatuses.includes(ns.status);
+    return ns && fullyCompleteStatuses.includes(ns.status);
   }).length;
 
   if (eligible.length === 0) {

@@ -10,7 +10,7 @@ ForgePlan Core is a Claude Code plugin that serves as an architecture-governed A
 - `Planning Documents/ForgePlan_Core_Execution_Plan.md` — The build plan. Sprint-by-sprint deliverables, schemas, enforcement model, agent specs.
 - `Planning Documents/ForgePlan_Concept_v4.1.md` — The vision document. Long-term product direction (Sections 1-16, 18-23). Section 17 is superseded by the Execution Plan.
 
-**The Execution Plan is the authority for implementation details.** The Concept Doc is the authority for product vision.
+**The Execution Plan is the authority for Sprints 1-6 implementation details.** For Sprint 7+ roadmap, **this CLAUDE.md file is the living authority** — it reflects dogfood feedback, code reviews, and product decisions made during development that the Execution Plan predates. The Concept Doc is the authority for product vision.
 
 ## Project Structure
 
