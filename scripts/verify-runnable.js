@@ -221,6 +221,11 @@ async function main() {
   const manifestPath = path.join(forgePlanDir, "manifest.yaml");
   const projectType = detectProjectType(techStack, manifestPath);
 
+  // Register signal handlers to clean up spawned processes on interruption
+  const onSignal = () => { cleanupPids(); process.exit(1); };
+  process.on("SIGINT", onSignal);
+  process.on("SIGTERM", onSignal);
+
   const steps = [];
   let hasCodeErrors = false;
   let hasEnvErrors = false;
@@ -421,7 +426,10 @@ async function main() {
         let serverOutputBuf = "";
         const serverStarted = await new Promise((resolve) => {
           let output = "";
-          const timeout = setTimeout(() => resolve(false), 15000);
+          const timeout = setTimeout(() => {
+            serverOutputBuf = output; // Snapshot output at timeout for error classification
+            resolve(false);
+          }, 15000);
 
           child.stdout.on("data", (data) => {
             output += data.toString();

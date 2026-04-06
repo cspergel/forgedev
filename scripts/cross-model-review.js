@@ -229,10 +229,12 @@ function reviewViaCli(config, prompt, cwd) {
   try {
     fs.writeFileSync(tmpPrompt, prompt, "utf-8");
 
-    // Use spawnSync with argv array + shell:true — safe argument passing
-    // AND Windows .cmd shim resolution (execFileSync breaks shims)
-    const fullArgs = [...args.map(String), tmpPrompt];
-    const proc = spawnSync(command, fullArgs, {
+    // spawnSync with shell:true for .cmd shim resolution on Windows.
+    // CRITICAL: shell:true on Windows routes through cmd.exe which re-parses
+    // arguments — spaces split args, & chains commands. We must double-quote
+    // every argument to protect against this.
+    const safeArgs = [...args.map(String), tmpPrompt].map(a => `"${a}"`);
+    const proc = spawnSync(command, safeArgs, {
       encoding: "utf-8", timeout, cwd, shell: true,
       stdio: ["pipe", "pipe", "pipe"],
     });

@@ -47,9 +47,10 @@ Run tier-selected sweep agents (3-12) in parallel across the entire codebase, th
      3. Write the updated spec back
      4. Set the node's status to "revised" in state.json so it gets rebuilt
    - For skipped decisions: remove from `blocked_decisions`, add to `needs_manual_attention` with `"reason": "user-skipped"`
+   - **Snapshot affected categories** from `blocked_decisions` BEFORE clearing (needed for targeted re-sweep): `const affectedCategories = blocked_decisions.map(d => d.category)`
    - Clear `blocked_decisions` array
-   - **Rebuild affected nodes BEFORE re-sweeping:** For each node set to "revised", run `/forgeplan:build [node-id]` to rebuild against the updated spec. The re-sweep must audit current code, not stale code from before the spec change. Use fresh agents for each rebuild.
-   - After all rebuilds complete, set `sweep_state.current_phase` to "claude-sweep" and proceed to Phase 2 (re-sweep affected agents only — use the agent categories from the blocked findings to determine which agents to re-run)
+   - **Rebuild affected nodes BEFORE re-sweeping:** For each node set to "revised", run `/forgeplan:build [node-id]` with a fresh agent. The re-sweep must audit current code, not stale pre-decision code.
+   - After all rebuilds complete, set `sweep_state.current_phase` to "claude-sweep" and proceed to Phase 2 (re-sweep only agents whose categories are in the snapshotted `affectedCategories` list)
 
 4. Create `.forgeplan/sweeps/` directory if it doesn't exist
 5. Set `sweep_state` in state.json (only when NOT called from deep-build):
@@ -89,7 +90,7 @@ Run tier-selected sweep agents (3-12) in parallel across the entire codebase, th
 
 - **LARGE tier (or no tier set):** Dispatch all 12 agents.
 
-**On the first pass, dispatch agents per the tier rules above. On subsequent passes, only re-run agents that had findings.**
+**On the first pass, dispatch agents per the tier rules above. On subsequent passes, follow the precedence rules in "Progressive agent reduction" below.**
 
 Agent definition files (read these, use as system prompts):
 - `agents/sweep-auth-security.md`
@@ -115,7 +116,7 @@ Agent definition files (read these, use as system prompts):
      ...
    }
    ```
-   - `status`: `"clean"` (returned CLEAN), `"active"` (had findings), `"converged"` (2 consecutive clean passes — retired)
+   - `status`: `"clean"` (returned CLEAN), `"active"` (had findings), `"failed"` (returned unstructured response), `"converged"` (2 consecutive clean passes — retired), `"force-converged"` (oscillation guard)
    - `last_findings_pass`: which pass this agent last found something
    - `consecutive_clean`: how many consecutive passes returned CLEAN
 3. On **pass 2+**, determine which agents to dispatch using these rules **in precedence order**:
@@ -123,7 +124,8 @@ Agent definition files (read these, use as system prompts):
    b. **Cross-cutting agents re-run if ANY agent had findings:** `cross-node-integration` and `code-quality` re-run whenever any other agent reported findings in the previous pass, even if they themselves were clean. They only converge when they return CLEAN AND no other active agent had findings in the same pass.
    c. **Confirmation pass for clean agents:** An agent that returned CLEAN on pass N gets re-run on pass N+1 to confirm. If clean again → `status: "converged"`, retired.
    d. **Active agents always re-run:** Any agent with `status: "active"` (had findings last pass) is dispatched.
-   e. **Anti-oscillation guard:** If an agent's finding count stays the same or increases for 3 consecutive passes, force-converge it with `status: "force-converged"` and move remaining findings to `needs_manual_attention`.
+   e. **Failed agents always re-run:** Any agent with `status: "failed"` (returned unstructured response) is re-dispatched. Failed agents are never counted as clean for convergence. After 3 consecutive failures, force-converge with `"force-converged"` and log: "Agent [name] force-converged after 3 consecutive failures."
+   f. **Anti-oscillation guard:** If an agent's finding count stays the same or increases for 3 consecutive passes, force-converge it with `status: "force-converged"` and move remaining findings to `needs_manual_attention`.
 
 **Token budget:** Before dispatching, estimate total content size (sum of all file sizes in bytes). If over 200KB, use a tiered approach:
 1. Give each agent only the files relevant to its domain — e.g., `sweep-database` gets database node files + shared types, `sweep-frontend-ux` gets frontend node files + shared types. Map agent names to node IDs by matching the agent's domain keyword against node IDs and `file_scope` patterns.
@@ -283,7 +285,8 @@ For each node that has findings, in dependency order (use topological sort from 
        4. Set the node's status to "revised" in state.json so it gets rebuilt
      - For skipped decisions: remove from `blocked_decisions`, add to `needs_manual_attention` with `"reason": "user-skipped"`
      - Clear `blocked_decisions` array
-     - After all approved changes are applied: **re-run Phase 2 (sweep) with ONLY the agents whose categories match the resolved findings** to verify the changes didn't introduce new issues. This is a targeted re-sweep, not a full 12-agent pass. Continue through Phase 3 → 4 → 5 → 6 → 7 as normal.
+     - **Rebuild revised nodes before re-sweeping:** For each node set to "revised", run `/forgeplan:build [node-id]` with a fresh agent. The re-sweep must audit rebuilt code, not stale pre-decision code.
+     - After all rebuilds complete: **re-run Phase 2 (sweep) with ONLY the agents whose categories match the resolved findings** to verify the changes didn't introduce new issues. This is a targeted re-sweep, not a full pass. Continue through Phase 3 → 4 → 5 → 6 → 7 as normal.
 
      **If the session ends before the user responds (or user says "later"):** The decisions are already persisted in state.json via `sweep_state.blocked_decisions`. Next session, `session-start.js` detects them and warns the user. The user can resume with `/forgeplan:sweep`, which checks for pending `blocked_decisions` in Phase 1 and presents them for resolution before continuing the sweep.
 7. After fixing all findings for this node:

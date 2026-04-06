@@ -467,10 +467,10 @@ function crossCheckViaCli(config, prompt, cwd) {
 
   try {
     fs.writeFileSync(tmpPrompt, prompt, "utf-8");
-    // Use spawnSync with argv array + shell:true — safe argument passing
-    // AND Windows .cmd shim resolution (execFileSync breaks shims)
-    const fullArgs = [...args.map(String), tmpPrompt];
-    const proc = spawnSync(command, fullArgs, {
+    // spawnSync with shell:true for .cmd shim resolution on Windows.
+    // Double-quote every argument for cmd.exe safety (spaces, &, etc.)
+    const safeArgs = [...args.map(String), tmpPrompt].map(a => `"${a}"`);
+    const proc = spawnSync(command, safeArgs, {
       encoding: "utf-8", timeout, cwd, shell: true,
       stdio: ["pipe", "pipe", "pipe"],
     });
