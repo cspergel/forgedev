@@ -440,7 +440,7 @@ function evaluateBash(toolInput, cwd) {
     /^\s*more\s/,                       // pager
     /^\s*grep\s/,                       // search
     /^\s*rg\s/,                         // ripgrep
-    /^\s*find\s(?!.*(-exec|-execdir|-delete|-ok)\b)/,  // find files (block -exec/-delete which write/execute)
+    /^\s*find\s(?!.*(-exec|-execdir|-delete|-ok|-okdir)\b)/,  // find files (block -exec/-execdir/-delete/-ok/-okdir)
     /^\s*wc\s/,                         // word count
     /^\s*diff\s/,                       // diff
     /^\s*git\s+(status|log|diff|show|branch|remote|tag|stash\s+list)\b/,
@@ -469,7 +469,7 @@ function evaluateBash(toolInput, cwd) {
     /^\s*claude\s+mcp\s+(call|list)\b/,   // cross-model review via MCP
     /^\s*npm\s+(test|run\s+test|run\s+lint|run\s+validate)\b/, // test/lint/validate — execute user-defined scripts (accepted tradeoff)
     /^\s*npm\s+install\s*$/,             // npm install (no args only — blocks npm install <pkg> which runs arbitrary postinstall)
-    /^\s*npx\s+tsc(\s+--noEmit)?\s*$/,   // tsc type checking only (block --init and other write flags)
+    /^\s*npx\s+tsc\s+--noEmit\s*$/,      // tsc type checking only (--noEmit mandatory — bare tsc writes .js files)
     /^\s*pwd\b/,                        // print working directory
     /^\s*echo\s/,                       // echo without redirection (checked below)
     /^\s*Get-Content\b/i,              // PowerShell read
