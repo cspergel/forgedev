@@ -25,9 +25,9 @@ Detect and recover from interrupted builds, reviews, revisions, review-fix cycle
    - `sweep_state` is non-null (interrupted sweep or deep-build)
    - Active node set but session appears stale
 
-3. **If both `active_node` (stuck in "building"/"sweeping") AND `sweep_state` are present:** This indicates a crash during deep-build's build-all phase or during a sweep fix. Present ONLY the sweep/deep-build recovery options below — do NOT also show the per-node building recovery prompt, as that would create conflicting options. Note: "Node '[id]' was being [built/fixed] as part of the [deep-build/sweep]. Recovering the operation will handle this node."
+4. **If both `active_node` (stuck in "building"/"sweeping") AND `sweep_state` are present:** This indicates a crash during deep-build's build-all phase or during a sweep fix. Present ONLY the sweep/deep-build recovery options below — do NOT also show the per-node building recovery prompt, as that would create conflicting options. Note: "Node '[id]' was being [built/fixed] as part of the [deep-build/sweep]. Recovering the operation will handle this node."
 
-4. For each stuck node (when no sweep_state), present **context-appropriate** options based on the crashed operation:
+5. For each stuck node (when no sweep_state), present **context-appropriate** options based on the crashed operation:
 
 ### If crashed during `building`:
 

@@ -248,7 +248,9 @@ function processHook(input) {
           quotingType: '"',
           forceQuotes: false,
         });
-        fs.writeFileSync(manifestPath, updatedYaml, "utf-8");
+        const tmpManifest = manifestPath + ".tmp";
+        fs.writeFileSync(tmpManifest, updatedYaml, "utf-8");
+        fs.renameSync(tmpManifest, manifestPath);
       }
     }
   } catch (err) {
