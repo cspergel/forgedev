@@ -7,7 +7,7 @@
  * Tier-aware depth:
  *   SMALL: skips (Phase A sufficient)
  *   MEDIUM: Levels 1-3 (server responds, endpoints return correct status, response shapes match)
- *   LARGE: Levels 1-5 (+ auth boundaries + stress testing)
+ *   LARGE: Levels 1-5 (+ auth boundary detection [informational] + stress testing)
  *
  * Usage:
  *   node runtime-verify.js [--tier SMALL|MEDIUM|LARGE]
@@ -83,6 +83,19 @@ function loadEndpoints() {
     } catch {}
   }
   return endpoints;
+}
+
+// Resolve a node ID to its file_scope from the manifest (gives fix agents a directory target)
+function resolveNodeFile(nodeId) {
+  try {
+    const yaml = require(path.join(__dirname, "..", "node_modules", "js-yaml"));
+    const manifest = yaml.load(fs.readFileSync(path.join(forgePlanDir, "manifest.yaml"), "utf-8"));
+    if (manifest.nodes && manifest.nodes[nodeId] && manifest.nodes[nodeId].file_scope) {
+      // Convert glob to directory: "src/api/**" → "src/api/"
+      return manifest.nodes[nodeId].file_scope.replace(/\*\*.*$/, "").replace(/\*$/, "");
+    }
+  } catch {}
+  return "";
 }
 
 /**
@@ -173,33 +186,57 @@ async function startServer(techStack) {
 
   let serverOutput = "";
 
+  // Two-phase ready detection:
+  // Phase 1: Watch stdout/stderr for log patterns (fast, ~1-5s for most servers)
+  // Phase 2: If no log match after 10s, try HTTP probe (catches silent/non-standard servers)
   const ready = await new Promise((resolve) => {
-    const timeout = setTimeout(() => { resolve(false); }, 20000);
+    let resolved = false;
+    const done = (val) => { if (!resolved) { resolved = true; clearTimeout(logTimeout); clearTimeout(probeTimeout); resolve(val); } };
 
-    // Server ready detection: require URL/port pattern to avoid false positives
-    // on error messages containing "ready", "started", etc.
-    const readyPattern = /(?:listening|ready|started|running)\s+(?:on|at)\s+\S*:\d+|https?:\/\/(?:localhost|127\.0\.0\.1|0\.0\.0\.0):\d+|port\s+\d+/i;
+    const readyPattern = /(?:listening|ready|started|running)\s+(?:on|at)\s+\S*:\d+|https?:\/\/(?:localhost|127\.0\.0\.1|0\.0\.0\.0):\d+|port\s+\d+|listening\s+on\s+\d+/i;
 
     child.stdout.on("data", (data) => {
       serverOutput += data.toString();
-      if (readyPattern.test(serverOutput)) {
-        clearTimeout(timeout);
-        resolve(true);
-      }
+      if (readyPattern.test(serverOutput)) done(true);
     });
 
     child.stderr.on("data", (data) => {
       serverOutput += data.toString();
-      if (readyPattern.test(serverOutput)) {
-        clearTimeout(timeout);
-        resolve(true);
-      }
+      if (readyPattern.test(serverOutput)) done(true);
     });
 
-    child.on("error", () => { clearTimeout(timeout); resolve(false); });
+    child.on("error", () => done(false));
     child.on("close", (code) => {
-      if (code !== 0 && code !== null) { clearTimeout(timeout); resolve(false); }
+      if (code !== 0 && code !== null) done(false);
     });
+
+    // Phase 2: After 10s with no log match, start HTTP probing
+    const probePort = (techStack && techStack.dev_port) || 3000;
+    const probeTimeout = setTimeout(async () => {
+      // Try probing common ports for 10 more seconds (total 20s timeout)
+      for (let attempt = 0; attempt < 10 && !resolved; attempt++) {
+        try {
+          await fetch(`http://localhost:${probePort}/`, { signal: AbortSignal.timeout(800) });
+          done(true); // Any response = server is running
+          return;
+        } catch {
+          // Also try extracting port from server output
+          const portMatch = serverOutput.match(/(?::|\bport\s+)(\d{4,5})\b/i);
+          if (portMatch && portMatch[1] !== String(probePort)) {
+            try {
+              await fetch(`http://localhost:${portMatch[1]}/`, { signal: AbortSignal.timeout(800) });
+              done(true);
+              return;
+            } catch {}
+          }
+        }
+        await new Promise(r => setTimeout(r, 1000));
+      }
+      done(false); // 20s total, no log match, no HTTP response
+    }, 10000);
+
+    // Hard timeout at 25s (safety net)
+    const logTimeout = setTimeout(() => done(false), 25000);
   });
 
   if (!ready) {
@@ -464,7 +501,7 @@ async function main() {
         severity: "HIGH",
         confidence: 95,
         description: `Server failed to start: ${server.error.substring(0, 200)}`,
-        file: "",
+        file: resolveNodeFile("app-shell"),
         line: "",
         fix: "Fix the startup error — check server entry point and dependencies",
       }] : [],
@@ -494,7 +531,7 @@ async function main() {
     if (l1.pass) { endpointsPassed++; }
     else {
       findings.push({ node: "app-shell", category: "runtime-verification", severity: "HIGH", confidence: 95,
-        description: `Server does not respond to GET /: ${l1.detail}`, file: "", line: "",
+        description: `Server does not respond to GET /: ${l1.detail}`, file: resolveNodeFile("app-shell"), line: "",
         fix: "Ensure the server binds to a port and handles GET / requests" });
     }
 
@@ -502,7 +539,7 @@ async function main() {
     if (endpoints.length === 0) {
       findings.push({ node: "project", category: "runtime-verification", severity: "MEDIUM", confidence: 70,
         description: "No API endpoint contracts found in node specs. Phase B could only verify server starts. Add interface contracts (e.g., 'GET /api/users -> { users: User[] }') to node specs for meaningful endpoint testing.",
-        file: "", line: "", fix: "Add contract fields to interface definitions in .forgeplan/specs/" });
+        file: resolveNodeFile("project"), line: "", fix: "Add contract fields to interface definitions in .forgeplan/specs/" });
     }
 
     // Levels 2-3 for MEDIUM+
@@ -513,7 +550,7 @@ async function main() {
         endpointsTested++;
         if (r.pass) { endpointsPassed++; }
         else { findings.push({ node: r.node, category: "runtime-verification", severity: "HIGH", confidence: 90,
-          description: `${r.endpoint} returns ${r.status} (server error)`, file: "", line: "",
+          description: `${r.endpoint} returns ${r.status} (server error)`, file: resolveNodeFile(r ? r.node : "app-shell"), line: "",
           fix: `Fix the handler for ${r.endpoint} — it should not return 5xx` }); }
       }
 
@@ -524,7 +561,7 @@ async function main() {
         if (r.pass) { endpointsPassed++; }
         else if (r.missingFields && r.missingFields.length > 0) {
           findings.push({ node: r.node, category: "runtime-verification", severity: "MEDIUM", confidence: 85,
-            description: `${r.endpoint} response missing fields: ${r.missingFields.join(", ")}`, file: "", line: "",
+            description: `${r.endpoint} response missing fields: ${r.missingFields.join(", ")}`, file: resolveNodeFile(r ? r.node : "app-shell"), line: "",
             fix: `Add missing fields to the response: ${r.missingFields.join(", ")}` });
         }
       }
@@ -542,12 +579,12 @@ async function main() {
           if (r.test === "no-auth" && r.authStatus === "public") {
             findings.push({ node: r.node, category: "runtime-verification", severity: "LOW",
               confidence: 60, description: `${r.endpoint} is publicly accessible without auth — verify this is intentional`,
-              file: "", line: "", fix: "If this endpoint should require auth, add auth middleware. If it's intentionally public (login, signup, health), no action needed." });
+              file: resolveNodeFile(r ? r.node : "app-shell"), line: "", fix: "If this endpoint should require auth, add auth middleware. If it's intentionally public (login, signup, health), no action needed." });
           }
         }
         else { findings.push({ node: r.node, category: "runtime-verification",
           severity: r.test === "malformed-input" ? "HIGH" : "MEDIUM",
-          confidence: 85, description: `${r.endpoint} ${r.test}: ${r.detail || `status ${r.status}`}`, file: "", line: "",
+          confidence: 85, description: `${r.endpoint} ${r.test}: ${r.detail || `status ${r.status}`}`, file: resolveNodeFile(r ? r.node : "app-shell"), line: "",
           fix: r.test === "malformed-input" ? "Add input validation — malformed requests should return 400, not 500"
             : `Server error on ${r.endpoint}` }); }
       }
@@ -559,7 +596,7 @@ async function main() {
         if (r.pass) { endpointsPassed++; }
         else { findings.push({ node: r.node, category: "runtime-verification",
           severity: r.test.startsWith("injection") ? "HIGH" : "MEDIUM", confidence: 80,
-          description: `${r.endpoint} ${r.test}: ${r.detail || "failed"}`, file: "", line: "",
+          description: `${r.endpoint} ${r.test}: ${r.detail || "failed"}`, file: resolveNodeFile(r ? r.node : "app-shell"), line: "",
           fix: r.test.startsWith("injection") ? "Sanitize inputs — injection payloads should return 400, not 500"
             : r.test.includes("concurrent") ? "Fix concurrency handling — server returns 500 under parallel requests"
             : "Investigate response time degradation under load" }); }
