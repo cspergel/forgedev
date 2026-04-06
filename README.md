@@ -16,8 +16,7 @@ ForgePlan fixes this by making the architecture the governing constraint, not ju
 
 ```
 1. DISCOVER   →  Describe your project. ForgePlan decomposes it into nodes
-                  ForgePlan decomposes it into nodes with clear boundaries,
-                  shared models, and a dependency graph.
+                  with clear boundaries, shared models, and a dependency graph.
 
 2. SPEC        →  Each node gets a detailed specification: acceptance criteria,
                   constraints, non-goals, failure modes, interface contracts.
@@ -27,16 +26,15 @@ ForgePlan fixes this by making the architecture the governing constraint, not ju
                   - Shared model guard (import, don't redefine)
                   - Acceptance criteria verification before completion
 
-4. REVIEW      →  7-dimension spec-diff review. Per-criterion PASS/FAIL with
-                  code evidence. Optional cross-model verification via BYOK.
+4. VERIFY      →  Compilation, tests, and dev server verified automatically.
+                  Code must actually run, not just look correct.
 
-5. SWEEP       →  12 parallel agents audit the entire codebase: security,
-                  types, errors, DB, APIs, imports, code quality, tests,
-                  config, frontend UX, docs, cross-node integration.
-                  Progressive convergence drops clean agents.
+5. REVIEW      →  7-dimension spec-diff review. Per-criterion PASS/FAIL with
+                  code evidence.
 
-6. CERTIFY     →  Cross-model verification (Codex/GPT/Gemini) independently
-                  reviews the code. Alternates until both models agree.
+6. SWEEP       →  3-12 parallel agents (tier-aware) audit the codebase.
+                  Progressive convergence. Optional cross-model verification
+                  by a different AI (Codex/GPT/Gemini) for independent review.
 ```
 
 ## Installation
@@ -116,14 +114,18 @@ ForgePlan doesn't just suggest — it blocks bad writes deterministically:
 | `/forgeplan:spec [node\|--all]` | Generate detailed node specifications |
 | `/forgeplan:build [node\|--all]` | Build with full enforcement |
 | `/forgeplan:review [node]` | 7-dimension spec-diff review with evidence |
-| `/forgeplan:sweep [--cross-check]` | 12-agent parallel sweep + progressive convergence |
-| `/forgeplan:deep-build` | Full autonomous pipeline: spec → build → review → sweep → certify |
+| `/forgeplan:sweep [--cross-check]` | Tier-aware parallel sweep (3-12 agents) + progressive convergence |
+| `/forgeplan:deep-build` | Full autonomous pipeline: spec → build → verify → review → sweep → certify |
 | `/forgeplan:configure` | Set up cross-model review (Codex/GPT/Gemini) |
 | `/forgeplan:revise [node\|--model name]` | Change impact analysis + propagation |
 | `/forgeplan:next` | What to build next (dependency-aware) |
 | `/forgeplan:status` | Project overview with dependency graph |
 | `/forgeplan:integrate` | Cross-node interface verification |
 | `/forgeplan:recover` | Fix crashed/stuck operations |
+| `/forgeplan:measure` | Code quality metrics (broken refs, stubs, duplicates) |
+| `/forgeplan:affected [model]` | Which nodes use a shared model — impact analysis |
+| `/forgeplan:validate` | Check manifest/specs for cycles, orphans, consistency |
+| `/forgeplan:regen-types` | Rebuild shared TypeScript types from manifest |
 | `/forgeplan:guide` | Where am I? Recommends best next step |
 | `/forgeplan:help` | All commands |
 
