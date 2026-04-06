@@ -74,7 +74,7 @@ Run up to 12 parallel sweep agents across the entire codebase, then fix findings
 
 ### Phase 2: Dispatch sweep agents (progressive reduction)
 
-**Tier-aware agent selection:** Read `complexity_tier` from `.forgeplan/manifest.yaml`:
+**Tier-aware agent selection:** Read `complexity_tier` from `.forgeplan/manifest.yaml`. **Also check** `.forgeplan/config.yaml` for `complexity.tier_override` — if set and non-empty, use the override instead of the manifest tier:
 
 - **SMALL tier:** Dispatch 3-5 agents:
   - Always: `sweep-code-quality`, `sweep-auth-security`, `sweep-error-handling`
@@ -147,7 +147,7 @@ Each agent returns findings in the structured FINDING format or CLEAN.
 ### Phase 3: Merge and deduplicate findings
 
 1. Collect all findings from the dispatched agents (excluding failed agents)
-2. **Validate node IDs:** Discard any finding whose `node` field is not in `Object.keys(manifest.nodes)`. Log a warning for each discarded finding ("Finding F[N] references unknown node '[id]' — discarding"). This prevents crashes in Phase 4 when PreToolUse tries to look up a nonexistent node's file_scope. Apply the same validation in Phase 6 for cross-model findings.
+2. **Validate node IDs:** Discard any finding whose `node` field is not in `Object.keys(manifest.nodes)`. For cross-node-integration findings using `Node: [id] -> [id]` format, extract the first node ID (before `->`) as the primary node for fix scoping. Log a warning for each discarded finding ("Finding F[N] references unknown node '[id]' — discarding"). This prevents crashes in Phase 4 when PreToolUse tries to look up a nonexistent node's file_scope. Apply the same validation in Phase 6 for cross-model findings.
 3. **Re-number** all remaining findings sequentially as F1, F2, F3... (discard the agents' self-assigned IDs, which will collide across agents)
 4. Deduplicate: if two agents report the same file + same issue, keep the one with higher severity
 5. Group findings by node
@@ -175,6 +175,24 @@ Each agent returns findings in the structured FINDING format or CLEAN.
 
 **THIS PHASE IS FULLY AUTONOMOUS. Fix ALL findings — do NOT ask the user which findings to fix, do NOT ask for confirmation, do NOT prioritize by severity. Fix everything in dependency order. The sweep is designed to loop: fix → re-sweep → fix → converge. If a fix introduces a new issue, the next sweep pass will catch it. Asking the user breaks the autonomous loop.**
 
+**Parallel fix mode (MEDIUM/LARGE tiers with 3+ nodes needing fixes):**
+When multiple nodes need fixes and their file_scopes don't overlap, fix agents can run in parallel using git worktrees for isolation:
+
+1. For each node needing fixes, create an isolated worktree:
+   ```bash
+   node "${CLAUDE_PLUGIN_ROOT}/scripts/worktree-manager.js" create [node-id]
+   ```
+2. Dispatch fix agents in parallel (Agent tool, single message, N calls) — each agent works in its worktree path instead of the main working directory.
+3. After all parallel agents complete, merge each worktree back sequentially:
+   ```bash
+   node "${CLAUDE_PLUGIN_ROOT}/scripts/worktree-manager.js" merge [node-id]
+   ```
+4. If a merge conflict occurs (exit code 1), fall back to sequential fix for that node in the main working tree.
+5. After all merges, clean up: `node "${CLAUDE_PLUGIN_ROOT}/scripts/worktree-manager.js" cleanup`
+
+**When NOT to parallelize:** If nodes share file_scope (e.g., SMALL tier with `src/**`), or if findings in one node reference files owned by another node, fall back to sequential mode. When in doubt, use sequential.
+
+**Sequential fix mode (default, always safe):**
 For each node that has findings, in dependency order (use topological sort from manifest `depends_on`):
 
 1. **Save node's current status:** Set `nodes.[node-id].previous_status` to current `nodes.[node-id].status` (e.g., "built", "reviewed", "revised")
@@ -182,7 +200,10 @@ For each node that has findings, in dependency order (use topological sort from 
 3. **Set active_node:** Set `active_node` to `{"node": "[node-id]", "status": "sweeping", "started_at": "[ISO]"}`
 4. Set `sweep_state.fixing_node` to the node ID
 5. Read the node's spec and the relevant findings
-6. Fix each finding — writes are enforced by PreToolUse (node's file_scope) + Layer 1 deterministic. Layer 2 is bypassed for sweeping (see hooks.json update in Task 14).
+6. **Pre-fix validation for each finding:**
+   - **Confirm finding exists:** Before applying any fix, verify the referenced code pattern actually exists at the cited file and approximate line. Use Grep or Read to check. If the finding's description doesn't match the current code (e.g., the code was already fixed by a prior fix in this pass), mark the finding as `"resolved_by": "false-positive"` and skip it. Log: "Finding F[N] no longer present in code — marking as false-positive."
+   - **Validate file exists:** Before dispatching a fix agent, confirm the referenced file still exists. If it was deleted or renamed by a prior fix, mark the finding as `"resolved_by": "resolved-by-deletion"` and skip it. Log: "Finding F[N] references deleted file [path] — marking as resolved-by-deletion."
+7. Fix each validated finding — writes are enforced by PreToolUse (node's file_scope) + Layer 1 deterministic. Layer 2 is bypassed for sweeping (see hooks.json update in Task 14).
    - **If the fix agent returns BLOCKED (file scope, cross-node write, etc.):** Classify the blocked finding:
 
      **Category A — Needs spec update (auto-resolvable):**
@@ -303,6 +324,7 @@ node "${CLAUDE_PLUGIN_ROOT}/scripts/cross-model-bridge.js" ".forgeplan/sweeps/sw
    - Otherwise: stay at `current_phase: "cross-check"` and immediately retry the bridge call
 
    **If `status: "findings"`:**
+   - **Re-score confidence:** The external model's self-assigned confidence scores are unreliable (it has no context about ForgePlan's calibration system). For each cross-model finding, Claude must re-evaluate the confidence score by reading the cited file and line, assessing the evidence strength, and assigning a new confidence value using the same 0-100 calibration guide the sweep agents use. Replace the external model's confidence with Claude's re-scored value. Then apply the same `< 75` filter — discard re-scored findings below 75. Log: "Re-scored [N] cross-model findings. Kept [M] (confidence >= 75), filtered [K]."
    - Re-number finding IDs to avoid collision with Claude findings. Use prefix `X` for cross-model: X1, X2, X3... (Claude findings use F1, F2, F3...)
    - Add to `sweep_state.findings.pending` (set `pass_found` on each)
    - Set `sweep_state.consecutive_clean_passes` to 0
@@ -322,7 +344,8 @@ node "${CLAUDE_PLUGIN_ROOT}/scripts/cross-model-bridge.js" ".forgeplan/sweeps/sw
 
 1. Update `sweep_state.current_phase` to `"finalizing"`
 2. Write final summary to the sweep report
-3. Clear `sweep_state` to null
+3. Clean up any remaining worktrees: `node "${CLAUDE_PLUGIN_ROOT}/scripts/worktree-manager.js" cleanup`
+4. Clear `sweep_state` to null
 4. Present results to user:
    ```
    === Sweep Complete ===

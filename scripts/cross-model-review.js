@@ -191,7 +191,7 @@ function assembleReviewPrompt(nodeId, spec, manifest, nodeFiles) {
  * Recommended mode: uses existing subscriptions, structured responses.
  */
 function reviewViaMcp(config, prompt, cwd) {
-  const mcpServer = config.mcp_server || "codex";
+  const mcpServer = (config.mcp_server || "codex").replace(/[^a-zA-Z0-9_-]/g, "");
   const timeout = config.timeout || 120000;
   const tmpPrompt = path.join(cwd, ".forgeplan", ".tmp-review-prompt.md");
 
@@ -220,7 +220,7 @@ function reviewViaMcp(config, prompt, cwd) {
  * Works with Codex CLI, Gemini CLI, or any CLI that accepts a prompt.
  */
 function reviewViaCli(config, prompt, cwd) {
-  const command = config.cli_command || "codex";
+  const command = (config.cli_command || "codex").replace(/[^a-zA-Z0-9_./-]/g, "");
   const args = config.cli_args || [];
   const timeout = config.timeout || 120000;
   const tmpPrompt = path.join(cwd, ".forgeplan", ".tmp-review-prompt.md");

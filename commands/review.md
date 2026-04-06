@@ -2,7 +2,7 @@
 description: Audit a built node against its spec using the seven-dimension review format. Native Claude review, plus optional cross-model verification via BYOK. Use --all to review all built nodes sequentially.
 user-invocable: true
 argument-hint: "[node-id | --all]"
-allowed-tools: Read Write Glob Grep Bash
+allowed-tools: Read Write Edit Glob Grep Bash Agent
 agent: reviewer
 ---
 

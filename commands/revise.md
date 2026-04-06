@@ -40,6 +40,14 @@ If the argument starts with `--model`, this is a shared model cascade:
 ## Process
 
 1. Read the current spec and identify what the user wants to change
+1b. **Tier reassessment check:** If the change adds significant complexity (OAuth, payments, new integrations, multi-tenant, compliance requirements), read the current `complexity_tier` from `.forgeplan/manifest.yaml` and assess whether it still fits. If the change suggests a higher tier, prompt the user:
+   ```
+   This change adds [description]. Current tier: [TIER].
+   This may warrant upgrading to [HIGHER_TIER], which means:
+     [pipeline consequence differences]
+   Reassess tier? (y/n)
+   ```
+   If the user agrees, update `project.complexity_tier` in the manifest. The pipeline adapts at the next command invocation.
 2. Classify the change:
    - **Internal change** — affects only this node's implementation (e.g., refactoring, bug fix). No impact on other nodes.
    - **Interface change** — affects this node's inputs, outputs, or contracts with other nodes. Dependent nodes must be flagged.

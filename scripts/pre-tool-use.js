@@ -458,6 +458,9 @@ function evaluateBash(toolInput, cwd) {
     /^\s*node\s+[^\s]*regenerate-shared-types\.js/, // our own type generator
     /^\s*node\s+[^\s]*cross-model-bridge\.js/,   // Sprint 6: cross-model sweep bridge
     /^\s*node\s+[^\s]*verify-runnable\.js/,       // our own verification script
+    /^\s*node\s+[^\s]*worktree-manager\.js/,     // our own worktree manager
+    /^\s*node\s+[^\s]*compact-context\.js/,      // our own compaction context script
+    /^\s*git\s+worktree\b/,                      // worktree operations for parallel fixes
     /^\s*deno\b/,                             // Deno runtime commands
     /^\s*bun\b/,                              // Bun runtime commands
     /^\s*codex\b/,                        // cross-model review via Codex CLI
@@ -474,16 +477,6 @@ function evaluateBash(toolInput, cwd) {
     /^\s*Select-String\b/i,            // PowerShell grep
   ];
 
-  // Block command substitution patterns that can hide mutations inside safe commands
-  if (/\$\(|`[^`]*`|<\(|>\(/.test(command)) {
-    return {
-      block: true,
-      message:
-        `BLOCKED: Command substitution ($(), backticks, process substitution) is not allowed during active ${activeStatus} operations. ` +
-        `Use the Write or Edit tool for file operations.`,
-    };
-  }
-
   // Split command on chaining operators AND newlines (newlines are command separators in shell)
   const segments = command.split(/\s*(?:\r?\n|\r|;|&&|\|\||(?<!\|)\|(?!\|))\s*/).filter(Boolean);
 
@@ -498,6 +491,17 @@ function evaluateBash(toolInput, cwd) {
   });
 
   if (allSegmentsSafe) {
+    // Block command substitution in non-git-commit commands (can hide mutations inside safe commands)
+    // Allow backticks in git commit messages (common in conventional commits)
+    const isGitCommit = /^\s*git\s+(commit|tag)\b/.test(command);
+    if (!isGitCommit && /\$\(|`[^`]*`|<\(|>\(/.test(command)) {
+      return {
+        block: true,
+        message:
+          `BLOCKED: Command substitution ($(), backticks, process substitution) is not allowed during active ${activeStatus} operations. ` +
+          `Use the Write or Edit tool for file operations.`,
+      };
+    }
     return { block: false };
   }
 

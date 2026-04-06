@@ -100,18 +100,50 @@ function readPids() {
     .map(Number);
 }
 
+function killPid(pid) {
+  const isWindows = process.platform === "win32";
+  try {
+    if (isWindows) {
+      // Windows: graceful taskkill first
+      execSync(`taskkill /PID ${pid}`, { stdio: "pipe", timeout: 5000 });
+    } else {
+      process.kill(pid, "SIGTERM");
+    }
+  } catch {
+    // Process may already be gone
+    return;
+  }
+
+  // Wait up to 5 seconds, checking every 500ms
+  for (let waited = 0; waited < 5000; waited += 500) {
+    try {
+      // process.kill(pid, 0) checks if process exists without sending a signal
+      process.kill(pid, 0);
+    } catch {
+      return; // Process is gone
+    }
+    // Synchronous sleep via Atomics (no shell, no CPU spin)
+    const buf = new SharedArrayBuffer(4);
+    Atomics.wait(new Int32Array(buf), 0, 0, 500);
+  }
+
+  // Still alive — force kill
+  try {
+    if (isWindows) {
+      execSync(`taskkill /F /PID ${pid}`, { stdio: "pipe", timeout: 5000 });
+    } else {
+      process.kill(pid, "SIGKILL");
+    }
+  } catch {
+    // Process gone between check and kill
+  }
+}
+
 function cleanupPids() {
   const pids = readPids();
   for (const pid of pids) {
-    try {
-      // Try graceful shutdown first
-      process.kill(pid, "SIGTERM");
-    } catch {
-      // Process already gone
-    }
+    killPid(pid);
   }
-  // Clean up the PID file. If processes don't die from SIGTERM,
-  // the next run's initial cleanup will catch them.
   try {
     fs.unlinkSync(pidFile);
   } catch {}
@@ -176,13 +208,13 @@ async function main() {
   let installCmd;
   switch (runtime) {
     case "deno":
-      installCmd = "deno cache src/**/*.ts 2>&1";
+      installCmd = "deno cache src/**/*.ts";
       break;
     case "bun":
-      installCmd = "bun install 2>&1";
+      installCmd = "bun install";
       break;
     default:
-      installCmd = "npm install 2>&1";
+      installCmd = "npm install";
   }
 
   const installResult = runStep("install", installCmd, 60000);
@@ -202,7 +234,7 @@ async function main() {
   if (language === "typescript") {
     // Check if tsconfig.json exists
     if (fs.existsSync(path.join(cwd, "tsconfig.json"))) {
-      const tscResult = runStep("typecheck", "npx tsc --noEmit 2>&1", 30000);
+      const tscResult = runStep("typecheck", "npx tsc --noEmit", 30000);
       steps.push(tscResult);
       if (tscResult.status === "fail") {
         hasCodeErrors = true;
@@ -249,17 +281,17 @@ async function main() {
   // --- Step 3: Run tests ---
   let testCmd;
   if (testCommand) {
-    testCmd = `${testCommand} 2>&1`;
+    testCmd = testCommand;
   } else {
     switch (runtime) {
       case "deno":
-        testCmd = "deno test 2>&1";
+        testCmd = "deno test";
         break;
       case "bun":
-        testCmd = "bun test 2>&1";
+        testCmd = "bun test";
         break;
       default:
-        testCmd = "npm test 2>&1";
+        testCmd = "npm test";
     }
   }
 
@@ -414,10 +446,8 @@ async function main() {
           hasCodeErrors = true;
         }
 
-        // Kill the server
-        try {
-          process.kill(child.pid, "SIGTERM");
-        } catch {}
+        // Kill the server (graceful then forced)
+        killPid(child.pid);
       } catch (err) {
         steps.push({
           name: "server",

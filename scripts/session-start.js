@@ -21,6 +21,12 @@
 const fs = require("fs");
 const path = require("path");
 
+function atomicWriteJson(filePath, data) {
+  const tmp = filePath + ".tmp";
+  fs.writeFileSync(tmp, JSON.stringify(data, null, 2), "utf-8");
+  fs.renameSync(tmp, filePath);
+}
+
 function main() {
   const cwd = process.cwd();
   const forgePlanDir = path.join(cwd, ".forgeplan");
@@ -66,7 +72,7 @@ function main() {
         delete state.bounce_count; // Remove spurious top-level field if it exists
         state.last_updated = new Date().toISOString();
         try {
-          fs.writeFileSync(statePath, JSON.stringify(state, null, 2), "utf-8");
+          atomicWriteJson(statePath, state);
         } catch { /* best effort */ }
         warnings.push(
           `Cleaned up stale build state from a previous session. No action needed.`
@@ -249,7 +255,7 @@ function buildAmbientStatus(forgePlanDir, manifestPath, statePath, state) {
     : null;
 
   // Determine suggested next command based on project state
-  const suggestion = determineSuggestion(counts, state);
+  const suggestion = determineSuggestion(counts, state, nodeIds, nodeStates);
 
   // Build the output lines
   const lines = [];
@@ -264,6 +270,25 @@ function buildAmbientStatus(forgePlanDir, manifestPath, statePath, state) {
     summaryLine += ` | Tier: ${tier}`;
   }
   lines.push(summaryLine);
+
+  // Per-node status breakdown (compact) — show for 2+ nodes with mixed states
+  if (counts.total > 1 && counts.total <= 12) {
+    const statusMap = {};
+    for (const id of nodeIds) {
+      const ns = nodeStates[id];
+      const status = (ns && ns.status) ? ns.status : "pending";
+      if (!statusMap[status]) statusMap[status] = [];
+      statusMap[status].push(id);
+    }
+    // Only show if there's more than one distinct status (otherwise the summary line is sufficient)
+    if (Object.keys(statusMap).length > 1) {
+      const parts = [];
+      for (const [status, ids] of Object.entries(statusMap)) {
+        parts.push(`${status}: ${ids.join(", ")}`);
+      }
+      lines.push(`  ${parts.join(" | ")}`);
+    }
+  }
 
   // Active sweep progress (non-stuck — stuck sweeps are already shown as warnings above)
   const sweepProgress = getSweepProgress(state);
@@ -282,9 +307,10 @@ function buildAmbientStatus(forgePlanDir, manifestPath, statePath, state) {
 }
 
 /**
- * Determine the contextual next-command suggestion based on aggregate node states.
+ * Determine the contextual next-command suggestion based on node states.
+ * Includes specific node names in suggestions where possible.
  */
-function determineSuggestion(counts, state) {
+function determineSuggestion(counts, state, nodeIds, nodeStates) {
   const { total, pending, specced, built, reviewed, inProgress } = counts;
 
   // If there's an active sweep that completed, suggest status/measure
@@ -296,28 +322,52 @@ function determineSuggestion(counts, state) {
     }
   }
 
+  // Helper: find first node in a given status
+  const builtStatuses = ["built", "revised"];
+  function firstNodeInStatus(targetStatuses) {
+    for (const id of nodeIds) {
+      const ns = nodeStates[id];
+      const status = (ns && ns.status) ? ns.status : "pending";
+      if (targetStatuses.includes(status)) return id;
+    }
+    return null;
+  }
+
   // All reviewed — suggest sweep or integrate
   if (reviewed === total) {
     return "/forgeplan:sweep --cross-check or /forgeplan:integrate";
   }
 
-  // All built (including revised) or mix of built+reviewed — suggest review or sweep
+  // All built (including revised) or mix of built+reviewed — suggest review for a specific node
   if ((built + reviewed) === total && total > 0) {
-    return "/forgeplan:review or /forgeplan:sweep";
+    const node = firstNodeInStatus(builtStatuses);
+    if (node) return `/forgeplan:review ${node}`;
+    return "/forgeplan:sweep";
   }
 
-  // Some built, some not — suggest next
+  // Some built, some not — suggest the specific next action
   if ((built + reviewed) > 0 && (built + reviewed) < total) {
+    // Suggest reviewing an unreviewed built node, or building a specced node
+    const builtNode = firstNodeInStatus(builtStatuses);
+    if (builtNode) return `/forgeplan:review ${builtNode}`;
+    const speccedNode = firstNodeInStatus(["specced"]);
+    if (speccedNode) return `/forgeplan:build ${speccedNode}`;
+    const pendingNode = firstNodeInStatus(["pending"]);
+    if (pendingNode) return `/forgeplan:spec ${pendingNode}`;
     return "/forgeplan:next";
   }
 
-  // All specced — suggest build or deep-build
+  // All specced — suggest build for a specific node or deep-build
   if (specced === total && total > 0) {
-    return "/forgeplan:build or /forgeplan:deep-build";
+    const node = firstNodeInStatus(["specced"]);
+    if (node) return `/forgeplan:build ${node} or /forgeplan:deep-build`;
+    return "/forgeplan:deep-build";
   }
 
-  // Mix of specced and pending — suggest spec
+  // Mix of specced and pending — suggest spec for a specific node
   if (specced > 0 && pending > 0 && (specced + pending) === total) {
+    const node = firstNodeInStatus(["pending"]);
+    if (node) return `/forgeplan:spec ${node}`;
     return "/forgeplan:spec";
   }
 
@@ -376,6 +426,17 @@ function getSweepProgress(state) {
     line += `, ${resolvedCount} findings resolved`;
     if (pendingCount > 0) {
       line += `, ${pendingCount} pending`;
+    }
+  }
+
+  // Show agent convergence if available
+  if (ss.agent_convergence && typeof ss.agent_convergence === "object") {
+    const agents = Object.entries(ss.agent_convergence);
+    if (agents.length > 0) {
+      const converged = agents.filter(([, a]) => a.status === "converged" || a.status === "force-converged").length;
+      const active = agents.filter(([, a]) => a.status === "active").length;
+      line += ` | agents: ${converged}/${agents.length} converged`;
+      if (active > 0) line += `, ${active} active`;
     }
   }
 

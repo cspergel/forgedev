@@ -54,7 +54,7 @@ function measureBrokenReferences(projectDir) {
     const tsconfigPath = path.join(projectDir, "tsconfig.json");
     if (fs.existsSync(tsconfigPath)) {
       try {
-        execSync("npx tsc --noEmit 2>&1", {
+        execSync("npx tsc --noEmit", {
           cwd: projectDir,
           encoding: "utf-8",
           timeout: 60000,

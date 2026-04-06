@@ -24,7 +24,7 @@ ForgeDev/                              # Repo root IS the plugin root
 ├── commands/                          # Slash commands (.md files)
 ├── agents/                            # architect, builder, reviewer, sweep-*
 ├── hooks/
-│   └── hooks.json                     # PreToolUse, PostToolUse, Stop, SessionStart
+│   └── hooks.json                     # SessionStart, PreCompact, PostCompact, PreToolUse, PostToolUse, Stop
 ├── scripts/                           # validate-manifest, cross-model-review, etc.
 ├── templates/                         # Blueprint templates, schema templates
 │   ├── blueprints/                    # Client portal, SaaS starter, etc.
@@ -332,11 +332,40 @@ Deliverables: Ambient SessionStart (healthy-state display, contextual next-comma
 - `commands/discover.md` — `--from` argument, document extraction mode
 - `agents/architect.md` — document-extraction mode (extract from existing text vs brainstorm)
 
+**Sprint 7B Hardening (post-review fixes):**
+- Per-node specificity in session-start.js suggestions (e.g., "/forgeplan:review auth" not generic)
+- Per-node status breakdown in ambient display
+- Agent convergence display in sweep progress
+- Claude re-scoring of cross-model confidence scores in sweep Phase 6
+- Pre-fix validation guards (confirm finding exists, validate file exists before fix)
+- Cross-node-integration regex fix (Counter-File:, Node: [id] -> [id] format)
+- Windows taskkill + SIGKILL fallback in verify-runnable.js
+- Chat export plain-text guidance, multi-phase document handling, existing project guard
+- Deep-build agent_convergence initialization
+- Cross-node Node field normalization in sweep Phase 3
+
+**Sprint 7B+ Infrastructure (competitive gap closures):**
+
+**PreCompact/PostCompact Hooks (context compaction protection):**
+- `scripts/compact-context.js` — saves/restores critical context across compaction
+- PreCompact: writes project name, tier, node file_scopes, active node, sweep state, enforcement rules to `.forgeplan/.compact-context.md`
+- PostCompact: re-injects the summary to stderr so Claude regains awareness
+- Added to `hooks/hooks.json` as PreCompact and PostCompact entries
+- Critical for long deep-build sessions that hit context limits
+
+**Worktree-Based Parallel Sweep Fixes:**
+- `scripts/worktree-manager.js` — create/merge/cleanup/list git worktrees
+- Sweep Phase 4 now supports parallel fix mode: when 3+ nodes need fixes with non-overlapping file_scopes, fix agents run in isolated worktrees simultaneously
+- Worktrees created per-node, merged back sequentially, conflicts fall back to sequential fix
+- Cleanup in sweep Phase 7 finalization and deep-build error handling
+- Whitelisted in pre-tool-use.js Bash safe patterns
+
 **Deferred to later sprints:**
 - State Management Hardening (update-state.js, parallel agents, active_node as array) → Sprint 9
 - Hierarchical Documentation (agent refactoring to < 300 lines) → anytime, maintenance task
 - Two-Stage Review (spec compliance then code quality) → Sprint 9
 - Guide Skill Enhancement (pattern detection from past sweeps) → Sprint 9
+- Cross-harness support (Codex CLI, Gemini CLI, Cursor) → post-Sprint 8, driven by external user feedback
 
 ### Sprint 8: Research Agents + Greenfield Pipeline
 **Goal:** Research agents search for best practices before building. Greenfield deep-build from discovery to certified. (Per Execution Plan scope — focused, not inflated.)
@@ -520,14 +549,16 @@ Deliverables: Ambient SessionStart (healthy-state display, contextual next-comma
 | sweep-documentation | sonnet | README/JSDoc/API doc accuracy |
 | sweep-cross-node-integration | opus | Data flow across boundaries, field mismatches |
 
-## Four Hook Types
+## Six Hook Types
 
 | Hook | Type | Purpose |
 |------|------|---------|
-| PreToolUse | command | Layer 1: deterministic file scope + shared model guard. Layer 2: LLM spec compliance |
+| PreToolUse | command + prompt | Layer 1: deterministic file scope + shared model guard. Layer 2: LLM spec compliance |
 | PostToolUse | command | Auto-register files, log changes |
-| Stop | prompt/agent | Evaluate acceptance criteria, bounce counter |
-| SessionStart | command | Detect crashed/stuck builds |
+| Stop | command | Bounce counter gate; exit-2 message instructs Claude to evaluate ACs and do state transition |
+| SessionStart | command | Detect crashed/stuck builds, ambient status display |
+| PreCompact | command | Save critical context (manifest, state, enforcement rules) before compaction |
+| PostCompact | command | Re-inject context summary after compaction so Claude regains awareness |
 
 ## Key Design Decisions
 

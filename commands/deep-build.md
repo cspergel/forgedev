@@ -34,6 +34,7 @@ Run the complete ForgePlan pipeline autonomously: build all → verify-runnable 
        "max_passes": 10,
        "findings": { "pending": [], "resolved": [] },
        "modified_files_by_pass": {},
+       "agent_convergence": {},
        "integration_results": { "last_run": null, "passed": false, "failures": [] }
      }
    }
@@ -130,7 +131,7 @@ This phase sits between sweep (Phase 4) and cross-model (Phase 5) because runtim
 
 ### Phase 5: Cross-model verification loop
 
-**Tier-aware execution:** Before running cross-model verification, read `complexity_tier` from `.forgeplan/manifest.yaml`:
+**Tier-aware execution:** Before running cross-model verification, read `complexity_tier` from `.forgeplan/manifest.yaml`. **Also check** `.forgeplan/config.yaml` for `complexity.tier_override` — if set and non-empty, use the override instead:
 
 - **SMALL** (1-3 nodes): Skip cross-model verification entirely. Log "Skipping cross-model: SMALL project." Set `consecutive_clean_passes` to 2 and proceed directly to Phase 6.
 - **MEDIUM** (4-6 nodes): Cross-model is optional. If an alternate model is configured (cross-model-bridge returns a result), run it. If not configured, skip with a log note and proceed to Phase 6.
@@ -232,5 +233,6 @@ This makes "abort to pre-sweep state" trivially safe via git reset.
 ## Error Handling
 
 - If any phase fails fatally, write current state and halt
+- Clean up any worktrees on halt: `node "${CLAUDE_PLUGIN_ROOT}/scripts/worktree-manager.js" cleanup`
 - All state is persisted after every transition for crash recovery
 - Use /forgeplan:recover to resume interrupted deep-builds

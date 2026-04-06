@@ -2,7 +2,7 @@
 description: Something went wrong? This detects crashed or stuck builds/reviews and offers options to resume, reset, or skip. Run this if a build was interrupted or a node is stuck.
 user-invocable: true
 argument-hint: "[node-id (optional)]"
-allowed-tools: Read Write Edit Bash Glob Grep
+allowed-tools: Read Write Edit Bash Glob Grep Agent
 ---
 
 # Crash Recovery
@@ -11,8 +11,12 @@ Detect and recover from interrupted builds, reviews, revisions, review-fix cycle
 
 ## Process
 
-1. Read `.forgeplan/state.json`
-2. Identify inconsistent states:
+1. **Clean up peripheral artifacts first:**
+   - Check for stale worktrees: run `node "${CLAUDE_PLUGIN_ROOT}/scripts/worktree-manager.js" list`. If any exist, run `node "${CLAUDE_PLUGIN_ROOT}/scripts/worktree-manager.js" cleanup` and report: "Cleaned up [N] stale worktrees from a crashed parallel fix."
+   - Check for orphan PIDs: if `.forgeplan/.verify-pids` exists, read it and kill any tracked PIDs that are still alive (use `process.kill(pid, 0)` to check, then kill). Delete the file. Report: "Cleaned up [N] orphan processes from a crashed verify-runnable."
+   - Check for stale compact context: if `.forgeplan/.compact-context.md` exists, delete it. (Stale context from a previous session could cause confusion after compaction.)
+2. Read `.forgeplan/state.json`
+3. Identify inconsistent states:
    - Status "building" with no active session
    - Status "reviewing" with no active session
    - Status "review-fixing" with no active session (fixer agent was mid-fix during multi-agent review)

@@ -334,24 +334,75 @@ function assembleCrossCheckPrompt(
 
 /**
  * Extract structured findings from a cross-check report.
+ * Handles both standard format and cross-node-integration format (Counter-File:, Node: [id] -> [id]).
  */
+// Normalize category aliases from external models to canonical names
+const CATEGORY_ALIASES = {
+  "security": "auth-security",
+  "auth": "auth-security",
+  "authentication": "auth-security",
+  "types": "type-consistency",
+  "typing": "type-consistency",
+  "errors": "error-handling",
+  "exceptions": "error-handling",
+  "db": "database",
+  "sql": "database",
+  "api": "api-contracts",
+  "endpoints": "api-contracts",
+  "routes": "api-contracts",
+  "import": "imports",
+  "dependencies": "imports",
+  "quality": "code-quality",
+  "tests": "test-quality",
+  "testing": "test-quality",
+  "config": "config-environment",
+  "environment": "config-environment",
+  "env": "config-environment",
+  "frontend": "frontend-ux",
+  "ui": "frontend-ux",
+  "ux": "frontend-ux",
+  "accessibility": "frontend-ux",
+  "docs": "documentation",
+  "integration": "cross-node-integration",
+  "cross-node": "cross-node-integration",
+};
+
+function normalizeCategory(raw) {
+  const lower = raw.trim().toLowerCase();
+  return CATEGORY_ALIASES[lower] || lower;
+}
+
+function normalizeSeverity(raw) {
+  const upper = raw.trim().toUpperCase();
+  if (["HIGH", "MEDIUM", "LOW"].includes(upper)) return upper;
+  if (upper === "CRITICAL" || upper === "SEVERE") return "HIGH";
+  if (upper === "MINOR" || upper === "INFO") return "LOW";
+  return upper;
+}
+
 function extractFindings(report, sourceModel) {
   const findings = [];
-  const findingRegex =
-    /FINDING:\s*F(\d+)\s*\n\s*Node:\s*(.+)\s*\n\s*Category:\s*(.+)\s*\n\s*Severity:\s*(.+)\s*\n\s*Confidence:\s*(\d+)\s*\n\s*Description:\s*(.+)\s*\n\s*File:\s*(.+)\s*\n\s*Line:\s*(.+)\s*\n\s*Fix:\s*(.+)/gi;
 
-  // Fallback regex without Confidence field (for backward compatibility with older agents)
+  // Standard format with Confidence
+  const findingRegex =
+    /FINDING:\s*F(\d+)\s*\n\s*Node:\s*(.+)\s*\n\s*Category:\s*(.+)\s*\n\s*Severity:\s*(.+)\s*\n\s*Confidence:\s*(\d+)\s*\n\s*Description:\s*(.+)\s*\n\s*File:\s*(.+)\s*\n\s*(?:Counter-File:\s*.+\s*\n\s*)?Line:\s*(.+)\s*\n\s*Fix:\s*(.+)/gi;
+
+  // Fallback without Confidence (backward compat), also handles optional Counter-File
   const fallbackRegex =
-    /FINDING:\s*F(\d+)\s*\n\s*Node:\s*(.+)\s*\n\s*Category:\s*(.+)\s*\n\s*Severity:\s*(.+)\s*\n\s*Description:\s*(.+)\s*\n\s*File:\s*(.+)\s*\n\s*Line:\s*(.+)\s*\n\s*Fix:\s*(.+)/gi;
+    /FINDING:\s*F(\d+)\s*\n\s*Node:\s*(.+)\s*\n\s*Category:\s*(.+)\s*\n\s*Severity:\s*(.+)\s*\n\s*Description:\s*(.+)\s*\n\s*File:\s*(.+)\s*\n\s*(?:Counter-File:\s*.+\s*\n\s*)?Line:\s*(.+)\s*\n\s*Fix:\s*(.+)/gi;
 
   let match;
   while ((match = findingRegex.exec(report)) !== null) {
+    // Normalize cross-node Node field: "auth -> api" → use first node ID
+    const rawNode = match[2].trim();
+    const node = rawNode.includes("->") ? rawNode.split("->")[0].trim() : rawNode;
+
     findings.push({
       id: `F${match[1]}`,
       source_model: sourceModel,
-      node: match[2].trim(),
-      category: match[3].trim().toLowerCase(),
-      severity: match[4].trim(),
+      node,
+      category: normalizeCategory(match[3]),
+      severity: normalizeSeverity(match[4]),
       confidence: parseInt(match[5], 10),
       description: match[6].trim(),
       file: match[7].trim(),
@@ -363,12 +414,15 @@ function extractFindings(report, sourceModel) {
   // If primary regex found nothing, try fallback without Confidence field
   if (findings.length === 0) {
     while ((match = fallbackRegex.exec(report)) !== null) {
+      const rawNode = match[2].trim();
+      const node = rawNode.includes("->") ? rawNode.split("->")[0].trim() : rawNode;
+
       findings.push({
         id: `F${match[1]}`,
         source_model: sourceModel,
-        node: match[2].trim(),
-        category: match[3].trim().toLowerCase(),
-        severity: match[4].trim(),
+        node,
+        category: normalizeCategory(match[3]),
+        severity: normalizeSeverity(match[4]),
         confidence: 80, // Default confidence for findings without explicit score
         description: match[5].trim(),
         file: match[6].trim(),
@@ -384,7 +438,7 @@ function extractFindings(report, sourceModel) {
 // --- Mode implementations (mirror cross-model-review.js patterns) ---
 
 function crossCheckViaMcp(config, prompt, cwd) {
-  const mcpServer = config.mcp_server || "codex";
+  const mcpServer = (config.mcp_server || "codex").replace(/[^a-zA-Z0-9_-]/g, "");
   const timeout = config.timeout || 300000; // 5 min for full codebase
   const tmpPrompt = path.join(cwd, ".forgeplan", ".tmp-crosscheck-prompt.md");
 
@@ -406,7 +460,7 @@ function crossCheckViaMcp(config, prompt, cwd) {
 }
 
 function crossCheckViaCli(config, prompt, cwd) {
-  const command = config.cli_command || "codex";
+  const command = (config.cli_command || "codex").replace(/[^a-zA-Z0-9_./-]/g, "");
   const args = config.cli_args || [];
   const timeout = config.timeout || 300000;
   const tmpPrompt = path.join(cwd, ".forgeplan", ".tmp-crosscheck-prompt.md");

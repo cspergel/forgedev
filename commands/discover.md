@@ -60,6 +60,8 @@ When loading a template:
 
 ## Document Import Mode
 
+**Existing project guard:** Before entering document import mode, check if `.forgeplan/` already exists or if `src/` contains files. If so, warn the user: "An existing project was detected. Document import is for new projects. To re-architect an existing project, use `/forgeplan:revise`. Continue anyway? (y/n)". Only proceed if confirmed.
+
 If the user's argument contains `--from`, they are importing an external document:
 
 ```
@@ -75,6 +77,8 @@ Process:
 4. After manifest generation, continue with the normal scaffolding and completion steps.
 
 If the file doesn't exist or can't be read, report a clear error: "Could not read [path]. Check the file exists and try again."
+
+**Chat exports** (ChatGPT, Gemini, Slack, etc.): treat as plain text with best-effort extraction. Chat formats change too often to parse structurally — just read the raw text and let the Architect extract what it can. Do not attempt to parse conversation structure, timestamps, or speaker labels.
 
 Multiple documents: support `--from doc1.md --from doc2.txt`. Read all documents, pass all content to the Architect for combined extraction.
 

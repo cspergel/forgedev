@@ -19,7 +19,7 @@ Parse the JSON output and present to the user in this format:
 
 ```
 === ForgePlan Status: [Project Name] ===
-Nodes: [completed]/[total] | Shared Models: [count]
+Tier: [SMALL|MEDIUM|LARGE] | Nodes: [completed]/[total] | Shared Models: [count]
 
 [●] database          — Database Layer              [reviewed]
 [●] auth              — Authentication Service      [built]

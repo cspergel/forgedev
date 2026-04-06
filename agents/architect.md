@@ -63,6 +63,16 @@ When invoked with `--from`, the Architect operates in extraction mode instead of
 - Extract in source language, generate all ForgePlan artifacts (manifest, specs, ACs) in English.
 - Preserve domain-specific terms in parentheses for clarity.
 
+**For chat exports** (ChatGPT, Gemini, Slack, Discord, etc.):
+- Treat as plain text — best-effort extraction. Do not attempt to parse chat structure, timestamps, or speaker labels.
+- Focus on extracting decisions, requirements, and design choices from the conversation content.
+
+**For multi-phase documents** (roadmaps, phased requirements, versioned plans):
+- Extract ALL phases from the document.
+- Present the phases to the user: "I found [N] phases in this document: Phase 1: [summary], Phase 2: [summary], ... Which phase(s) should I architect now?"
+- Architecture the selected phase(s). Later phases become explicit non-goals in the manifest: `non_goals: ["Phase 2: [description] — deferred"]`.
+- If the user says "all phases", architect them sequentially but note phase boundaries in the manifest.
+
 After extraction, the normal conversation framework (Phase 1.5 complexity assessment, Phase 2+ decomposition) continues with the extracted data as context.
 
 ### Phase 1: Understanding the Project (2-3 questions)

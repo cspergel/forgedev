@@ -6,22 +6,33 @@
  * Fires when Claude finishes responding during an active build.
  * Prevents builds from completing with unmet acceptance criteria.
  *
- * Two-layer enforcement:
- *   Layer 1 — Deterministic: bounce counter check, stop_hook_active flag
- *   Layer 2 — Defined as prompt hook in hooks.json (LLM evaluates criteria)
+ * Flow:
+ *   1. Check if there's an active build (status === "building")
+ *   2. Clear stop_hook_active (reset from previous bounce cycle)
+ *   3. Check bounce counter (< 3 = bounce, >= 3 = escalate to user)
+ *   4. If bouncing: increment counter, exit 2 with AC evaluation instructions
+ *   5. Claude evaluates ACs per the exit-2 message, does state transition if all pass
+ *   6. Claude tries to stop again → hook re-fires, counter incremented
  *
- * This script handles Layer 1 only. If Layer 1 passes (no active build,
- * or bounce limit reached), it allows the stop. If Layer 1 detects an
- * active build with room to bounce, it sets up for Layer 2's prompt check.
+ * The exit-2 message instructs Claude to:
+ *   - Read the node's spec and evaluate each AC by ID
+ *   - If ALL ACs pass: mark node as "built", clear active_node, reset bounce_count
+ *   - If any AC fails: continue working to address it
  *
  * Input: JSON on stdin with session context
  * Output:
  *   Exit 0 — allow stop (no active build, or escalated to user)
- *   Exit 2 — block stop (Layer 2 prompt will evaluate criteria)
+ *   Exit 2 — block stop (message instructs Claude to evaluate criteria)
  */
 
 const fs = require("fs");
 const path = require("path");
+
+function atomicWriteJson(filePath, data) {
+  const tmp = filePath + ".tmp";
+  fs.writeFileSync(tmp, JSON.stringify(data, null, 2), "utf-8");
+  fs.renameSync(tmp, filePath);
+}
 
 let inputData = "";
 process.stdin.setEncoding("utf-8");
@@ -76,13 +87,19 @@ function evaluate(input) {
 
   const activeNodeId = state.active_node.node;
 
-  // --- Layer 1 Check 2: Is stop_hook_active? (prevent infinite loops) ---
+  // --- Clear stop_hook_active from previous bounce cycle ---
+  // This flag is only meaningful within a single bounce cycle. Clearing it
+  // here allows multi-bounce to work (up to 3 bounces before escalation).
+  // session-start.js also clears this on new sessions as a safety net.
   if (state.stop_hook_active) {
-    // Already in a stop hook evaluation cycle — allow stop to prevent loops
-    return { block: false };
+    state.stop_hook_active = false;
+    state.last_updated = new Date().toISOString();
+    try {
+      atomicWriteJson(statePath, state);
+    } catch { /* best effort */ }
   }
 
-  // --- Layer 1 Check 3: Bounce counter ---
+  // --- Bounce counter check ---
   if (!state.nodes) state.nodes = {};
   if (!state.nodes[activeNodeId]) {
     state.nodes[activeNodeId] = { status: "building" };
@@ -97,7 +114,7 @@ function evaluate(input) {
     try {
       state.stop_hook_active = false;
       state.last_updated = new Date().toISOString();
-      fs.writeFileSync(statePath, JSON.stringify(state, null, 2), "utf-8");
+      atomicWriteJson(statePath, state);
     } catch { /* best effort */ }
 
     process.stderr.write(
@@ -116,7 +133,7 @@ function evaluate(input) {
     state.stop_hook_active = true;
     state.nodes[activeNodeId].bounce_count = bounceCount + 1;
     state.last_updated = new Date().toISOString();
-    fs.writeFileSync(statePath, JSON.stringify(state, null, 2), "utf-8");
+    atomicWriteJson(statePath, state);
   } catch (err) {
     // Can't update state — allow stop rather than trap
     process.stderr.write(
@@ -125,13 +142,19 @@ function evaluate(input) {
     return { block: false };
   }
 
-  // Block the stop — Layer 2 prompt hook will evaluate acceptance criteria
-  // The prompt hook reads the spec and checks each criterion
+  // Block the stop — instruct Claude to evaluate acceptance criteria
   return {
     block: true,
     message:
-      `ForgePlan Stop: Build for "${activeNodeId}" is not yet verified. ` +
-      `Evaluating acceptance criteria (bounce ${bounceCount + 1}/3)...`,
+      `ForgePlan Stop: Build for "${activeNodeId}" is not yet verified (bounce ${bounceCount + 1}/3).\n` +
+      `\n` +
+      `YOU MUST evaluate acceptance criteria before stopping:\n` +
+      `1. Read the node spec at .forgeplan/specs/${activeNodeId}.yaml\n` +
+      `2. For EACH acceptance criterion (AC1, AC2, etc.), verify it is met by the code you wrote. Check the 'test' field for each AC.\n` +
+      `3. If ALL criteria pass:\n` +
+      `   - Update .forgeplan/state.json: set nodes.${activeNodeId}.status to "built", set nodes.${activeNodeId}.bounce_count to 0, set active_node to null, set stop_hook_active to false, update last_updated\n` +
+      `   - Then you may stop.\n` +
+      `4. If any criterion FAILS: continue working to address it. Do NOT stop until all criteria pass or you've exhausted your attempts.\n`,
   };
 }
 

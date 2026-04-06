@@ -260,6 +260,8 @@ function main() {
       if (reviewed < nodeIds.length) {
         suggestions.push({ command: "/forgeplan:review --all", description: "Review all built nodes for spec compliance" });
       }
+      suggestions.push({ command: "/forgeplan:sweep", description: "Run cross-cutting sweep (3-12 agents, tier-aware) to catch issues across nodes" });
+      suggestions.push({ command: "/forgeplan:deep-build", description: "Full autonomous pipeline: build → verify → review → sweep → certify" });
       suggestions.push({ command: "/forgeplan:integrate", description: "Verify all cross-node interfaces work together" });
       suggestions.push({ command: "/forgeplan:measure", description: "Check code quality (broken references, duplicate types, stubs)" });
       suggestions.push({ command: "/forgeplan:revise --model [ModelName]", description: "Need to add a field or change a shared data model? This finds every affected node and walks you through updating them" });
