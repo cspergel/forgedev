@@ -92,7 +92,7 @@ Run tier-selected sweep agents (3-12) in parallel across the entire codebase, th
 
 - **LARGE tier (or no tier set):** Dispatch all 12 domain agents + 3 team agents:
   - All 12 domain agents
-  - **Team agents:** `sweep-adversarial` (Red — security boundaries, adversarial inputs), `sweep-user-flows` (Blue — user journey tracing), `sweep-contract-drift` (Orange — cross-file consistency)
+  - **Team agents:** `sweep-adversarial` (Red — security boundaries, adversarial inputs), `sweep-user-flows` (Blue — user journey tracing), `sweep-contract-drift` (Orange — cross-file consistency), `sweep-holistic` (Architect — 10,000ft system coherence)
 
 **On the first pass, dispatch agents per the tier rules above. On subsequent passes, follow the precedence rules in "Progressive agent reduction" below.**
 
@@ -114,6 +114,7 @@ Agent definition files (read these, use as system prompts):
 - `agents/sweep-adversarial.md` (Red Team — LARGE only)
 - `agents/sweep-user-flows.md` (Blue Team — LARGE only)
 - `agents/sweep-contract-drift.md` (Orange Team — MEDIUM + LARGE)
+- `agents/sweep-holistic.md` (Architect — LARGE only, 10,000ft system review)
 
 **Progressive agent reduction:**
 1. On **pass 1**: dispatch the **tier-selected agents** from above (SMALL=3-5, MEDIUM=6-8, LARGE=all 12). Skip `frontend-ux` if no frontend nodes regardless of tier.
@@ -130,7 +131,7 @@ Agent definition files (read these, use as system prompts):
    - `consecutive_clean`: how many consecutive passes returned CLEAN
 3. On **pass 2+**, determine which agents to dispatch using these rules **in precedence order**:
    a. **Converged agents are retired:** Skip any agent with `status: "converged"` or `"force-converged"`.
-   b. **Cross-cutting agents re-run if ANY agent had findings:** `cross-node-integration` and `code-quality` re-run whenever any other agent reported findings in the previous pass, even if they themselves were clean. They only converge when they return CLEAN AND no other active agent had findings in the same pass.
+   b. **Cross-cutting agents re-run if ANY agent had findings:** `cross-node-integration`, `code-quality`, `sweep-holistic`, and `sweep-contract-drift` re-run whenever any other agent reported findings in the previous pass, even if they themselves were clean. They only converge when they return CLEAN AND no other active agent had findings in the same pass.
    c. **Confirmation pass for clean agents:** An agent that returned CLEAN on pass N gets re-run on pass N+1 to confirm. If clean again → `status: "converged"`, retired.
    d. **Active agents always re-run:** Any agent with `status: "active"` (had findings last pass) is dispatched.
    e. **Failed agents always re-run:** Any agent with `status: "failed"` (returned unstructured response) is re-dispatched. Failed agents are never counted as clean for convergence. After 3 consecutive failures, force-converge with `"force-converged"` and log: "Agent [name] force-converged after 3 consecutive failures."
