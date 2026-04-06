@@ -79,3 +79,8 @@ models:
   # sweep_security: "opus"       # Reasoning-heavy security audit
   # sweep_api: "sonnet"          # Contract verification
   # sweep_imports: "haiku"       # Simple import chain analysis
+
+# --- Complexity Override ---
+complexity:
+  tier_override: ""    # Set to SMALL, MEDIUM, or LARGE to override the Architect's assessment.
+                       # Takes effect at the next command invocation. Leave empty to use manifest tier.

@@ -166,6 +166,8 @@ project:
     frontend: "[react|vue|svelte|nextjs|none]"
     deployment: "[docker|vercel|railway|fly|undecided]"
     mock_mode: false
+    test_command: ""
+    dev_port: null
   created_at: "[ISO 8601 timestamp]"
   revision_count: 0
 

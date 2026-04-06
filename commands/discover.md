@@ -106,7 +106,10 @@ Follow the Architect agent's conversation framework:
    ```
    Always make a recommendation. Don't leave the user stuck choosing.
 3. **Decompose** into nodes (3-5 questions, enforce granularity)
-4. **Auto-add an "app-shell" node** based on the tech stack. Every project needs infrastructure glue that no feature node provides. Based on `tech_stack`, automatically include:
+4. **App-shell node (tier-dependent):**
+   - **SMALL tier:** Do NOT create a separate app-shell node. Merge scaffolding responsibilities (package.json, entry point, config, routing) into the primary node. SMALL projects have 1-2 nodes — adding app-shell would be a third.
+   - **MEDIUM/LARGE tier:** Auto-add a separate "app-shell" node based on the tech stack.
+   For MEDIUM/LARGE, include:
    - **For any project:** root project config (`package.json` for Node/Bun, `deno.json` for Deno) with dev/build/test/start scripts appropriate to the runtime, `.env.example`
    - **For React/Vue/Svelte:** entry point (`main.tsx`/`main.ts`), `App.tsx` with router, `index.html`, build config (Vite/webpack)
    - **For Express/Fastify:** `src/server.ts` entry point that wires all API nodes together

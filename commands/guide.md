@@ -153,11 +153,11 @@ code evidence. The reviewer does NOT trust the builder's claims.
     → /forgeplan:next             See the recommended review order
 
   Option B: Sweep the whole codebase at once
-    → /forgeplan:sweep            12 specialized agents run in parallel, each
-                                   auditing a different dimension (security,
-                                   types, errors, DB, APIs, imports, code quality,
-                                   tests, config, frontend UX, docs, and
-                                   cross-node integration). Findings are fixed
+    → /forgeplan:sweep            3-12 specialized agents (tier-aware) run in
+                                   parallel, each auditing a different dimension
+                                   (security, types, errors, DB, APIs, imports,
+                                   code quality, tests, config, frontend UX, docs,
+                                   and cross-node integration). Findings are fixed
                                    automatically with node-scoped enforcement.
     → /forgeplan:sweep --cross-check   Same + a different AI model (Codex/GPT/
                                         Gemini) independently verifies the code.
@@ -197,7 +197,7 @@ You're at the verification stage. Here's the natural progression:
 
   Step 2: Sweep for cross-cutting issues
     → /forgeplan:sweep
-    12 specialized agents run in parallel. Each audits a different dimension:
+    3-12 specialized agents (tier-aware) run in parallel. Each audits a different dimension:
       - auth-security      — authentication, authorization, input validation
       - type-consistency   — shared model usage, type drift across nodes
       - error-handling     — try/catch, unhandled promises, error responses

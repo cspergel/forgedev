@@ -7,13 +7,18 @@
 project:
   name: "Client Portal"
   description: "A portal where small business owners upload tax documents for their accountant, with role-based access and secure file handling."
+  complexity_tier: "LARGE"
   tech_stack:
-    frontend: "React + Tailwind CSS"
-    backend: "Node.js + Express"
-    database: "Supabase (PostgreSQL)"
-    auth: "Supabase Auth"
-    hosting: "Vercel"
-    storage: "Supabase Storage"
+    runtime: "node"
+    language: "typescript"
+    database: "supabase"
+    orm: "supabase-js"
+    api_framework: "express"
+    auth: "supabase-auth"
+    test_framework: "vitest"
+    frontend: "react"
+    deployment: "vercel"
+    mock_mode: false
   created_at: ""
   revision_count: 0
 

@@ -99,28 +99,42 @@ function validateManifest(manifest) {
   }
 
   // --- 2. Orphan Node Detection ---
+  // SMALL-tier projects may legitimately have 1-2 nodes with no connections.
+  // Skip orphan check for SMALL tier or single-node projects.
+  const tier = manifest.project && manifest.project.complexity_tier;
+  const skipOrphanCheck = tier === "SMALL" || nodeIds.length <= 2;
+
+  if (!skipOrphanCheck) {
+    for (const nodeId of nodeIds) {
+      const node = manifest.nodes[nodeId];
+      const dependsOn = node.depends_on || [];
+      const connectsTo = node.connects_to || [];
+
+      // Check if any other node references this one
+      const referencedBy = nodeIds.filter((otherId) => {
+        if (otherId === nodeId) return false;
+        const other = manifest.nodes[otherId];
+        const otherDeps = other.depends_on || [];
+        const otherConns = other.connects_to || [];
+        return otherDeps.includes(nodeId) || otherConns.includes(nodeId);
+      });
+
+      const hasOutgoing = dependsOn.length > 0 || connectsTo.length > 0;
+      const hasIncoming = referencedBy.length > 0;
+
+      if (!hasOutgoing && !hasIncoming) {
+        errors.push(
+          `Orphan node: "${nodeId}" has no connections to any other node.`
+        );
+      }
+    }
+  }
+
+  // --- 2b. Dependency and Connection Validation ---
   for (const nodeId of nodeIds) {
     const node = manifest.nodes[nodeId];
     const dependsOn = node.depends_on || [];
     const connectsTo = node.connects_to || [];
-
-    // Check if any other node references this one
-    const referencedBy = nodeIds.filter((otherId) => {
-      if (otherId === nodeId) return false;
-      const other = manifest.nodes[otherId];
-      const otherDeps = other.depends_on || [];
-      const otherConns = other.connects_to || [];
-      return otherDeps.includes(nodeId) || otherConns.includes(nodeId);
-    });
-
-    const hasOutgoing = dependsOn.length > 0 || connectsTo.length > 0;
-    const hasIncoming = referencedBy.length > 0;
-
-    if (!hasOutgoing && !hasIncoming) {
-      errors.push(
-        `Orphan node: "${nodeId}" has no connections to any other node.`
-      );
-    }
 
     // Check that depends_on references valid nodes
     for (const dep of dependsOn) {

@@ -7,12 +7,18 @@
 project:
   name: "Internal Dashboard"
   description: "An internal operations dashboard for data monitoring, team task management, and reporting."
+  complexity_tier: "MEDIUM"
   tech_stack:
-    frontend: "React + Tailwind CSS"
-    backend: "Node.js + Express"
-    database: "Supabase (PostgreSQL)"
-    auth: "Supabase Auth"
-    hosting: "Vercel"
+    runtime: "node"
+    language: "typescript"
+    database: "supabase"
+    orm: "supabase-js"
+    api_framework: "express"
+    auth: "supabase-auth"
+    test_framework: "vitest"
+    frontend: "react"
+    deployment: "vercel"
+    mock_mode: false
   created_at: ""
   revision_count: 0
 
