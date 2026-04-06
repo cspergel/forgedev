@@ -152,6 +152,12 @@ async function startServer(techStack) {
     env,
   });
 
+  // Track PID for crash recovery (same file as verify-runnable)
+  const pidFile = path.join(forgePlanDir, ".verify-pids");
+  try {
+    fs.writeFileSync(pidFile, `${Date.now()}:${child.pid}\n`, "utf-8");
+  } catch {}
+
   let serverOutput = "";
 
   const ready = await new Promise((resolve) => {
@@ -191,11 +197,16 @@ async function startServer(techStack) {
 function killProcess(pid, isWindows) {
   try {
     if (isWindows) {
-      execSync(`taskkill /T /F /PID ${pid}`, { stdio: "pipe", timeout: 5000 });
+      // Graceful first (no /F), then force after 5s
+      try { execSync(`taskkill /T /PID ${pid}`, { stdio: "pipe", timeout: 5000 }); } catch {}
+      const buf = new SharedArrayBuffer(4);
+      Atomics.wait(new Int32Array(buf), 0, 0, 5000);
+      try { execSync(`taskkill /T /F /PID ${pid}`, { stdio: "pipe", timeout: 5000 }); } catch {}
     } else {
+      // SIGTERM to process group, wait 5s, then SIGKILL
       try { process.kill(-pid, "SIGTERM"); } catch { process.kill(pid, "SIGTERM"); }
       const buf = new SharedArrayBuffer(4);
-      Atomics.wait(new Int32Array(buf), 0, 0, 3000);
+      Atomics.wait(new Int32Array(buf), 0, 0, 5000);
       try { process.kill(-pid, "SIGKILL"); } catch {}
       try { process.kill(pid, "SIGKILL"); } catch {}
     }
@@ -262,7 +273,7 @@ async function runLevel3(baseUrl, endpoints) {
 async function runLevel4(baseUrl, endpoints) {
   const results = [];
   for (const ep of endpoints) {
-    // No-auth test
+    // No-auth test — protected endpoints should return 401/403, not 200
     try {
       const opts = { method: ep.method, signal: AbortSignal.timeout(10000) };
       if (ep.method !== "GET" && ep.method !== "DELETE") {
@@ -270,7 +281,19 @@ async function runLevel4(baseUrl, endpoints) {
         opts.body = JSON.stringify({});
       }
       const res = await fetch(`${baseUrl}${ep.path}`, opts);
-      results.push({ pass: true, endpoint: `${ep.method} ${ep.path}`, test: "no-auth", status: res.status, node: ep.node });
+      // 401/403 = correctly protected, 2xx = publicly accessible (might be intentional for public endpoints)
+      // 5xx = server error (always bad)
+      const isProtected = res.status === 401 || res.status === 403;
+      const isPublic = res.status >= 200 && res.status < 400;
+      const isError = res.status >= 500;
+      results.push({
+        pass: !isError,
+        endpoint: `${ep.method} ${ep.path}`,
+        test: "no-auth",
+        status: res.status,
+        node: ep.node,
+        note: isProtected ? "correctly protected" : isPublic ? "publicly accessible — verify this is intentional" : undefined,
+      });
     } catch (err) {
       results.push({ pass: false, endpoint: `${ep.method} ${ep.path}`, test: "no-auth", node: ep.node, detail: err.message });
     }
@@ -403,7 +426,11 @@ async function main() {
   let endpointsTested = 0;
   let endpointsPassed = 0;
 
-  const cleanup = () => killProcess(server.child.pid, server.isWindows);
+  const runtimePidFile = path.join(forgePlanDir, ".verify-pids");
+  const cleanup = () => {
+    killProcess(server.child.pid, server.isWindows);
+    try { fs.unlinkSync(runtimePidFile); } catch {}
+  };
   process.on("SIGINT", () => { cleanup(); process.exit(1); });
   process.on("SIGTERM", () => { cleanup(); process.exit(1); });
 

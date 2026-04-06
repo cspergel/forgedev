@@ -76,7 +76,7 @@ Read `complexity_tier` from `.forgeplan/manifest.yaml` to adapt behavior:
 
 **This mode overrides the tier-specific interaction styles above. Regardless of tier, autonomous invocation uses the non-interactive flow described here.**
 
-When invoked during `/forgeplan:deep-build`, the spec command runs **non-interactively**:
+When invoked during `/forgeplan:deep-build` or `/forgeplan:greenfield`, the spec command runs **non-interactively**. When `--all` is also present, process nodes in dependency order (use `topo-sort.js` per the All Nodes Mode section above), applying this autonomous flow to each node:
 
 1. Read the manifest (tech_stack, shared_models, node metadata, connections)
 2. Read the existing skeleton spec and adjacent node specs for context
