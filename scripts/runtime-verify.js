@@ -123,6 +123,19 @@ function parseContract(contract) {
   return { method, path: urlPath, expectedFields };
 }
 
+// Fetch with one retry on timeout (per design: "Retry once with 10s timeout. Still fails → finding.")
+async function fetchWithRetry(url, opts = {}) {
+  try {
+    return await fetch(url, { ...opts, signal: AbortSignal.timeout(10000) });
+  } catch (err) {
+    if (err.name === "TimeoutError" || err.name === "AbortError") {
+      // Retry once with same timeout
+      return await fetch(url, { ...opts, signal: AbortSignal.timeout(10000) });
+    }
+    throw err;
+  }
+}
+
 // Detect the base URL from server output or tech stack
 function detectBaseUrl(serverOutput, techStack) {
   const urlMatch = serverOutput.match(/https?:\/\/(?:localhost|127\.0\.0\.1|0\.0\.0\.0):(\d+)/i);
@@ -299,7 +312,7 @@ async function runLevel2(baseUrl, endpoints) {
         opts.headers = { "Content-Type": "application/json" };
         opts.body = JSON.stringify({});
       }
-      const res = await fetch(`${baseUrl}${ep.path}`, opts);
+      const res = await fetchWithRetry(`${baseUrl}${ep.path}`, opts);
       // Level 2 checks route existence, not correctness:
       // - 2xx/3xx = route works
       // - 401/403 = route exists, auth required (expected without token)
@@ -325,7 +338,7 @@ async function runLevel3(baseUrl, endpoints) {
   for (const ep of endpoints) {
     if (ep.method !== "GET" || ep.expectedFields.length === 0) continue;
     try {
-      const res = await fetch(`${baseUrl}${ep.path}`, { signal: AbortSignal.timeout(10000) });
+      const res = await fetchWithRetry(`${baseUrl}${ep.path}`);
       if (!res.ok) {
         // 401/403 = auth-protected endpoint, skip shape check (we can't get the body without auth)
         if (res.status === 401 || res.status === 403) {
@@ -355,7 +368,7 @@ async function runLevel4(baseUrl, endpoints) {
         opts.headers = { "Content-Type": "application/json" };
         opts.body = JSON.stringify({});
       }
-      const res = await fetch(`${baseUrl}${ep.path}`, opts);
+      const res = await fetchWithRetry(`${baseUrl}${ep.path}`, opts);
       // Level 4 auth boundary test — INFORMATIONAL, not hard pass/fail.
       // We can't distinguish public vs protected endpoints from spec contracts alone.
       // 401/403 = protected, 2xx = public (login, signup, health, webhooks are legitimately public),
