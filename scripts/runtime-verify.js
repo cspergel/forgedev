@@ -107,7 +107,14 @@ function parseContract(contract) {
   if (!match) return null;
 
   const method = match[1].toUpperCase();
-  const urlPath = match[2];
+  // Replace route params (:id, :slug, :userId) with test values so the URL is fetchable
+  const urlPath = match[2].replace(/:(\w+)/g, (_, param) => {
+    // Use sensible test values based on common param names
+    if (/id$/i.test(param)) return "1";
+    if (/slug/i.test(param)) return "test-slug";
+    if (/email/i.test(param)) return "test@example.com";
+    return "test";
+  });
   const shapeStr = match[3];
 
   const expectedFields = [];
@@ -206,7 +213,9 @@ async function startServer(techStack) {
     let resolved = false;
     const done = (val) => { if (!resolved) { resolved = true; clearTimeout(logTimeout); clearTimeout(probeTimeout); resolve(val); } };
 
-    const readyPattern = /(?:listening|ready|started|running)\s+(?:on|at)\s+\S*:\d+|https?:\/\/(?:localhost|127\.0\.0\.1|0\.0\.0\.0):\d+|port\s+\d+|listening\s+on\s+\d+/i;
+    // Require URL/port context to avoid false-positives on error messages.
+    // Removed bare "port\s+\d+" which matched "Error: port 3000 in use"
+    const readyPattern = /(?:listening|ready|started|running)\s+(?:on|at)\s+\S*:\d+|https?:\/\/(?:localhost|127\.0\.0\.1|0\.0\.0\.0):\d+|(?:listening|serving|started)\s+(?:on\s+)?port\s+\d+/i;
 
     child.stdout.on("data", (data) => {
       serverOutput += data.toString();
@@ -224,13 +233,21 @@ async function startServer(techStack) {
     });
 
     // Phase 2: After 10s with no log match, start HTTP probing
+    // SAFETY: Only probe if child process is still alive (prevents false-positive
+    // against a pre-existing server on the same port)
     const probePort = (techStack && techStack.dev_port) || 3000;
+    let childExited = false;
+    child.on("exit", () => { childExited = true; });
+
     const probeTimeout = setTimeout(async () => {
-      // Try probing common ports for 10 more seconds (total 20s timeout)
       for (let attempt = 0; attempt < 10 && !resolved; attempt++) {
+        // If our child process already exited, don't probe — it's not our server
+        if (childExited) { done(false); return; }
         try {
           await fetch(`http://localhost:${probePort}/`, { signal: AbortSignal.timeout(800) });
-          done(true); // Any response = server is running
+          // Double-check child is still alive before accepting probe result
+          if (childExited) { done(false); return; }
+          done(true);
           return;
         } catch {
           // Also try extracting port from server output
