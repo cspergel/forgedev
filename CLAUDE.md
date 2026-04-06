@@ -166,7 +166,17 @@ Sprint 6 hardening (same sprint, post-initial):
 **Tier-independent improvements (also P0):**
 - **Deduplication before presentation:** Semantic dedup in sweep Phase 3, not just file+line matching. Target: < 20% duplication rate (was 62%).
 - **Test co-update during rebuild:** Builder MUST update corresponding test files when modifying source. Don't create problems for the sweep to find.
-- **"Make it runnable" gate:** After all nodes built, verify `npm run dev` works. If not, fix before proceeding to review/sweep.
+- **"Make it runnable" gate — concrete implementation:**
+  - New script: `scripts/verify-runnable.js`
+  - Runs after all nodes are built (deep-build Phase 2 → Phase 3 transition, and after sweep fixes)
+  - Step 1: `npm install` — verify all dependencies resolve. If fails, read the error, fix package.json, retry (up to 3 attempts).
+  - Step 2: `npx tsc --noEmit` — verify TypeScript compiles with zero errors. If fails, the errors become findings for the builder to fix.
+  - Step 3: `npm test` (or the test command from tech_stack) — run ALL tests. If fails, failures become findings. Tests must pass before certification.
+  - Step 4: `npm run dev &` then check if the process starts and a health endpoint responds (if API node) or the dev server binds a port (if frontend). Kill after verification. If fails, become findings.
+  - Gate: If any step fails after 3 fix attempts, halt with clear error. Do NOT proceed to sweep with broken code.
+  - This script is called from deep-build Phase 3 (before integration check) and again in Phase 6 (final verification).
+  - Add to `pre-tool-use.js` Bash whitelist: the verify-runnable script.
+- **Test execution in the pipeline:** The "Make it runnable" gate runs `npm test`. This means tests are not just written — they are executed. A "certified" app means tests actually pass, not just that the code looks right to an LLM.
 
 **Files that need changes for Sprint 7A (~15):**
 - `templates/schemas/manifest-schema.yaml` — add `complexity_tier` field
@@ -181,6 +191,8 @@ Sprint 6 hardening (same sprint, post-initial):
 - `agents/reviewer.md` — tier-aware abbreviated review for SMALL
 - `commands/guide.md` — tier-aware descriptions (don't hardcode "12 agents")
 - `commands/review.md` — tier-aware review depth for SMALL
+- `scripts/verify-runnable.js` — NEW: npm install + tsc + npm test + dev server check
+- `commands/deep-build.md` — call verify-runnable before integration check and at final step
 - `scripts/validate-manifest.js` — validate complexity_tier field
 
 ### Sprint 7B: Ambient Mode + Confidence Scoring
@@ -200,12 +212,20 @@ Sprint 6 hardening (same sprint, post-initial):
 - Reduces convergence from ~14 rounds to 3-4 by eliminating noise early
 - Cross-model findings scored by Claude after receipt (external model doesn't know the system)
 
-**Pillar 3: Conversational Discovery & Document Import**
+**Pillar 3: Document Import & Conversational Discovery (P0 — essential, not stretch)**
+- **Document import is critical.** Many users brainstorm with ChatGPT/Gemini/etc. for hours, then want to bring that plan into ForgePlan. This must work in Sprint 7B.
 - Three onboarding paths: greenfield conversation (Path A), document import (Path B), template (Path C)
 - `--from` argument for importing markdown, text, PDF files
 - Chat exports treated as plain text (best effort — formats change too often)
-- Walkthrough granularity is tier-dependent (SMALL = one confirmation, LARGE = per-feature)
-- For autonomous deep-build: walkthrough replaced by automatic validation (proceed if no ambiguities, halt if unclear)
+- **Extraction prompt spec:** The architect agent in document-extraction mode must:
+  1. Read the entire document
+  2. Extract: project name, user roles, core features, data entities, tech preferences, integrations, constraints
+  3. Identify what's clear vs what's ambiguous
+  4. For clear items: propose architecture directly
+  5. For ambiguous items: ask targeted questions (not re-brainstorm the whole thing)
+  6. Present the extracted architecture with tier-appropriate walkthrough (SMALL = one confirmation, MEDIUM = section-level, LARGE = per-feature)
+- Walkthrough granularity is tier-dependent
+- For autonomous deep-build: walkthrough replaced by automatic validation (proceed if no ambiguities, halt only on critical unclear items)
 - Philosophy: **architecture down, not code up.**
 
 **Files that need changes for Sprint 7B (~15):**
@@ -232,11 +252,29 @@ Sprint 6 hardening (same sprint, post-initial):
 - Results stored in `.forgeplan/research/` and fed into Architect during discovery
 
 **Pillar 2: Autonomous Greenfield Pipeline**
-- Any discovery path feeds into: discover → research → spec all → deep-build → certified
-- `--with-research` flag on deep-build inserts research between discovery and spec
-- Full zero-to-deployed: describe what you want, walk away
+- The full chain: discover → research → spec all → build all → verify-runnable → review → sweep → cross-model → certified
+- **Concrete implementation:** New `--greenfield` flag on deep-build (or a new `/forgeplan:greenfield` command) that chains the full pipeline:
+  1. Run `/forgeplan:discover` in autonomous mode: Architect reads user input (description or `--from` document), assesses complexity tier, proposes architecture, auto-confirms if unambiguous (halts only if critical ambiguity detected — e.g., "you mentioned both REST and GraphQL, which one?")
+  2. Run `/forgeplan:research` on the tech stack and key patterns (if research agents are available)
+  3. Run `/forgeplan:spec --all` in autonomous mode (generate specs from manifest + research findings)
+  4. Run verify-runnable gate: `npm install` + `tsc --noEmit` + `npm test` + dev server check
+  5. Run `/forgeplan:deep-build` (which handles: build all → review → integrate → sweep → cross-model → certify)
+  6. Final verify-runnable gate: confirm the certified app actually starts and tests pass
+- **Autonomous discover mode (critical for greenfield):** The discover command needs a `--autonomous` flag that:
+  - Reads the project description or imported document
+  - Assesses complexity tier without asking
+  - Decomposes into nodes based on tier (SMALL = 1-2, MEDIUM = 3-5, LARGE = fine-grained)
+  - Selects tech stack based on project type (recommend defaults, don't ask)
+  - Generates manifest and skeleton specs
+  - Only halts if there's genuine ambiguity that would lead to a wrong architecture
+  - For SMALL tier: the entire discover phase should complete in < 2 minutes with zero user interaction
+- **Error recovery in the greenfield chain:** If any step fails (npm install, tsc, test, dev server):
+  1. Read the error output
+  2. Dispatch a fix agent to resolve it (wrong package name → search for correct one, type error → fix the code, test failure → fix the test)
+  3. Retry the failed step (up to 3 attempts)
+  4. If still failing after 3 attempts, halt with clear error and preserve state for `/forgeplan:recover`
 - Complexity tier determines how much governance the pipeline applies
-- Exit criteria: working app with passing integration check and sweep certification
+- Exit criteria: working app that actually runs (`npm run dev`), tests pass (`npm test`), integration check passes, sweep certified
 
 ### Milestone: External Users
 **After Sprint 8, before Sprint 9.** Ship to 10+ external users. Get real feedback on the full pipeline (complexity calibration → research → greenfield → certified). Their feedback reshapes Sprint 9+ more than any amount of internal planning. The product has enough features by Sprint 8 — it needs distribution.
