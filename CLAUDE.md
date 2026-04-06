@@ -436,11 +436,31 @@ SWEEP AND CROSS-MODEL:
 ### Standalone App: Visual Features (Post-Plugin)
 **Goal:** Phantom previews and node visualization require a visual canvas — deferred to the standalone ForgePlan Workstation per Execution Plan.
 
-- **Live Preview (formerly "Phantom Previews"):** Component renders for frontend, endpoint maps for API, schema diagrams for database. User watches app take shape during deep-build. Previews become less "phantom" and more real as the pipeline matures — eventually showing the actual running app.
-- **Playwright/Browser Testing Integration:** Automated browser testing during verification. Playwright navigates the actual app, clicks through flows, verifies UI renders correctly. Extends the Phase B runtime verification from API-level to full UI-level.
-- **Demo Mode:** Ask user during discovery: "Want a demo mode?" If yes, the build includes fake logins, seed data, mock API responses — a fully functional demo that showcases every feature without real credentials or services. User can click through the entire app immediately after build. Useful for stakeholder demos, testing, and validating the UX before connecting real services.
-- **Node Visualization:** Interactive dependency graph colored by status. Click nodes for details. Real-time updates during deep-build. Requires Tauri + React Flow + Monaco (per Execution Plan).
-- These are desktop/web app features, not CLI plugin features. Demo mode could ship earlier as a CLI feature (it's just a build constraint + seed data).
+- **Preview System (progressive — Phantom → Live):**
+  The preview evolves as the product matures:
+  - **Phase 1 — Phantom Preview (early standalone app):** Static renders and diagrams. Component screenshots for frontend, endpoint maps for API, schema diagrams for database. User sees the app taking shape during deep-build, but it's visual documentation, not a running app.
+  - **Phase 2 — Interactive Preview:** Previews become clickable. Frontend components render in an iframe sandbox. API endpoints return example responses. Database shows actual schema with sample data. Still using mock data but the UI is real.
+  - **Phase 3 — Live Preview:** The actual running app. Playwright verifies UI flows automatically. API endpoints respond with real logic. The preview IS the app — just running against mock/seed data instead of production services.
+  - **Phase 4 — Production Preview:** Connect real services. The live preview becomes the staging environment. One click to deploy.
+  - At each phase, the preview gets less "phantom" and more "live." The name transitions naturally.
+
+- **Playwright/Browser Testing Integration:**
+  Automated browser testing during verification. Playwright navigates the actual app, clicks through flows, verifies UI renders correctly. Extends Phase B runtime verification from API-level to full UI-level. Integrates with the preview system — Playwright tests run against the live preview.
+
+- **Demo Mode:**
+  Ask user during discovery: "Want a demo mode?" If yes, the build includes:
+  - Fake login credentials (demo@example.com / demo123)
+  - Seed data that exercises every feature (sample users, documents, transactions)
+  - Mock API responses for external services (Stripe returns fake payments, S3 returns fake uploads)
+  - A "Demo Mode" banner in the UI so nobody mistakes it for production
+  - One command to toggle: `DEMO_MODE=true npm run dev`
+  Useful for: stakeholder demos, user testing, feature validation, sales demos, onboarding walkthroughs.
+  Could ship as a CLI feature before the standalone app (it's a build constraint + seed data generator).
+
+- **Node Visualization:**
+  Interactive dependency graph colored by status. Click nodes for details. Real-time updates during deep-build. Integrates with the preview system ��� clicking a node shows its live preview alongside specs and findings. Requires Tauri + React Flow + Monaco (per Execution Plan).
+
+- These are desktop/web app features except Demo Mode, which could ship as a CLI feature earlier.
 
 ## Commands
 
