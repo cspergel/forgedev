@@ -7,13 +7,23 @@
 project:
   name: ""                          # Human-readable project name
   description: ""                   # One-line project description
-  tech_stack:                       # Technology choices (informs builder agents)
-    frontend: ""                    # e.g., "React + Tailwind CSS"
-    backend: ""                     # e.g., "Node.js + Express"
-    database: ""                    # e.g., "Supabase (PostgreSQL)"
-    auth: ""                        # e.g., "Supabase Auth"
-    hosting: ""                     # e.g., "Vercel"
-    storage: ""                     # e.g., "Supabase Storage"
+  complexity_tier: ""               # SMALL | MEDIUM | LARGE — set by Architect during discovery
+                                    # Drives: node granularity, sweep agent count, verification depth,
+                                    # cross-model requirements, walkthrough depth.
+                                    # Can be overridden via config.yaml tier_override.
+  tech_stack:                       # Technology choices (informs builder and verify-runnable)
+    runtime: ""                     # e.g., "node", "deno", "bun"
+    language: ""                    # e.g., "typescript", "javascript"
+    database: ""                    # e.g., "supabase", "postgresql", "sqlite", "mongodb", "none"
+    orm: ""                         # e.g., "supabase-js", "drizzle", "prisma", "knex", "none"
+    api_framework: ""               # e.g., "express", "fastify", "hono", "none"
+    auth: ""                        # e.g., "supabase-auth", "clerk", "lucia", "custom", "none"
+    test_framework: ""              # e.g., "vitest", "jest", "mocha", "node:test"
+    test_command: ""                # Custom test command if not standard (e.g., "npm run test:ci")
+    frontend: ""                    # e.g., "react", "vue", "svelte", "nextjs", "none"
+    deployment: ""                  # e.g., "docker", "vercel", "railway", "fly", "undecided"
+    dev_port: null                  # Default dev server port (e.g., 3000, 5173). null = auto-detect.
+    mock_mode: false                # If true, builder adds MOCK_MODE support for external services
   created_at: ""                    # ISO 8601 timestamp
   revision_count: 0                 # Incremented on every manifest write
 
@@ -45,7 +55,7 @@ nodes:
   # Example:
   # auth:
   #   name: "Authentication Service"
-  #   type: "service"               # service | frontend | database | storage | integration
+  #   type: "service"               # service | frontend | database | storage | integration | cli | library | extension | worker | pipeline
   #   status: "pending"             # pending | specced | building | built | reviewing | review-fixing | reviewed | revising | revised | sweeping
   #   file_scope: "src/auth/**"
   #   depends_on:

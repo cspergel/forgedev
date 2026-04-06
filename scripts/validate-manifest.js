@@ -35,6 +35,13 @@ function validateManifest(manifest) {
     errors.push("Manifest missing required 'project' section.");
   } else {
     if (!manifest.project.name) errors.push("project.name is required.");
+    // Validate complexity_tier if present
+    if (manifest.project.complexity_tier) {
+      const validTiers = ["SMALL", "MEDIUM", "LARGE"];
+      if (!validTiers.includes(manifest.project.complexity_tier)) {
+        errors.push(`project.complexity_tier "${manifest.project.complexity_tier}" is invalid — must be one of: ${validTiers.join(", ")}.`);
+      }
+    }
   }
 
   if (manifest.shared_models !== undefined && typeof manifest.shared_models !== "object") {
@@ -67,7 +74,7 @@ function validateManifest(manifest) {
 
   // --- 1b. Required Per-Node Fields ---
   const requiredNodeFields = ["name", "type", "status", "file_scope", "spec"];
-  const validNodeTypes = ["service", "frontend", "database", "storage", "integration"];
+  const validNodeTypes = ["service", "frontend", "database", "storage", "integration", "cli", "library", "extension", "worker", "pipeline"];
   const validStatuses = ["pending", "specced", "building", "built", "reviewing", "review-fixing", "reviewed", "revising", "revised", "sweeping"];
 
   for (const nodeId of nodeIds) {
