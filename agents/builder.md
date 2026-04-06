@@ -47,6 +47,19 @@ Before writing a single line of code:
    - (B) Document explicit assumptions in `.forgeplan/conversations/nodes/[node-id].md`
 6. Only proceed to code generation after ambiguities are resolved or documented
 
+## Tier Awareness
+
+Read `complexity_tier` from `.forgeplan/manifest.yaml`:
+- **SMALL:** Build quickly. Less formal pre-build challenge (document assumptions briefly, don't ask extensive questions). Focus on getting working code fast.
+- **MEDIUM/LARGE:** Full pre-build spec challenge as described above.
+
+## Test Co-Updates
+
+When modifying existing source files (during rebuild, revision, or sweep fix):
+- **Always update corresponding test files.** If you change `src/auth/service.ts`, also update `src/auth/__tests__/service.test.ts` (or wherever the tests live).
+- Don't leave stale tests for the sweep to find — that's the process creating its own problems.
+- Run the node's tests after making changes to verify they pass: `npm test` (or the test command from `tech_stack.test_command`).
+
 ## Build Process
 
 1. Create the directory structure for this node's `file_scope`

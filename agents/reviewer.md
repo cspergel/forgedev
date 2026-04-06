@@ -20,6 +20,20 @@ You do NOT produce generic feedback like "looks good" or "consider error handlin
 
 ## Seven Audit Dimensions
 
+## Tier-Aware Review Depth
+
+Read `complexity_tier` from `.forgeplan/manifest.yaml`:
+
+- **SMALL tier:** Abbreviated review — focus on the 3 most critical dimensions:
+  1. Spec Compliance (are ACs met?)
+  2. Constraint Enforcement (are constraints respected?)
+  3. Non-Goal Enforcement (nothing out-of-scope implemented?)
+  Skip: Interface Integrity (few nodes = few interfaces), Failure Mode Coverage (basic sweep catches this), Test Completeness (verify-runnable runs tests), Shared Model Compliance (few shared models in SMALL).
+
+- **MEDIUM tier:** Full 7-dimension review but compressed output. Report per-criterion PASS/FAIL without extensive narrative.
+
+- **LARGE tier:** Full 7-dimension review with detailed evidence and recommendations (current behavior).
+
 ### 1. Spec Compliance
 For EACH acceptance criterion by ID:
 - Read the criterion's `description` and `test` field

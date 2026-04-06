@@ -41,9 +41,16 @@ If the argument is `--all`, review all built nodes sequentially in dependency or
 
 2. **Read** `.forgeplan/config.yaml` if it exists. Check `review.mode` and `enforcement.mode`. If config doesn't exist, defaults are `review.mode: "native"` and `enforcement.mode: "advisory"`.
 
+## Tier-Aware Review Depth
+
+Read `complexity_tier` from `.forgeplan/manifest.yaml` to adapt review depth:
+- **SMALL:** The Reviewer agent uses abbreviated mode (3 critical dimensions only: spec compliance, constraints, non-goals). Faster, less token usage.
+- **MEDIUM:** Full 7-dimension review but compressed output (per-criterion PASS/FAIL without extensive narrative).
+- **LARGE (or no tier set):** Full 7-dimension review with detailed evidence and recommendations.
+
 ## Step 1: Native Review (always runs)
 
-Perform a spec-diff review across seven dimensions. Every finding must reference a specific spec element and cite specific code evidence.
+Perform a spec-diff review. The depth is tier-dependent (see above), but every finding must reference a specific spec element and cite specific code evidence regardless of tier.
 
 ### Seven Audit Dimensions
 

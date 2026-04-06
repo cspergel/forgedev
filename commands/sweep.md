@@ -1,5 +1,5 @@
 ---
-description: Sweep your entire codebase for cross-cutting issues. 12 parallel agents audit auth/security, type consistency, error handling, database, API contracts, imports, code quality, test quality, config/env, frontend UX, documentation, and cross-node integration. Agents that converge (return CLEAN) are dropped from subsequent passes. Findings are fixed with node-scoped enforcement, then cross-model verified.
+description: Sweep your entire codebase for cross-cutting issues. Tier-aware agent selection (SMALL 3-4, MEDIUM 6-8, LARGE all 12) audits auth/security, type consistency, error handling, database, API contracts, imports, code quality, test quality, config/env, frontend UX, documentation, and cross-node integration. Agents that converge (return CLEAN) are dropped from subsequent passes. Findings are fixed with node-scoped enforcement, then cross-model verified.
 user-invocable: true
 argument-hint: "[--cross-check (also run cross-model verification)]"
 allowed-tools: Read Write Edit Bash Glob Grep Agent
@@ -74,7 +74,21 @@ Run up to 12 parallel sweep agents across the entire codebase, then fix findings
 
 ### Phase 2: Dispatch sweep agents (progressive reduction)
 
-**All 12 agents on the first pass. On subsequent passes, only re-run agents that had findings.**
+**Tier-aware agent selection:** Read `complexity_tier` from `.forgeplan/manifest.yaml`:
+
+- **SMALL tier:** Dispatch 3-4 agents:
+  - Always: `sweep-code-quality`, `sweep-auth-security`, `sweep-error-handling`
+  - If `tech_stack.database` is not "none": add `sweep-database`
+  - If frontend nodes exist in manifest: add `sweep-frontend-ux`
+
+- **MEDIUM tier:** Dispatch 6-8 agents:
+  - All SMALL agents plus: `sweep-type-consistency`, `sweep-imports`, `sweep-api-contracts`
+  - If frontend nodes exist: add `sweep-frontend-ux`
+  - If project has 5+ nodes: add `sweep-cross-node-integration`
+
+- **LARGE tier (or no tier set):** Dispatch all 12 agents.
+
+**On the first pass, dispatch agents per the tier rules above. On subsequent passes, only re-run agents that had findings.**
 
 Agent definition files (read these, use as system prompts):
 - `agents/sweep-auth-security.md`

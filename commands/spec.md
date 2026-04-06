@@ -53,6 +53,23 @@ Generate a detailed node spec for the specified node(s).
    - Present summary and get user confirmation before moving to the next node
 4. After all specs are complete, present a full project summary showing all nodes and their acceptance criteria counts
 
+## Tier-Aware Spec Generation
+
+Read `complexity_tier` from `.forgeplan/manifest.yaml` to adapt behavior:
+
+**SMALL tier:** Generate the best spec possible without multi-turn conversation:
+- Read manifest (tech_stack, shared_models, node metadata, connections)
+- Read existing skeleton spec and adjacent node specs for context
+- Draft complete spec with filled ACs, test fields, constraints, non-goals, failure modes
+- Present to user: "Here's the spec I generated. Confirm or edit?" (one confirmation, not multi-turn)
+- If user confirms, write and validate. If user wants changes, make them and re-confirm.
+
+**MEDIUM tier:** Use the standard interactive flow (current behavior) but streamline:
+- For the first 1-2 nodes, full conversation
+- For subsequent nodes, generate draft and present for review
+
+**LARGE tier:** Full interactive conversation for every node (current behavior)
+
 ## Autonomous Mode (invoked by deep-build)
 
 When invoked during `/forgeplan:deep-build`, the spec command runs **non-interactively**:
