@@ -92,8 +92,10 @@ Sprint 6 hardening (same sprint, post-initial):
 - Outside-project-path writes allowed (other plugins not blocked)
 - Dogfooded on client-portal: 60 findings, 53 auto-fixed, cross-model certified
 
-### Sprint 7A: Complexity Calibration
-**Goal:** Scale the process to the project. Make ForgePlan usable for small projects (not just enterprise). The tier system is the foundation — everything else builds on it.
+### Sprint 7A: Complexity Calibration (COMPLETE)
+**Goal:** Scale the process to the project. Make ForgePlan usable for small projects (not just enterprise). The tier system is the foundation — everything else builds on it. **DONE.**
+
+Deliverables: complexity_tier field in manifest schema + validation, tier-conditional architect agent (SMALL/MEDIUM/LARGE decomposition rules), tier-aware commands (discover, spec, build, review, sweep, deep-build, guide), tier-aware agents (builder, reviewer), verify-runnable.js (stack-adaptive verification gate with PID safety + error classification), config-schema tier_override, 3 blueprint templates updated to new tech_stack format, expanded node types (cli, library, extension, worker, pipeline), orphan check exemption for SMALL tier. 12-agent review passed with all findings resolved.
 
 **Pillar 1: Complexity Calibration (P0 — from dogfood feedback)**
 - **The problem:** Full governance on a 3-page app took 10 hours. A single Claude prompt would take 30 minutes. ForgePlan must know when to get out of the way.
