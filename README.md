@@ -48,19 +48,18 @@ The governance intensity matches the complexity. ForgePlan never disappears — 
 5. REVIEW      →  7-dimension spec-diff review. Per-criterion PASS/FAIL with
                   code evidence. Not vibes — specific findings tied to spec.
 
-6. SWEEP       →  3-12 parallel agents (tier-aware) audit the codebase:
+6. SWEEP       →  3-16 parallel agents (tier-aware) audit the codebase:
                   security, types, errors, database, APIs, imports, code quality,
                   tests, config, frontend UX, docs, cross-node integration.
                   Progressive convergence drops clean agents. Optional cross-model
                   verification by a different AI for independent review.
 ```
 
-Or skip the manual steps entirely:
+Or skip everything — one command from idea to certified app:
 
 ```bash
-/forgeplan:discover I want to build a URL shortener
-/forgeplan:deep-build
-# Walk away. Come back to a verified, certified codebase.
+/forgeplan:greenfield "A URL shortener where users paste a link and get a short URL"
+# Confirm the architecture once. Walk away. Come back to a certified, runnable codebase.
 ```
 
 ## What Gets Built
@@ -133,7 +132,9 @@ No additional dependencies needed — the plugin includes everything.
 | **Spec** | The enforcement contract for a node: what it must do (acceptance criteria), what it must NOT do (non-goals), how to verify it (tests), and how it connects to other nodes (interfaces). |
 | **Shared Model** | A data type used by multiple nodes (like "User" or "Document"). Defined once in the manifest, imported everywhere — never duplicated. |
 | **Manifest** | The master architecture file. Lists every node, their dependencies, shared models, tech stack, and connections. |
-| **Sweep** | An automated codebase audit by 3-12 specialized agents (tier-aware), each checking a different dimension. Progressive convergence drops clean agents between passes. |
+| **Sweep** | An automated codebase audit by 3-16 agents (tier-aware): 12 domain agents + 4 team agents (Red adversarial, Orange contract-drift, Blue user-flows, Rainbow holistic). Progressive convergence drops clean agents between passes. |
+| **Greenfield** | One command from description to certified app. Chains discover → research → spec → deep-build with a single confirmation. |
+| **Research** | 4 parallel agents search npm, GitHub, and official docs for best packages, patterns, and license safety before building. |
 | **Cross-Model Review** | A second AI (Codex, GPT, Gemini) independently reviews code that Claude built. Different models catch different blind spots. |
 | **Deep-Build** | The fully autonomous pipeline: spec → build → verify → review → sweep → certify. Tier-aware — simple projects skip cross-model, complex ones require it. |
 | **Convergence** | The process of alternating between AI models until both agree the code is clean. 2 consecutive clean passes = certified. |
@@ -144,7 +145,9 @@ No additional dependencies needed — the plugin includes everything.
 
 | Command | What it does |
 |---------|-------------|
-| `/forgeplan:discover` | Define your project architecture — guided conversation or template |
+| `/forgeplan:greenfield` | **Start here.** Full pipeline: describe → discover → research → spec → build → certify. One confirmation, walk away. |
+| `/forgeplan:discover` | Architecture discovery — guided conversation, document import, or template |
+| `/forgeplan:research` | Search npm, GitHub, and docs for best practices (4 agents in parallel) |
 | `/forgeplan:deep-build` | Full autonomous pipeline: build → verify → review → sweep → certify (tier-aware) |
 | `/forgeplan:guide` | Where am I? Evaluates your project state and recommends the best next step |
 
@@ -203,18 +206,21 @@ The `.forgeplan/` directory IS the product. It's portable — any tool that read
 ├── specs/                 # Per-node specifications (the enforcement contracts)
 ├── conversations/         # Design rationale and build logs
 ├── reviews/               # Structured review reports
-└── sweeps/                # Sweep and cross-model verification reports
+├── sweeps/                # Sweep and cross-model verification reports
+└── research/              # Package, pattern, and documentation research
 ```
 
 ## What's Under the Hood
 
 | Component | Count | Purpose |
 |-----------|-------|---------|
-| Slash commands | 18 | User-facing operations |
+| Slash commands | 20 | User-facing operations (greenfield, research, discover, spec, build, review, sweep, deep-build, + 12 more) |
 | Core agents | 3 | Architect (discovery), Builder (code gen), Reviewer (spec-diff audit) |
-| Sweep agents | 12 | Parallel codebase audit: security, types, errors, DB, APIs, imports, code quality, tests, config, frontend UX, docs, cross-node integration |
-| Hook types | 4 | SessionStart (detection), PreToolUse (enforcement), PostToolUse (registration), Stop (AC verification) |
-| Scripts | 15 | Enforcement, validation, integration checking, cross-model bridging |
+| Research agents | 4 | Researcher (npm/GitHub), License Checker, Inspiration (similar projects), Docs Agent |
+| Domain sweep agents | 12 | Security, types, errors, DB, APIs, imports, code quality, tests, config, frontend UX, docs, cross-node integration |
+| Team sweep agents | 4 | Red (adversarial), Orange (contract drift), Blue (user flows), Rainbow (holistic architecture) |
+| Hook types | 6 | SessionStart, PreCompact, PostCompact, PreToolUse, PostToolUse, Stop |
+| Scripts | 17 | Enforcement, validation, verification (Phase A + B), cross-model bridging, worktree management |
 
 ## The Moat
 
@@ -245,10 +251,10 @@ node scripts/measure-quality.js
 ```
 ForgeDev/                              # Repo root IS the plugin root
 ├── .claude-plugin/                    # Plugin + marketplace manifests
-├── commands/                          # 18 slash commands
-├── agents/                            # 3 core + 12 sweep agents
-├── hooks/hooks.json                   # SessionStart, PreToolUse, PostToolUse, Stop
-├── scripts/                           # 15 enforcement and utility scripts
+├── commands/                          # 20 slash commands
+├── agents/                            # 3 core + 4 research + 16 sweep agents
+├── hooks/hooks.json                   # 6 hooks: SessionStart, Pre/PostCompact, PreToolUse, PostToolUse, Stop
+├── scripts/                           # 17 enforcement, verification, and utility scripts
 ├── skills/                            # Specification skill
 ├── templates/                         # Schemas, blueprints, project templates
 ├── Planning Documents/                # Product vision and execution plan
