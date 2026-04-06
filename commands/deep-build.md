@@ -55,7 +55,7 @@ This is a sequential loop using existing commands:
      - After each build, run `/forgeplan:review [node-id]`
      - **Bounce exhaustion recovery:** If a node's Stop hook has bounced 3 times (escalated to user), the autonomous deep-build must NOT halt the pipeline. Instead:
        1. Mark the node as `"built"` in state.json with a warning flag: set `nodes.[id].bounce_exhausted: true` and `nodes.[id].unverified_acs` to the list of acceptance criteria that were not verified as passing.
-       2. Add each unmet AC as a sweep finding in `sweep_state.findings.pending` with `category: "code-quality"`, `severity: "HIGH"`, and `description: "Unverified AC from bounce exhaustion: [AC text]"`, `source_model: "stop-hook"`, `pass_found: 0`.
+       2. Add each unmet AC as a sweep finding in `sweep_state.findings.pending` with all required fields: `id: "B[N]"` (sequential), `source_model: "stop-hook"`, `node: "[node-id]"`, `category: "code-quality"`, `severity: "HIGH"`, `description: "Unverified AC from bounce exhaustion: [AC text]"`, `pass_found: 0`.
        3. Continue the pipeline to the next node — do not break autonomy.
        4. In the Phase 6 deep-build report, include a section: "**Nodes with unverified ACs (bounce exhaustion):** Node [id] completed with unverified ACs: [list]. The sweep will re-evaluate these."
    - `"complete"`: all nodes done, proceed to Phase 3
@@ -140,7 +140,7 @@ Check the result:
 **If `status: "pass"` or `status: "skip"`:** Log level reached and endpoints tested. Proceed to Phase 5.
 
 **If `status: "fail"`:** Runtime verification found issues.
-1. Add each finding to `sweep_state.findings.pending` (set `pass_found`, `category: "runtime-verification"`)
+1. Add each finding to `sweep_state.findings.pending` with all required fields: `id: "R[N]"` (sequential), `source_model: "runtime-verify"`, `node`, `category`, `severity`, `description`, `pass_found: sweep_state.pass_number`. The runtime-verify.js output already includes node, category, severity, and description — just add the missing id, source_model, and pass_found.
 2. Dispatch fix agents for affected nodes (same as sweep Phase 4 fix cycle — fresh agent per node, node-scoped enforcement)
 3. After fixes, re-run `runtime-verify.js`
 4. Repeat up to 3 times. If still failing after 3 attempts, log unresolved findings and proceed to Phase 5 — cross-model and the final report will note the unresolved runtime issues.

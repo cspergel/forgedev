@@ -248,8 +248,13 @@ async function runLevel2(baseUrl, endpoints) {
         opts.body = JSON.stringify({});
       }
       const res = await fetch(`${baseUrl}${ep.path}`, opts);
-      // 2xx/3xx = pass, 401 = auth required (expected without token), 404 = route not registered (fail for defined endpoints), 5xx = server error (fail)
-      const pass = res.status < 400 || res.status === 401;
+      // Level 2 checks route existence, not correctness:
+      // - 2xx/3xx = route works
+      // - 401/403 = route exists, auth required (expected without token)
+      // - 400/422 = route exists, validation rejected our empty/probe body (correct behavior for write endpoints)
+      // - 404 = route NOT registered (fail for spec-defined endpoints)
+      // - 5xx = server error (always fail)
+      const pass = res.status < 500 && res.status !== 404;
       results.push({
         pass,
         endpoint: `${ep.method} ${ep.path}`,
@@ -270,6 +275,11 @@ async function runLevel3(baseUrl, endpoints) {
     try {
       const res = await fetch(`${baseUrl}${ep.path}`, { signal: AbortSignal.timeout(10000) });
       if (!res.ok) {
+        // 401/403 = auth-protected endpoint, skip shape check (we can't get the body without auth)
+        if (res.status === 401 || res.status === 403) {
+          results.push({ pass: true, endpoint: `${ep.method} ${ep.path}`, node: ep.node, detail: `Skipped shape check — auth required (${res.status})` });
+          continue;
+        }
         results.push({ pass: false, endpoint: `${ep.method} ${ep.path}`, node: ep.node, detail: `Status ${res.status}` });
         continue;
       }
@@ -294,18 +304,19 @@ async function runLevel4(baseUrl, endpoints) {
         opts.body = JSON.stringify({});
       }
       const res = await fetch(`${baseUrl}${ep.path}`, opts);
-      // 401/403 = correctly protected, 2xx = publicly accessible (might be intentional for public endpoints)
-      // 5xx = server error (always bad)
+      // Level 4 auth boundary test: endpoints SHOULD require auth.
+      // 401/403 = correctly protected (pass)
+      // 2xx/3xx without auth = potentially unprotected (fail — report as finding for review)
+      // 5xx = server error (fail)
       const isProtected = res.status === 401 || res.status === 403;
-      const isPublic = res.status >= 200 && res.status < 400;
       const isError = res.status >= 500;
       results.push({
-        pass: !isError,
+        pass: isProtected,
         endpoint: `${ep.method} ${ep.path}`,
         test: "no-auth",
         status: res.status,
         node: ep.node,
-        note: isProtected ? "correctly protected" : isPublic ? "publicly accessible — verify this is intentional" : undefined,
+        note: isProtected ? "correctly protected" : isError ? "server error" : "accessible without auth — may need auth middleware",
       });
     } catch (err) {
       results.push({ pass: false, endpoint: `${ep.method} ${ep.path}`, test: "no-auth", node: ep.node, detail: err.message });
@@ -420,17 +431,29 @@ async function main() {
   const server = await startServer(techStack);
 
   if (server.error) {
+    // Use the classified error type: "environment" for port/config issues, "code" for boot regressions
+    const status = server.errorType === "environment" ? "environment_error" : "fail";
+    const exitCode = server.errorType === "environment" ? 2 : 1;
     console.log(JSON.stringify({
-      status: "environment_error",
+      status,
       tier,
       message: server.error,
       errorType: server.errorType,
       level_reached: 0,
       endpoints_tested: 0,
       endpoints_passed: 0,
-      findings: [],
+      findings: status === "fail" ? [{
+        node: "app-shell",
+        category: "runtime-verification",
+        severity: "HIGH",
+        confidence: 95,
+        description: `Server failed to start: ${server.error.substring(0, 200)}`,
+        file: "",
+        line: "",
+        fix: "Fix the startup error — check server entry point and dependencies",
+      }] : [],
     }, null, 2));
-    process.exit(2);
+    process.exit(exitCode);
   }
 
   const baseUrl = detectBaseUrl(server.serverOutput, techStack);
@@ -455,7 +478,7 @@ async function main() {
     if (l1.pass) { endpointsPassed++; }
     else {
       findings.push({ node: "app-shell", category: "runtime-verification", severity: "HIGH", confidence: 95,
-        description: `Server does not respond to GET /: ${l1.detail}`, file: "src/server.ts", line: "1",
+        description: `Server does not respond to GET /: ${l1.detail}`, file: "", line: "",
         fix: "Ensure the server binds to a port and handles GET / requests" });
     }
 
@@ -467,7 +490,7 @@ async function main() {
         endpointsTested++;
         if (r.pass) { endpointsPassed++; }
         else { findings.push({ node: r.node, category: "runtime-verification", severity: "HIGH", confidence: 90,
-          description: `${r.endpoint} returns ${r.status} (server error)`, file: `src/${r.node}/`, line: "1",
+          description: `${r.endpoint} returns ${r.status} (server error)`, file: "", line: "",
           fix: `Fix the handler for ${r.endpoint} — it should not return 5xx` }); }
       }
 
@@ -478,7 +501,7 @@ async function main() {
         if (r.pass) { endpointsPassed++; }
         else if (r.missingFields && r.missingFields.length > 0) {
           findings.push({ node: r.node, category: "runtime-verification", severity: "MEDIUM", confidence: 85,
-            description: `${r.endpoint} response missing fields: ${r.missingFields.join(", ")}`, file: `src/${r.node}/`, line: "1",
+            description: `${r.endpoint} response missing fields: ${r.missingFields.join(", ")}`, file: "", line: "",
             fix: `Add missing fields to the response: ${r.missingFields.join(", ")}` });
         }
       }
@@ -492,7 +515,7 @@ async function main() {
         endpointsTested++;
         if (r.pass) { endpointsPassed++; }
         else { findings.push({ node: r.node, category: "runtime-verification", severity: r.test === "malformed-input" ? "HIGH" : "MEDIUM",
-          confidence: 85, description: `${r.endpoint} ${r.test}: ${r.detail || `status ${r.status}`}`, file: `src/${r.node}/`, line: "1",
+          confidence: 85, description: `${r.endpoint} ${r.test}: ${r.detail || `status ${r.status}`}`, file: "", line: "",
           fix: r.test === "malformed-input" ? "Add input validation — malformed requests should return 400, not 500"
             : `Ensure auth middleware is applied to ${r.endpoint}` }); }
       }
@@ -504,7 +527,7 @@ async function main() {
         if (r.pass) { endpointsPassed++; }
         else { findings.push({ node: r.node, category: "runtime-verification",
           severity: r.test.startsWith("injection") ? "HIGH" : "MEDIUM", confidence: 80,
-          description: `${r.endpoint} ${r.test}: ${r.detail || "failed"}`, file: `src/${r.node}/`, line: "1",
+          description: `${r.endpoint} ${r.test}: ${r.detail || "failed"}`, file: "", line: "",
           fix: r.test.startsWith("injection") ? "Sanitize inputs — injection payloads should return 400, not 500"
             : r.test.includes("concurrent") ? "Fix concurrency handling — server returns 500 under parallel requests"
             : "Investigate response time degradation under load" }); }

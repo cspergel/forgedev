@@ -17,7 +17,7 @@ One command to go from idea to certified app. You describe what you want, confir
 
 Read the project directory to determine where to start:
 
-1. If `.forgeplan/deep-build-report.md` exists AND `sweep_state` is null in state.json → **project is already complete**. Present the final output and exit. Do not re-run the pipeline.
+1. If `.forgeplan/deep-build-report.md` exists AND `sweep_state` is null in state.json AND all nodes in state.json have status `"built"` or `"reviewed"` → **project is already complete**. Present the final output and exit. Do not re-run the pipeline.
 2. If `sweep_state` is non-null in state.json → **deep-build was interrupted**. Run `/forgeplan:recover` first to resume or abort the interrupted operation, then re-run greenfield. Log: "Interrupted deep-build detected. Run `/forgeplan:recover` to resume, then re-run `/forgeplan:greenfield`."
 3. If `.forgeplan/manifest.yaml` does NOT exist → start from Step 1 (discover)
 4. If manifest exists but `.forgeplan/specs/` has no complete specs (specs have empty `test` fields in acceptance_criteria) → start from Step 2 (research) if `.forgeplan/research/` does not exist or contains no `.md` files, or Step 3 (spec) if research reports exist
@@ -90,7 +90,6 @@ Deep-build handles everything from here:
 - Sweep (tier-aware agent count with progressive convergence)
 - Runtime verification (Phase B: hit endpoints, check responses — MEDIUM/LARGE only)
 - Cross-model verification (tier-aware: SMALL skip, MEDIUM optional, LARGE required)
-- Final verify-runnable gate
 
 ### Final Output
 
