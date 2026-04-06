@@ -78,17 +78,21 @@ Run tier-selected sweep agents (3-12) in parallel across the entire codebase, th
 
 **Tier-aware agent selection:** Read `complexity_tier` from `.forgeplan/manifest.yaml`. **Also check** `.forgeplan/config.yaml` for `complexity.tier_override` — if set and non-empty, use the override instead of the manifest tier:
 
-- **SMALL tier:** Dispatch 3-5 agents:
+- **SMALL tier:** Dispatch 3-5 domain agents:
   - Always: `sweep-code-quality`, `sweep-auth-security`, `sweep-error-handling`
   - If `tech_stack.database` is not "none": add `sweep-database`
   - If frontend nodes exist in manifest: add `sweep-frontend-ux`
+  - No team agents (too lightweight to benefit)
 
-- **MEDIUM tier:** Dispatch 6-8 agents:
+- **MEDIUM tier:** Dispatch 6-8 domain agents + 1 team agent:
   - All SMALL agents plus: `sweep-type-consistency`, `sweep-imports`, `sweep-api-contracts`
   - If frontend nodes exist: add `sweep-frontend-ux`
   - If project has 5+ nodes: add `sweep-cross-node-integration`
+  - **Team agent:** `sweep-contract-drift` (Orange — catches cross-file enum/schema drift)
 
-- **LARGE tier (or no tier set):** Dispatch all 12 agents.
+- **LARGE tier (or no tier set):** Dispatch all 12 domain agents + 3 team agents:
+  - All 12 domain agents
+  - **Team agents:** `sweep-adversarial` (Red — security boundaries, adversarial inputs), `sweep-user-flows` (Blue — user journey tracing), `sweep-contract-drift` (Orange — cross-file consistency)
 
 **On the first pass, dispatch agents per the tier rules above. On subsequent passes, follow the precedence rules in "Progressive agent reduction" below.**
 
@@ -105,6 +109,11 @@ Agent definition files (read these, use as system prompts):
 - `agents/sweep-frontend-ux.md` (skip if no frontend nodes in manifest)
 - `agents/sweep-documentation.md`
 - `agents/sweep-cross-node-integration.md`
+
+**Team-colored agents (tier-aware — see above):**
+- `agents/sweep-adversarial.md` (Red Team — LARGE only)
+- `agents/sweep-user-flows.md` (Blue Team — LARGE only)
+- `agents/sweep-contract-drift.md` (Orange Team — MEDIUM + LARGE)
 
 **Progressive agent reduction:**
 1. On **pass 1**: dispatch the **tier-selected agents** from above (SMALL=3-5, MEDIUM=6-8, LARGE=all 12). Skip `frontend-ux` if no frontend nodes regardless of tier.
