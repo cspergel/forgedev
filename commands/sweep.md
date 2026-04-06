@@ -190,8 +190,9 @@ Each agent returns findings in the structured FINDING format or CLEAN.
    - If `node` is a real manifest node ID → add to `sweep_state.findings.pending` (enters Phase 4 fix cycle)
    - If `node` is `"project"` (cross-cutting/systemic from team agents) → add to `sweep_state.needs_manual_attention` with reason "project-level finding — no single node to fix". Do NOT add to `pending`. These appear in the final report but do not enter the automated fix cycle.
 9. If there are node-scoped findings in `pending`: update `sweep_state.current_phase` to `"claude-fix"` and proceed to Phase 4.
-10. **If zero findings AND zero failed agents** (all agents returned CLEAN successfully): skip Phase 4, set `sweep_state.current_phase` to `"integrate"`, and proceed directly to Phase 5.
-11. **If zero findings BUT some agents failed:** Do NOT treat as clean. Failed agents are re-dispatched on the next pass (their `agent_convergence` status stays `"active"` or `"failed"`). Increment pass_number and loop back to Phase 2. A pass with only failed responses is not a clean pass for convergence purposes.
+10. **If `pending` is empty but agents returned findings (all went to `needs_manual_attention`):** All findings are project-level — no automated fixes possible. Skip Phase 4, set `sweep_state.current_phase` to `"integrate"`, and proceed to Phase 5. Log: "All findings are project-level (manual attention). Skipping automated fix cycle."
+11. **If zero findings AND zero failed agents** (all agents returned CLEAN successfully): skip Phase 4, set `sweep_state.current_phase` to `"integrate"`, and proceed directly to Phase 5.
+12. **If zero findings BUT some agents failed:** Do NOT treat as clean. Failed agents are re-dispatched on the next pass (their `agent_convergence` status stays `"active"` or `"failed"`). Increment pass_number and loop back to Phase 2. A pass with only failed responses is not a clean pass for convergence purposes.
 
 ### Phase 4: Fix findings (node-scoped)
 
