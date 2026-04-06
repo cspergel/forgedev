@@ -140,10 +140,13 @@ Check the result:
 **If `status: "pass"` or `status: "skip"`:** Log level reached and endpoints tested. Proceed to Phase 5.
 
 **If `status: "fail"`:** Runtime verification found issues.
-1. Add each finding to `sweep_state.findings.pending` with all required fields: `id: "R[N]"` (sequential), `source_model: "runtime-verify"`, `node`, `category`, `severity`, `description`, `pass_found: sweep_state.pass_number`. The runtime-verify.js output already includes node, category, severity, and description — just add the missing id, source_model, and pass_found.
-2. Dispatch fix agents for affected nodes (same as sweep Phase 4 fix cycle — fresh agent per node, node-scoped enforcement)
-3. After fixes, re-run `runtime-verify.js`
-4. Repeat up to 3 times. If still failing after 3 attempts, log unresolved findings and proceed to Phase 5 — cross-model and the final report will note the unresolved runtime issues.
+1. For each finding from runtime-verify.js output:
+   - Add required fields: `id: "R[N]"` (sequential), `source_model: "runtime-verify"`, `pass_found: sweep_state.pass_number`
+   - **If the finding has a non-empty `file` field:** add to `sweep_state.findings.pending` for the normal fix cycle (fix agent can target the file)
+   - **If the finding has an empty `file` field:** add to `sweep_state.needs_manual_attention` instead (runtime findings without file anchors can't be auto-fixed — they need a developer to trace the endpoint to its handler). Include the endpoint, status code, and description so the deep-build report surfaces them.
+2. For findings in `pending` (with file anchors): dispatch fix agents, re-run `runtime-verify.js`, repeat up to 3 times
+3. For findings in `needs_manual_attention`: log them in the deep-build report under "**Runtime Issues Requiring Manual Review**" with the endpoint details. Do NOT attempt automated fixes.
+4. Proceed to Phase 5 after fix attempts complete (or immediately if all findings went to manual attention).
 
 **If `status: "environment_error"`:** Log the error. Do NOT add as code findings. Attempt auto-fix:
 - Missing .env → copy from .env.example, set MOCK_MODE=true

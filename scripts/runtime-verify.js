@@ -226,13 +226,22 @@ function killProcess(pid, isWindows) {
 
 // --- Test Levels ---
 
-async function runLevel1(baseUrl) {
+async function runLevel1(baseUrl, endpoints) {
+  // Try GET / first — works for frontend apps and servers with a root route
   try {
     const res = await fetch(`${baseUrl}/`, { signal: AbortSignal.timeout(10000) });
     if (res.ok || res.status === 302 || res.status === 301) {
       return { pass: true, detail: `GET / -> ${res.status}` };
     }
-    return { pass: false, detail: `GET / -> ${res.status} (expected 2xx or redirect)` };
+    // GET / returned 404 — this is normal for API-only apps. Try the first spec endpoint instead.
+    if (res.status === 404 && endpoints.length > 0) {
+      const fallback = endpoints[0];
+      const fallbackRes = await fetch(`${baseUrl}${fallback.path}`, { signal: AbortSignal.timeout(10000) });
+      if (fallbackRes.status < 500) {
+        return { pass: true, detail: `GET / -> 404 (API-only app), but ${fallback.path} -> ${fallbackRes.status} (server is responding)` };
+      }
+    }
+    return { pass: false, detail: `GET / -> ${res.status} and no spec endpoints respond` };
   } catch (err) {
     return { pass: false, detail: `GET / -> ${err.message}` };
   }
@@ -304,19 +313,20 @@ async function runLevel4(baseUrl, endpoints) {
         opts.body = JSON.stringify({});
       }
       const res = await fetch(`${baseUrl}${ep.path}`, opts);
-      // Level 4 auth boundary test: endpoints SHOULD require auth.
-      // 401/403 = correctly protected (pass)
-      // 2xx/3xx without auth = potentially unprotected (fail — report as finding for review)
-      // 5xx = server error (fail)
+      // Level 4 auth boundary test — INFORMATIONAL, not hard pass/fail.
+      // We can't distinguish public vs protected endpoints from spec contracts alone.
+      // 401/403 = protected, 2xx = public (login, signup, health, webhooks are legitimately public),
+      // 5xx = server error (always a real failure).
       const isProtected = res.status === 401 || res.status === 403;
       const isError = res.status >= 500;
       results.push({
-        pass: isProtected,
+        pass: !isError, // Only 5xx is a hard failure — public vs protected is informational
         endpoint: `${ep.method} ${ep.path}`,
         test: "no-auth",
         status: res.status,
         node: ep.node,
-        note: isProtected ? "correctly protected" : isError ? "server error" : "accessible without auth — may need auth middleware",
+        // severity: MEDIUM for public endpoints (informational review item, not a confirmed bug)
+        authStatus: isProtected ? "protected" : isError ? "error" : "public",
       });
     } catch (err) {
       results.push({ pass: false, endpoint: `${ep.method} ${ep.path}`, test: "no-auth", node: ep.node, detail: err.message });
@@ -472,7 +482,7 @@ async function main() {
 
   try {
     // Level 1
-    const l1 = await runLevel1(baseUrl);
+    const l1 = await runLevel1(baseUrl, endpoints);
     levelReached = 1;
     endpointsTested++;
     if (l1.pass) { endpointsPassed++; }
@@ -513,11 +523,20 @@ async function main() {
       levelReached = 4;
       for (const r of l4) {
         endpointsTested++;
-        if (r.pass) { endpointsPassed++; }
-        else { findings.push({ node: r.node, category: "runtime-verification", severity: r.test === "malformed-input" ? "HIGH" : "MEDIUM",
+        if (r.pass) {
+          endpointsPassed++;
+          // Report public endpoints as informational findings (not failures)
+          if (r.test === "no-auth" && r.authStatus === "public") {
+            findings.push({ node: r.node, category: "runtime-verification", severity: "LOW",
+              confidence: 60, description: `${r.endpoint} is publicly accessible without auth — verify this is intentional`,
+              file: "", line: "", fix: "If this endpoint should require auth, add auth middleware. If it's intentionally public (login, signup, health), no action needed." });
+          }
+        }
+        else { findings.push({ node: r.node, category: "runtime-verification",
+          severity: r.test === "malformed-input" ? "HIGH" : "MEDIUM",
           confidence: 85, description: `${r.endpoint} ${r.test}: ${r.detail || `status ${r.status}`}`, file: "", line: "",
           fix: r.test === "malformed-input" ? "Add input validation — malformed requests should return 400, not 500"
-            : `Ensure auth middleware is applied to ${r.endpoint}` }); }
+            : `Server error on ${r.endpoint}` }); }
       }
 
       const l5 = await runLevel5(baseUrl, endpoints);
