@@ -25,7 +25,7 @@ user-invocable: true
 | Command | What it does |
 |---------|-------------|
 | `/forgeplan:sweep [--cross-check]` | Sweep your codebase for cross-cutting issues — 12 parallel agents audit security, types, errors, database, API contracts, imports, code quality, tests, config, frontend UX, docs, and cross-node integration. Progressive convergence drops clean agents. Add `--cross-check` for cross-model verification. |
-| `/forgeplan:deep-build` | Full autonomous pipeline: build all → review → integrate → sweep → cross-model verify → repeat until certified. Describe what you want, walk away. |
+| `/forgeplan:deep-build` | Full autonomous pipeline: build all → verify-runnable → review → sweep → certify (tier-aware). Describe what you want, walk away. |
 
 ## Evolving Your Project
 

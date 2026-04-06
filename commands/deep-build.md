@@ -1,12 +1,12 @@
 ---
-description: Full autonomous build pipeline. Builds all nodes, reviews them, runs integration, sweeps for cross-cutting issues, fixes with cross-model verification, and produces a certification report. You describe what you want, then walk away.
+description: Full autonomous build pipeline. Builds all nodes, verifies they run, reviews them, sweeps for issues, and certifies (tier-aware — SMALL skips cross-model). You describe what you want, then walk away.
 user-invocable: true
 allowed-tools: Read Write Edit Bash Glob Grep Agent
 ---
 
 # Deep Build — Full Autonomous Pipeline
 
-Run the complete ForgePlan pipeline autonomously: build all → review all → integrate → sweep → fix → cross-check → repeat until certified.
+Run the complete ForgePlan pipeline autonomously: build all → verify-runnable → review → integrate → sweep → (runtime verify, Sprint 8) → cross-model (tier-aware) → certified.
 
 ## Prerequisites
 

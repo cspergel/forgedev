@@ -26,7 +26,7 @@ This project uses **ForgePlan Core**, an architecture-governed build harness. Fo
 | `/forgeplan:build [node]` | Build a node with enforcement |
 | `/forgeplan:review [node]` | 7-dimension spec-diff review |
 | `/forgeplan:sweep [--cross-check]` | Tier-aware parallel sweep (3-12 agents) with progressive convergence |
-| `/forgeplan:deep-build` | Full autonomous pipeline: spec → build → review → sweep → certify |
+| `/forgeplan:deep-build` | Full autonomous pipeline: spec → build → verify → review → sweep → certify (tier-aware) |
 | `/forgeplan:configure` | Set up cross-model review (Codex/GPT/Gemini) |
 | `/forgeplan:next` | Dependency-aware next recommendation |
 | `/forgeplan:revise [node]` | Change impact analysis + propagation |

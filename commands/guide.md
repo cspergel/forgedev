@@ -120,7 +120,7 @@ node as "built" — if criteria aren't met, it bounces back for fixes.
     You'll see each node's progress and can review between builds.
 
   Option B: Let ForgePlan handle it all (autonomous)
-    → /forgeplan:deep-build     Build all → review → sweep → cross-model certify
+    → /forgeplan:deep-build     Build → verify → review → sweep → certify (tier-aware)
     Fully autonomous. Builds every node in dependency order, then reviews,
     sweeps for issues, fixes them, and certifies with a second AI model.
     Takes longer but you can walk away.

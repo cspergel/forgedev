@@ -90,7 +90,7 @@ New to ForgePlan? Here's what the terms mean:
 | **File Scope** | The directory a node is allowed to write to (e.g., `src/auth/**`). The enforcement hook blocks writes outside this scope. |
 | **Sweep** | An automated codebase audit by 12 specialized agents running in parallel, each checking a different dimension (security, types, errors, etc.). |
 | **Cross-Model Review** | A second AI model (Codex, GPT, Gemini) independently reviews code that Claude built. Different models catch different blind spots. |
-| **Deep-Build** | The fully autonomous pipeline: specs every node, builds them, reviews them, sweeps for issues, fixes everything, and certifies with cross-model verification. |
+| **Deep-Build** | The fully autonomous pipeline: specs every node, builds them, verifies they run, reviews them, sweeps for issues, and certifies. Tier-aware: SMALL skips cross-model, LARGE requires it. |
 | **Enforcement** | ForgePlan's hook system that physically blocks bad writes — not suggestions, actual prevention. If you try to write outside your node's scope, the operation is rejected. |
 | **Non-Goal** | Something explicitly NOT in scope for a node. Non-goals become enforcement constraints — the builder is blocked from implementing them. |
 | **Convergence** | The process of alternating between AI models until both agree the code is clean. 2 consecutive clean passes = certified. |
