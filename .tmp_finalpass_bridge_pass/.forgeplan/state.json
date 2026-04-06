@@ -1,5 +1,0 @@
-{
-  "active_node": null,
-  "nodes": {"auth": {"status": "reviewed"}},
-  "sweep_state": {"operation": "sweeping", "current_phase": "cross-check", "pass_number": 1, "current_model": "alternate", "findings": {"pending": [], "resolved": []}, "modified_files_by_pass": {"1": ["src/auth/index.ts"]}}
-}
