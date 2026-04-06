@@ -168,15 +168,17 @@ Sprint 6 hardening (same sprint, post-initial):
 - **Test co-update during rebuild:** Builder MUST update corresponding test files when modifying source. Don't create problems for the sweep to find.
 - **"Make it runnable" gate — concrete implementation:**
   - New script: `scripts/verify-runnable.js`
-  - Runs after all nodes are built (deep-build Phase 2 → Phase 3 transition, and after sweep fixes)
-  - Step 1: `npm install` — verify all dependencies resolve. If fails, read the error, fix package.json, retry (up to 3 attempts).
-  - Step 2: `npx tsc --noEmit` — verify TypeScript compiles with zero errors. If fails, the errors become findings for the builder to fix.
-  - Step 3: `npm test` (or the test command from tech_stack) — run ALL tests. If fails, failures become findings. Tests must pass before certification.
-  - Step 4: `npm run dev &` then check if the process starts and a health endpoint responds (if API node) or the dev server binds a port (if frontend). Kill after verification. If fails, become findings.
-  - Gate: If any step fails after 3 fix attempts, halt with clear error. Do NOT proceed to sweep with broken code.
-  - This script is called from deep-build Phase 3 (before integration check) and again in Phase 6 (final verification).
+  - Reads `tech_stack` from manifest to determine the right commands (not hardcoded to Node/TypeScript)
+  - Runs after all nodes are built (deep-build: after build, before review) and again at final certification
+  - **Stack-adaptive steps:**
+    - Step 1 — Install deps: `npm install` (Node), `deno cache` (Deno), `bun install` (Bun). Read from `tech_stack.runtime`.
+    - Step 2 — Type check (if applicable): `npx tsc --noEmit` (TypeScript only, skip for JavaScript). Read from `tech_stack.language`.
+    - Step 3 — Run tests: `npm test` / `deno test` / `bun test` or custom command from `tech_stack.test_command`. Tests must pass. Failures become findings.
+    - Step 4 — Dev server check: attempt to start the dev server, verify it binds a port or health endpoint responds. Kill after verification. Skip for library/CLI projects (detected from manifest node types — no frontend/API nodes = skip).
+  - Gate: If any step fails, read the error, dispatch fix agent, retry (up to 3 attempts). If still failing, halt with clear error.
   - Add to `pre-tool-use.js` Bash whitelist: the verify-runnable script.
-- **Test execution in the pipeline:** The "Make it runnable" gate runs `npm test`. This means tests are not just written — they are executed. A "certified" app means tests actually pass, not just that the code looks right to an LLM.
+- **Test execution in the pipeline:** Tests are not just written — they are EXECUTED. A "certified" app means tests actually pass, the code compiles, and the app starts. This is verified by real commands, not LLM judgment.
+- **Tests along the way, not just at the end:** The builder should run tests for each node DURING the build (after writing tests, run them to verify they pass). The Stop hook should check test results as part of AC verification. The sweep fix cycle should re-run affected tests after each fix. This catches errors early instead of accumulating them for the final gate.
 
 **Files that need changes for Sprint 7A (~15):**
 - `templates/schemas/manifest-schema.yaml` — add `complexity_tier` field
@@ -252,14 +254,20 @@ Sprint 6 hardening (same sprint, post-initial):
 - Results stored in `.forgeplan/research/` and fed into Architect during discovery
 
 **Pillar 2: Autonomous Greenfield Pipeline**
-- The full chain: discover → research → spec all → build all → verify-runnable → review → sweep → cross-model → certified
+- The full chain: discover → research → spec all → deep-build (build → verify-runnable → review → sweep → cross-model) → certified
 - **Concrete implementation:** New `--greenfield` flag on deep-build (or a new `/forgeplan:greenfield` command) that chains the full pipeline:
   1. Run `/forgeplan:discover` in autonomous mode: Architect reads user input (description or `--from` document), assesses complexity tier, proposes architecture, auto-confirms if unambiguous (halts only if critical ambiguity detected — e.g., "you mentioned both REST and GraphQL, which one?")
   2. Run `/forgeplan:research` on the tech stack and key patterns (if research agents are available)
   3. Run `/forgeplan:spec --all` in autonomous mode (generate specs from manifest + research findings)
-  4. Run verify-runnable gate: `npm install` + `tsc --noEmit` + `npm test` + dev server check
-  5. Run `/forgeplan:deep-build` (which handles: build all → review → integrate → sweep → cross-model → certify)
-  6. Final verify-runnable gate: confirm the certified app actually starts and tests pass
+  4. Run `/forgeplan:deep-build` which handles the rest:
+     - Build all nodes (per tier: SMALL = single-pass, MEDIUM = sequential, LARGE = full pipeline)
+     - Run verify-runnable gate AFTER build, BEFORE review (catches broken code early)
+     - Review all nodes
+     - Integration check
+     - Sweep (tier-aware agent count)
+     - Cross-model verification (tier-aware: SMALL = skip unless requested, MEDIUM = optional, LARGE = required)
+     - Final verify-runnable gate (confirm certified app actually runs and tests pass)
+  5. Output: certified, runnable app
 - **Autonomous discover mode (critical for greenfield):** The discover command needs a `--autonomous` flag that:
   - Reads the project description or imported document
   - Assesses complexity tier without asking
@@ -274,7 +282,18 @@ Sprint 6 hardening (same sprint, post-initial):
   3. Retry the failed step (up to 3 attempts)
   4. If still failing after 3 attempts, halt with clear error and preserve state for `/forgeplan:recover`
 - Complexity tier determines how much governance the pipeline applies
-- Exit criteria: working app that actually runs (`npm run dev`), tests pass (`npm test`), integration check passes, sweep certified
+- **Exit criteria are tier-aware:**
+  ```
+  SMALL: verify-runnable passes (install + tests + dev server) + 3-4 agent sweep clean.
+         No cross-model required. "Certified" = it runs and basic sweep is clean.
+
+  MEDIUM: verify-runnable passes + 6-8 agent sweep clean + integration check passes.
+          Cross-model optional. "Certified" = runs + thorough sweep + interfaces verified.
+
+  LARGE: verify-runnable passes + 12-agent sweep converged + integration passes +
+         cross-model verified (2 consecutive clean passes).
+         "Certified" = full pipeline, maximum confidence.
+  ```
 
 ### Milestone: External Users
 **After Sprint 8, before Sprint 9.** Ship to 10+ external users. Get real feedback on the full pipeline (complexity calibration → research → greenfield → certified). Their feedback reshapes Sprint 9+ more than any amount of internal planning. The product has enough features by Sprint 8 — it needs distribution.
