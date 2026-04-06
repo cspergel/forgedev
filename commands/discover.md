@@ -107,13 +107,15 @@ Follow the Architect agent's conversation framework:
    Always make a recommendation. Don't leave the user stuck choosing.
 3. **Decompose** into nodes (3-5 questions, enforce granularity)
 4. **Auto-add an "app-shell" node** based on the tech stack. Every project needs infrastructure glue that no feature node provides. Based on `tech_stack`, automatically include:
-   - **For any project:** root `package.json` with scripts (dev, build, test, start), `.env.example`
+   - **For any project:** root project config (`package.json` for Node/Bun, `deno.json` for Deno) with dev/build/test/start scripts appropriate to the runtime, `.env.example`
    - **For React/Vue/Svelte:** entry point (`main.tsx`/`main.ts`), `App.tsx` with router, `index.html`, build config (Vite/webpack)
    - **For Express/Fastify:** `src/server.ts` entry point that wires all API nodes together
    - **For Tailwind:** `tailwind.config.ts`, `postcss.config.js`, global CSS
    - **For TypeScript:** `tsconfig.json` with correct paths
 
-   The app-shell node has `file_scope: "src/app/**"` (or the project root for config files) and `depends_on` all other nodes. It is built LAST in dependency order. Its acceptance criteria: "project starts with `npm run dev`", "all routes render", "build produces no errors."
+   The app-shell node has `file_scope: "src/app/**"` (or the project root for config files) and `depends_on` all other nodes. It is built LAST in dependency order. Its acceptance criteria: "project starts with the dev command from tech_stack (`npm run dev` / `deno task dev` / `bun run dev`)", "all routes render", "build produces no errors."
+
+   **For library/CLI projects without a dev server:** replace the "dev server starts" AC with "project builds and tests pass" instead.
 
    If the user doesn't want an app-shell node (e.g., they're building a library), they can remove it during confirmation.
 

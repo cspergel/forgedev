@@ -847,6 +847,8 @@ Ambient mode is the foundation for the non-technical builder experience describe
 
 **Deep-build integration:** `/forgeplan:deep-build` gains a `--with-research` flag that inserts the research phase into the autonomous pipeline.
 
+> **NOTE: CLAUDE.md supersedes this.** The implementation is a `--greenfield` flag on deep-build (or a new `/forgeplan:greenfield` command), not `--with-research`.
+
 **This is the vision from the concept doc:** "the user describes what they want and walks away." Sprint 6 makes the build autonomous. Sprint 7 makes the interface ambient. Sprint 8 makes the preparation intelligent. Together they deliver the full autonomous experience.
 
 **Exit criteria:** Research agents find relevant packages/implementations for at least 3 of 7 client portal nodes. License checker correctly flags at least one GPL dependency in a test scenario. Builder agent demonstrably uses research findings (cites them in build decisions). Deep-build with research produces fewer custom implementations (more library usage) than without.

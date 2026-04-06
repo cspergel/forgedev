@@ -72,7 +72,21 @@ All existing enforcement (PreToolUse, PostToolUse, Builder agent, Stop hook) app
 
 **Important:** For each build and review, use fresh Agent subagents. Do not accumulate context across node builds.
 
-**Phase transition:** After all nodes are built and reviewed, update `sweep_state.current_phase` from `"build-all"` to `"integrate"`. This is the point where next-node.js stops returning recommendations and starts returning `type: "sweep_active"`.
+**Phase transition:** After all nodes are built and reviewed, update `sweep_state.current_phase` from `"build-all"` to `"verify-runnable"`.
+
+### Phase 2.5: Run verify-runnable gate
+
+Before proceeding to integration, verify the project can actually run:
+
+```bash
+node "${CLAUDE_PLUGIN_ROOT}/scripts/verify-runnable.js"
+```
+
+If it **passes**: update `sweep_state.current_phase` from `"verify-runnable"` to `"integrate"` and proceed to Phase 3.
+
+If it **fails**: dispatch a fix agent to address the issues (e.g., missing dependencies, broken imports, config errors). After the fix agent completes, re-run `verify-runnable.js`. Repeat until it passes. If it fails 3 consecutive times, halt deep-build with an error and preserve `sweep_state` for recovery.
+
+The verify-runnable gate **must pass** before proceeding to Phase 3. This catches fundamental project health issues (missing packages, syntax errors, broken configs) before investing time in integration checks and sweeps.
 
 ### Phase 3: Initial integration check
 
@@ -97,7 +111,27 @@ Run `/forgeplan:sweep` (dispatch all sweep agents in parallel, merge findings, f
 
 After Claude sweep fixes, re-integrate (Phase 3 logic).
 
+### Phase 4.5: Runtime verification (Sprint 8 placeholder)
+
+> **NOTE:** This phase will be implemented in Sprint 8. For now it is a no-op — proceed directly to Phase 5.
+
+After sweep fixes and before cross-model verification, a runtime verification agent will:
+1. Run the project's test suite and dev server
+2. Verify API endpoints respond correctly
+3. Check for runtime errors not caught by static analysis
+4. Feed runtime failures back into the fix cycle
+
+This phase sits between sweep (Phase 4) and cross-model (Phase 5) because runtime issues should be fixed before spending cross-model tokens.
+
 ### Phase 5: Cross-model verification loop
+
+**Tier-aware execution:** Before running cross-model verification, read `complexity_tier` from `.forgeplan/manifest.yaml`:
+
+- **SMALL** (1-3 nodes): Skip cross-model verification entirely. Log "Skipping cross-model: SMALL project." Set `consecutive_clean_passes` to 2 and proceed directly to Phase 6.
+- **MEDIUM** (4-6 nodes): Cross-model is optional. If an alternate model is configured (cross-model-bridge returns a result), run it. If not configured, skip with a log note and proceed to Phase 6.
+- **LARGE** (7+ nodes): Cross-model is required. If no alternate model is configured, halt deep-build with an error: "LARGE projects require cross-model verification. Configure an alternate model in .forgeplan/config.yaml."
+
+If cross-model is skipped (SMALL tier or unconfigured MEDIUM tier), note it in the final report.
 
 This phase follows the **exact same logic as sweep Phase 6** (Task 9). All status handling, phase transitions, and error paths apply identically. The deep-build orchestrator executes this inline rather than delegating to `/forgeplan:sweep`.
 

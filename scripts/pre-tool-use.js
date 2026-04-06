@@ -457,6 +457,9 @@ function evaluateBash(toolInput, cwd) {
     /^\s*node\s+[^\s]*find-affected-nodes\.js/, // our own affected-node finder
     /^\s*node\s+[^\s]*regenerate-shared-types\.js/, // our own type generator
     /^\s*node\s+[^\s]*cross-model-bridge\.js/,   // Sprint 6: cross-model sweep bridge
+    /^\s*node\s+[^\s]*verify-runnable\.js/,       // our own verification script
+    /^\s*deno\b/,                             // Deno runtime commands
+    /^\s*bun\b/,                              // Bun runtime commands
     /^\s*codex\b/,                        // cross-model review via Codex CLI
     /^\s*gemini\b/,                       // cross-model review via Gemini CLI
     /^\s*claude\s+mcp\s+(call|list)\b/,   // cross-model review via MCP
