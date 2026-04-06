@@ -176,9 +176,13 @@ async function startServer(techStack) {
   const ready = await new Promise((resolve) => {
     const timeout = setTimeout(() => { resolve(false); }, 20000);
 
+    // Server ready detection: require URL/port pattern to avoid false positives
+    // on error messages containing "ready", "started", etc.
+    const readyPattern = /(?:listening|ready|started|running)\s+(?:on|at)\s+\S*:\d+|https?:\/\/(?:localhost|127\.0\.0\.1|0\.0\.0\.0):\d+|port\s+\d+/i;
+
     child.stdout.on("data", (data) => {
       serverOutput += data.toString();
-      if (/listening|ready|started|running|localhost|127\.0\.0\.1|0\.0\.0\.0/i.test(serverOutput)) {
+      if (readyPattern.test(serverOutput)) {
         clearTimeout(timeout);
         resolve(true);
       }
@@ -186,7 +190,7 @@ async function startServer(techStack) {
 
     child.stderr.on("data", (data) => {
       serverOutput += data.toString();
-      if (/listening|ready|started|running/i.test(serverOutput)) {
+      if (readyPattern.test(serverOutput)) {
         clearTimeout(timeout);
         resolve(true);
       }
@@ -200,6 +204,8 @@ async function startServer(techStack) {
 
   if (!ready) {
     killProcess(child.pid, isWindows);
+    // Clean up PID file on start failure (don't leave stale entry)
+    try { fs.unlinkSync(pidFile); } catch {}
     const errorType = /EADDRINUSE|address already in use/i.test(serverOutput) ? "environment" : "code";
     return { error: `Server failed to start: ${serverOutput.substring(0, 300)}`, errorType };
   }
@@ -490,6 +496,13 @@ async function main() {
       findings.push({ node: "app-shell", category: "runtime-verification", severity: "HIGH", confidence: 95,
         description: `Server does not respond to GET /: ${l1.detail}`, file: "", line: "",
         fix: "Ensure the server binds to a port and handles GET / requests" });
+    }
+
+    // Warn if no endpoint contracts found — Phase B has limited value without them
+    if (endpoints.length === 0) {
+      findings.push({ node: "project", category: "runtime-verification", severity: "MEDIUM", confidence: 70,
+        description: "No API endpoint contracts found in node specs. Phase B could only verify server starts. Add interface contracts (e.g., 'GET /api/users -> { users: User[] }') to node specs for meaningful endpoint testing.",
+        file: "", line: "", fix: "Add contract fields to interface definitions in .forgeplan/specs/" });
     }
 
     // Levels 2-3 for MEDIUM+
