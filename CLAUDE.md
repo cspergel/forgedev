@@ -460,6 +460,11 @@ SWEEP AND CROSS-MODEL:
 - **Node Visualization:**
   Interactive dependency graph colored by status. Click nodes for details. Real-time updates during deep-build. Integrates with the preview system ��� clicking a node shows its live preview alongside specs and findings. Requires Tauri + React Flow + Monaco (per Execution Plan).
 
+- **Lifecycle Bar:**
+  A visual progress indicator showing the full journey:
+  `[Discover] → [Spec] → [Build] → [Verify] → [Review] → [Sweep] → [Certify] → [Demo] → [Ship]`
+  Each stage lights up as the project progresses. Click any stage for details. During deep-build, advances automatically in real-time. Ties together the preview system, node visualization, and the pipeline into one visual. The bar IS the product story.
+
 - These are desktop/web app features except Demo Mode, which could ship as a CLI feature earlier.
 
 ## Commands
