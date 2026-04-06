@@ -105,7 +105,7 @@ Agent definition files (read these, use as system prompts):
 - `agents/sweep-cross-node-integration.md`
 
 **Progressive agent reduction:**
-1. On **pass 1**: dispatch ALL agents (or all applicable — skip `frontend-ux` if no frontend nodes).
+1. On **pass 1**: dispatch the **tier-selected agents** from above (SMALL=3-5, MEDIUM=6-8, LARGE=all 12). Skip `frontend-ux` if no frontend nodes regardless of tier.
 2. After merging results, update `sweep_state.agent_convergence` for each agent:
    ```json
    "agent_convergence": {
@@ -117,10 +117,12 @@ Agent definition files (read these, use as system prompts):
    - `status`: `"clean"` (returned CLEAN), `"active"` (had findings), `"converged"` (2 consecutive clean passes — retired)
    - `last_findings_pass`: which pass this agent last found something
    - `consecutive_clean`: how many consecutive passes returned CLEAN
-3. On **pass 2+**: only dispatch agents where `status !== "converged"`. An agent that returned CLEAN on pass N gets re-run ONCE on pass N+1 to confirm. If clean again → `status: "converged"`, agent is retired for the rest of the sweep.
-   **Anti-oscillation guard:** Track each agent's finding count per pass. If an agent's finding count stays the same or increases for 3 consecutive passes (oscillation detected), force-converge it with `status: "force-converged"` and add its remaining findings to a `needs_manual_attention` list in `sweep_state`. Log: "Agent [name] force-converged after 3 oscillating passes — [N] findings moved to manual attention."
-4. **Exception:** `cross-node-integration` always re-runs if ANY other agent had findings (since fixes in one domain can break integration). It only converges when it returns CLEAN AND no other active agents had findings in the same pass.
-5. **Exception:** `code-quality` re-runs if ANY agent had findings (cross-cutting by nature). Same convergence rule as cross-node-integration.
+3. On **pass 2+**, determine which agents to dispatch using these rules **in precedence order**:
+   a. **Converged agents are retired:** Skip any agent with `status: "converged"` or `"force-converged"`.
+   b. **Cross-cutting agents re-run if ANY agent had findings:** `cross-node-integration` and `code-quality` re-run whenever any other agent reported findings in the previous pass, even if they themselves were clean. They only converge when they return CLEAN AND no other active agent had findings in the same pass.
+   c. **Confirmation pass for clean agents:** An agent that returned CLEAN on pass N gets re-run on pass N+1 to confirm. If clean again → `status: "converged"`, retired.
+   d. **Active agents always re-run:** Any agent with `status: "active"` (had findings last pass) is dispatched.
+   e. **Anti-oscillation guard:** If an agent's finding count stays the same or increases for 3 consecutive passes, force-converge it with `status: "force-converged"` and move remaining findings to `needs_manual_attention`.
 
 **Token budget:** Before dispatching, estimate total content size (sum of all file sizes in bytes). If over 200KB, use a tiered approach:
 1. Give each agent only the files relevant to its domain — e.g., `sweep-database` gets database node files + shared types, `sweep-frontend-ux` gets frontend node files + shared types. Map agent names to node IDs by matching the agent's domain keyword against node IDs and `file_scope` patterns.

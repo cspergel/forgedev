@@ -225,8 +225,9 @@ async function main() {
   let hasCodeErrors = false;
   let hasEnvErrors = false;
 
-  // Delete stale PID file from previous runs (do NOT kill — PIDs may be reused)
-  try { fs.unlinkSync(pidFile); } catch {}
+  // Note: stale PID files from crashed previous runs are left in place (not deleted,
+  // not killed — PIDs may be reused). If a stale server holds a port, the EADDRINUSE
+  // handler in the server-start step will detect it and report actionable guidance.
 
   // --- Step 1: Install dependencies ---
   let installCmd;
@@ -417,12 +418,14 @@ async function main() {
         writePid(child.pid);
 
         // Wait up to 15 seconds for server to start
+        let serverOutputBuf = "";
         const serverStarted = await new Promise((resolve) => {
           let output = "";
           const timeout = setTimeout(() => resolve(false), 15000);
 
           child.stdout.on("data", (data) => {
             output += data.toString();
+            serverOutputBuf = output; // Expose to outer scope for error classification
             // Look for common "server started" patterns
             if (
               /listening|ready|started|running|localhost|127\.0\.0\.1|0\.0\.0\.0/i.test(
@@ -436,6 +439,7 @@ async function main() {
 
           child.stderr.on("data", (data) => {
             output += data.toString();
+            serverOutputBuf = output; // Expose to outer scope for error classification
             if (/listening|ready|started|running/i.test(output)) {
               clearTimeout(timeout);
               resolve(true);
@@ -462,13 +466,27 @@ async function main() {
             output: "Dev server started successfully.",
           });
         } else {
-          steps.push({
-            name: "server",
-            status: "fail",
-            output: "Dev server did not start within 15 seconds.",
-            errorType: "code",
-          });
-          hasCodeErrors = true;
+          // Check if the failure was due to port conflict (EADDRINUSE)
+          const serverOutput = serverOutputBuf || "";
+          if (/EADDRINUSE|address already in use/i.test(serverOutput)) {
+            steps.push({
+              name: "server",
+              status: "fail",
+              output: "Dev server failed: port already in use (EADDRINUSE). " +
+                "This may be from a previous crashed run. Kill the process on the port manually, " +
+                "or delete .forgeplan/.verify-pids and retry.",
+              errorType: "environment",
+            });
+            hasEnvErrors = true;
+          } else {
+            steps.push({
+              name: "server",
+              status: "fail",
+              output: "Dev server did not start within 15 seconds.",
+              errorType: "code",
+            });
+            hasCodeErrors = true;
+          }
         }
 
         // Kill the server process tree (not just the shell wrapper)
