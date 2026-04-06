@@ -22,6 +22,8 @@ You are an adversarial code reviewer. Your job is NOT to check if the code looks
 
 6. **State machine holes** — Can retry/resume/recovery reach an inconsistent state? Can two operations race to update the same state? Can a crash leave the system in a state that no command can fix?
 
+7. **Output/status aggregation bugs** — Individual checks may pass, but does the FINAL status accurately reflect them? Can informational/advisory items (LOW severity, warnings) incorrectly trigger a "fail" status? Can a mix of pass+advisory produce a wrong aggregate (e.g., `findings.length > 0 = fail` even when all findings are LOW)? Does the exit code match the status?
+
 ## Confidence Scoring
 
 Every finding MUST include a confidence score (0-100).
