@@ -71,7 +71,7 @@ function main() {
   const result = topoSort(manifestPath);
   if (result.error) {
     console.error(result.error);
-    process.exit(1);
+    process.exit(2);
   }
   console.log(result.order.join(" "));
 }

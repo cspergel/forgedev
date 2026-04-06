@@ -27,7 +27,7 @@ function main() {
       message: "ERROR: No manifest found at .forgeplan/manifest.yaml. Run /forgeplan:discover first.",
     };
     console.log(JSON.stringify(result, null, 2));
-    process.exit(1);
+    process.exit(2);
   }
 
   const yaml = require(path.join(__dirname, "..", "node_modules", "js-yaml"));
@@ -40,7 +40,7 @@ function main() {
       message: `ERROR: .forgeplan/manifest.yaml could not be parsed: ${err.message}. Fix the manifest before proceeding.`,
     };
     console.log(JSON.stringify(result, null, 2));
-    process.exit(1);
+    process.exit(2);
   }
 
   let state = { nodes: {} };
@@ -53,7 +53,7 @@ function main() {
         message: `ERROR: .forgeplan/state.json could not be parsed: ${err.message}. Fix or delete state.json before proceeding.`,
       };
       console.log(JSON.stringify(result, null, 2));
-      process.exit(1);
+      process.exit(2);
     }
   }
 
@@ -63,7 +63,7 @@ function main() {
       message: "ERROR: Manifest has no nodes defined. Run /forgeplan:discover first.",
     };
     console.log(JSON.stringify(result, null, 2));
-    process.exit(1);
+    process.exit(2);
   }
 
   const nodeIds = Object.keys(manifest.nodes);
@@ -100,7 +100,7 @@ function main() {
       message: `WARNING: ${stuck.length} node(s) stuck: ${stuck.join(", ")}. Run /forgeplan:recover first.`,
     };
     console.log(JSON.stringify(result, null, 2));
-    process.exit(0);
+    process.exit(1);
   }
 
   // --- Priority 1b: Sweep/deep-build in progress ---

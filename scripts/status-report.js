@@ -25,7 +25,7 @@ function main() {
       type: "error",
       message: "No manifest found. Run /forgeplan:discover first.",
     }));
-    process.exit(1);
+    process.exit(2);
   }
 
   let manifest;
@@ -36,7 +36,7 @@ function main() {
       type: "error",
       message: `Could not parse manifest: ${err.message}`,
     }));
-    process.exit(1);
+    process.exit(2);
   }
 
   let state = { nodes: {} };
@@ -48,7 +48,7 @@ function main() {
         type: "error",
         message: `Could not parse state.json: ${err.message}`,
       }));
-      process.exit(1);
+      process.exit(2);
     }
   }
 

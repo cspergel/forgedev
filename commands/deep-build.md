@@ -82,6 +82,8 @@ All existing enforcement (PreToolUse, PostToolUse, Builder agent, Stop hook) app
 
 ### Phase 2.5: Run verify-runnable gate
 
+**Re-anchor:** Re-read `.forgeplan/manifest.yaml` and `.forgeplan/state.json` from disk before proceeding. Long build sessions may have lost context through compaction — re-reading ensures you have the current state of all nodes, file_scopes, and shared models.
+
 Before proceeding to integration, verify the project can actually run:
 
 ```bash
@@ -95,6 +97,8 @@ If it **fails**: dispatch a fix agent to address the issues (e.g., missing depen
 The verify-runnable gate **must pass** before proceeding to Phase 3. This catches fundamental project health issues (missing packages, syntax errors, broken configs) before investing time in integration checks and sweeps.
 
 ### Phase 3: Initial integration check
+
+**Re-anchor:** Re-read `.forgeplan/manifest.yaml` and `.forgeplan/state.json` from disk.
 
 Run:
 ```bash
@@ -113,6 +117,8 @@ If integration fails and `failures.length > 0`, add each failure as a finding in
 
 ### Phase 4: Claude sweep
 
+**Re-anchor:** Re-read `.forgeplan/manifest.yaml` and `.forgeplan/state.json` from disk. Also re-read all node specs from `.forgeplan/specs/` — the review phase may have triggered revisions.
+
 Run `/forgeplan:sweep` (dispatch all sweep agents in parallel, merge findings, fix with node-scoped enforcement, progressive convergence).
 
 After Claude sweep fixes, re-integrate (Phase 3 logic).
@@ -130,6 +136,8 @@ After sweep fixes and before cross-model verification, a runtime verification ag
 This phase sits between sweep (Phase 4) and cross-model (Phase 5) because runtime issues should be fixed before spending cross-model tokens.
 
 ### Phase 5: Cross-model verification loop
+
+**Re-anchor:** Re-read `.forgeplan/manifest.yaml` and `.forgeplan/state.json` from disk. The sweep may have modified specs (Category A fixes) and code across multiple nodes.
 
 **Tier-aware execution:** Before running cross-model verification, read `complexity_tier` from `.forgeplan/manifest.yaml`. **Also check** `.forgeplan/config.yaml` for `complexity.tier_override` — if set and non-empty, use the override instead:
 
@@ -172,6 +180,8 @@ This phase follows the **exact same logic as sweep Phase 6** (Task 9). All statu
 4. If `pass_number >= max_passes`: set `halted_from_phase` to `current_phase`, set `current_phase` to `"halted"`, report unresolved findings
 
 ### Phase 6: Final integration and report
+
+**Re-anchor:** Final re-read of `.forgeplan/manifest.yaml` and `.forgeplan/state.json` from disk before generating the report.
 
 1. Run final integration check
 2. Generate deep-build report at `.forgeplan/deep-build-report.md`:
