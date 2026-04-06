@@ -17,10 +17,12 @@ One command to go from idea to certified app. You describe what you want, confir
 
 Read the project directory to determine where to start:
 
-1. If `.forgeplan/manifest.yaml` does NOT exist → start from Step 1 (discover)
-2. If manifest exists but `.forgeplan/specs/` has no complete specs (specs have empty `test` fields in acceptance_criteria) → start from Step 2 (research) if no research exists, or Step 3 (spec) if research is done
-3. If manifest exists and specs are complete but some nodes are `pending` or `specced` → start from Step 4 (deep-build)
-4. If nodes are partially built → start from Step 4 (deep-build handles resume via next-node.js)
+1. If `.forgeplan/deep-build-report.md` exists AND `sweep_state` is null in state.json → **project is already complete**. Present the final output and exit. Do not re-run the pipeline.
+2. If `sweep_state` is non-null in state.json → **deep-build was interrupted**. Run `/forgeplan:recover` first to resume or abort the interrupted operation, then re-run greenfield. Log: "Interrupted deep-build detected. Run `/forgeplan:recover` to resume, then re-run `/forgeplan:greenfield`."
+3. If `.forgeplan/manifest.yaml` does NOT exist → start from Step 1 (discover)
+4. If manifest exists but `.forgeplan/specs/` has no complete specs (specs have empty `test` fields in acceptance_criteria) → start from Step 2 (research) if no `.forgeplan/research/` exists, or Step 3 (spec) if research is done
+5. If manifest exists and specs are complete but some nodes are `pending` or `specced` → start from Step 4 (deep-build)
+6. If nodes are partially built → start from Step 4 (deep-build handles resume via next-node.js)
 
 Log which step is being resumed: "Resuming greenfield from Step [N] — [reason]."
 
