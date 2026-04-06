@@ -136,8 +136,8 @@
         },
         "current_phase": {
           "type": "string",
-          "enum": ["build-all", "claude-sweep", "claude-fix", "cross-check", "cross-fix", "integrate", "finalizing", "halted"],
-          "description": "Current phase of the sweep/deep-build cycle. build-all is deep-build only (existing pipeline, next-node.js should still return recommendations). claude-sweep onward is the autonomous sweep loop. halted means max_passes reached without convergence."
+          "enum": ["build-all", "verify-runnable", "runtime-verify", "claude-sweep", "claude-fix", "cross-check", "cross-fix", "integrate", "finalizing", "halted"],
+          "description": "Current phase of the sweep/deep-build cycle. build-all is deep-build only (existing pipeline, next-node.js should still return recommendations). verify-runnable is the Phase A compilation/test/server gate. runtime-verify is the Phase B behavioral testing gate (Sprint 8). claude-sweep onward is the autonomous sweep loop. halted means max_passes reached without convergence."
         },
         "pass_number": {
           "type": "integer",

@@ -52,6 +52,11 @@ This is a sequential loop using existing commands:
      - If status is `"specced"`: verify the spec has non-empty acceptance criteria test fields (skeleton specs from discover have empty fields). If test fields are empty, re-run `/forgeplan:spec [node-id]` to complete them. Then `/forgeplan:build [node-id]`.
      - If status is `"built"`: node was built but not yet reviewed. Run `/forgeplan:review [node-id]` only.
      - After each build, run `/forgeplan:review [node-id]`
+     - **Bounce exhaustion recovery:** If a node's Stop hook has bounced 3 times (escalated to user), the autonomous deep-build must NOT halt the pipeline. Instead:
+       1. Mark the node as `"built"` in state.json with a warning flag: set `nodes.[id].bounce_exhausted: true` and `nodes.[id].unverified_acs` to the list of acceptance criteria that were not verified as passing.
+       2. Add each unmet AC as a sweep finding in `sweep_state.findings.pending` with `category: "code-quality"`, `severity: "HIGH"`, and `description: "Unverified AC from bounce exhaustion: [AC text]"`, `source_model: "stop-hook"`, `pass_found: 0`.
+       3. Continue the pipeline to the next node — do not break autonomy.
+       4. In the Phase 6 deep-build report, include a section: "**Nodes with unverified ACs (bounce exhaustion):** Node [id] completed with unverified ACs: [list]. The sweep will re-evaluate these."
    - `"complete"`: all nodes done, proceed to Phase 3
    - `"stuck"`: auto-recover stuck nodes based on their current status, then re-run next-node.js. Do NOT invoke interactive `/forgeplan:recover` — deep-build must stay autonomous.
      - `"building"` → reset to `"specced"` (rebuild from scratch)
