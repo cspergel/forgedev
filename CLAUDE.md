@@ -436,9 +436,11 @@ SWEEP AND CROSS-MODEL:
 ### Standalone App: Visual Features (Post-Plugin)
 **Goal:** Phantom previews and node visualization require a visual canvas — deferred to the standalone ForgePlan Workstation per Execution Plan.
 
-- **Phantom Previews:** Component renders for frontend, endpoint maps for API, schema diagrams for database. User watches app take shape during deep-build.
+- **Live Preview (formerly "Phantom Previews"):** Component renders for frontend, endpoint maps for API, schema diagrams for database. User watches app take shape during deep-build. Previews become less "phantom" and more real as the pipeline matures — eventually showing the actual running app.
+- **Playwright/Browser Testing Integration:** Automated browser testing during verification. Playwright navigates the actual app, clicks through flows, verifies UI renders correctly. Extends the Phase B runtime verification from API-level to full UI-level.
+- **Demo Mode:** Ask user during discovery: "Want a demo mode?" If yes, the build includes fake logins, seed data, mock API responses — a fully functional demo that showcases every feature without real credentials or services. User can click through the entire app immediately after build. Useful for stakeholder demos, testing, and validating the UX before connecting real services.
 - **Node Visualization:** Interactive dependency graph colored by status. Click nodes for details. Real-time updates during deep-build. Requires Tauri + React Flow + Monaco (per Execution Plan).
-- These are desktop/web app features, not CLI plugin features.
+- These are desktop/web app features, not CLI plugin features. Demo mode could ship earlier as a CLI feature (it's just a build constraint + seed data).
 
 ## Commands
 
