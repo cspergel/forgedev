@@ -568,8 +568,13 @@ async function main() {
   process.exit(status === "pass" || status === "warnings" ? 0 : status === "environment_error" ? 2 : 1);
 }
 
-main().catch((err) => {
-  console.error(`verify-runnable failed: ${err.message}`);
-  cleanupPids();
-  process.exit(2);
-});
+// Export process management helpers for reuse by runtime-verify.js
+if (require.main === module) {
+  main().catch((err) => {
+    console.error(`verify-runnable failed: ${err.message}`);
+    cleanupPids();
+    process.exit(2);
+  });
+} else {
+  module.exports = { killPid, killPidTree, runStep };
+}

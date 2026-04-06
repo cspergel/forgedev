@@ -19,6 +19,8 @@ Generate a detailed node spec for the specified node(s).
 - `.forgeplan/state.json` must exist
 - The target node must exist in the manifest (or use `--all`)
 
+If the argument contains `--autonomous` or `--all --autonomous`, use the Autonomous Mode described below for ALL nodes regardless of tier. Do not prompt for any user input. This is used by `/forgeplan:greenfield` for fully autonomous spec generation.
+
 ## Single Node Mode (`/forgeplan:spec [node-id]`)
 
 1. Read the manifest to get the node's metadata, connections, shared model dependencies, and tech stack
@@ -78,6 +80,12 @@ When invoked during `/forgeplan:deep-build`, the spec command runs **non-interac
 
 1. Read the manifest (tech_stack, shared_models, node metadata, connections)
 2. Read the existing skeleton spec and adjacent node specs for context
+2b. **Read research findings** if available: check `.forgeplan/research/` for any `.md` files. If research reports exist, extract and apply:
+    - Recommended packages → add to spec constraints (e.g., "Use [package] for [purpose]")
+    - API contracts from docs → use to define interface contracts with concrete method signatures and response shapes
+    - Best practices and patterns → inform acceptance criteria (e.g., "Must implement rate limiting per research findings")
+    - License-flagged packages → add to constraints as exclusions (e.g., "Do NOT use [package] — GPL license")
+    - Known gotchas → add as failure modes (e.g., "Supabase auth tokens expire after 1 hour — must handle refresh")
 3. Generate the BEST spec possible without user conversation:
    - Derive acceptance criteria from the node's role, interfaces, and tech stack
    - Infer constraints from tech_stack (e.g., "Must use Express for routing" if tech_stack.api_framework is express)

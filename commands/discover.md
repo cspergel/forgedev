@@ -85,6 +85,34 @@ If the file doesn't exist or can't be read, report a clear error: "Could not rea
 
 Multiple documents: support `--from doc1.md --from doc2.txt`. Read all documents, pass all content to the Architect for combined extraction.
 
+## Autonomous Discovery Mode
+
+If the user's argument contains `--autonomous`, or if this command is invoked by `/forgeplan:greenfield`:
+
+**Minimum viable input guard:** The description (from `$ARGUMENTS` after removing flags like `--autonomous`, `--from`) must contain at least a domain/purpose AND one user action. If too vague (e.g., "build me an app", "make a website"), halt with:
+```
+I need at least what domain this serves and one thing a user can do.
+Example: "A URL shortener where users paste a link and get a short URL"
+Example: "An invoice manager where freelancers create and send invoices to clients"
+```
+
+Process:
+1. Complete all Setup steps (git init, .forgeplan/ structure, CLAUDE.md, .gitignore) without asking
+2. The Architect assesses complexity tier, decomposes into nodes, and selects tech stack — all autonomously based on the project description
+3. **Default to mock mode** for all external service dependencies: set `tech_stack.mock_mode: true` in the manifest. Copy `.env.example` to `.env` with `MOCK_MODE=true` if the project has external dependencies.
+4. Present ONE confirmation summary:
+   ```
+   I'll build: [project name] ([TIER])
+   Stack: [runtime] / [language] / [framework] / [database] / [auth]
+   Nodes ([N]): [node-id-1], [node-id-2], ...
+   Shared models: [Model1], [Model2]
+
+   Confirm? (y/n)
+   ```
+5. If confirmed → generate manifest + skeleton specs, run validation, complete all Setup + Completion steps
+6. If rejected → ask "What would you change?" — address that one thing, then re-present the summary for confirmation
+7. After confirmation, do NOT present "Next steps" options — if called from greenfield, the orchestrator handles what comes next. If called standalone with --autonomous, present the normal next steps.
+
 ## Guided Discovery Mode
 
 If no template is specified, begin the guided architecture discovery conversation.

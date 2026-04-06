@@ -84,6 +84,12 @@ Start by understanding what the user wants to build. Ask about:
 
 If the user provides a detailed description, skip redundant questions. If the user says "use the client portal template" or similar, load the blueprint from the plugin templates.
 
+**Research context:** If `.forgeplan/research/` contains research reports, read them before the tech stack conversation. Use research findings to:
+- Recommend specific packages with evidence (download counts, license status)
+- Reference architecture patterns from similar projects found by the Inspiration agent
+- Flag known gotchas from API documentation gathered by the Docs Agent
+- Avoid license-flagged packages identified by the License Checker
+
 ### Phase 1.5: Complexity Assessment
 
 After understanding the project, assess its complexity across these dimensions (not all apply to every project — score only what's relevant):

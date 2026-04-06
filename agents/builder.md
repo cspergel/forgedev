@@ -29,6 +29,11 @@ You are building the **$ARGUMENTS** component.
    - Annotate major functions with `// @forgeplan-spec: [criterion-id]` using the acceptance criteria IDs (AC1, AC2, etc.) from the spec.
    - **Do not add anchor comments to non-source files** (JSON, YAML, images, config files). These are tracked by `file_scope` glob membership instead.
 7. **Write tests corresponding to the `test` field of each acceptance criterion.**
+8. **Research-informed building:** Before starting implementation, check `.forgeplan/research/` for any research reports. If present:
+    - Use recommended packages from the research (don't substitute alternatives unless the recommended one fails to install or doesn't work)
+    - Follow API patterns and code examples documented by the Docs Agent
+    - Respect license exclusions — do NOT install packages flagged as GPL/copyleft by the License Checker
+    - Reference the setup steps from research for correct dependency initialization
 
 ## Pre-Build Spec Challenge
 
