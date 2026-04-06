@@ -382,10 +382,11 @@ async function main() {
       // Start the dev server in background
       try {
         const parts = devCmd.split(" ");
+        const isWindows = process.platform === "win32";
         const child = spawn(parts[0], parts.slice(1), {
           cwd,
           stdio: ["pipe", "pipe", "pipe"],
-          detached: false,
+          detached: !isWindows, // Create process group on Unix for tree kill
           shell: true,
         });
 
@@ -446,8 +447,22 @@ async function main() {
           hasCodeErrors = true;
         }
 
-        // Kill the server (graceful then forced)
-        killPid(child.pid);
+        // Kill the server process tree (not just the shell wrapper)
+        try {
+          if (process.platform === "win32") {
+            // Windows: taskkill /T kills the entire process tree
+            execSync(`taskkill /T /F /PID ${child.pid}`, { stdio: "pipe", timeout: 5000 });
+          } else {
+            // Unix: kill the process group (negative PID) created by detached:true
+            process.kill(-child.pid, "SIGTERM");
+            const buf = new SharedArrayBuffer(4);
+            Atomics.wait(new Int32Array(buf), 0, 0, 3000);
+            try { process.kill(-child.pid, "SIGKILL"); } catch {}
+          }
+        } catch {
+          // Fallback to single-PID kill
+          killPid(child.pid);
+        }
       } catch (err) {
         steps.push({
           name: "server",

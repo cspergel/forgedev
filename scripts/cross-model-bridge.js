@@ -460,7 +460,8 @@ function crossCheckViaMcp(config, prompt, cwd) {
 }
 
 function crossCheckViaCli(config, prompt, cwd) {
-  const command = (config.cli_command || "codex").replace(/[^a-zA-Z0-9_./-]/g, "");
+  // Sanitize: strip shell metacharacters but allow path chars (: \ / . - _ spaces)
+  const command = (config.cli_command || "codex").replace(/[;&|`$(){}!#<>]/g, "");
   const args = config.cli_args || [];
   const timeout = config.timeout || 300000;
   const tmpPrompt = path.join(cwd, ".forgeplan", ".tmp-crosscheck-prompt.md");

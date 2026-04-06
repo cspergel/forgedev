@@ -491,15 +491,15 @@ function evaluateBash(toolInput, cwd) {
   });
 
   if (allSegmentsSafe) {
-    // Block command substitution in non-git-commit commands (can hide mutations inside safe commands)
-    // Allow backticks in git commit messages (common in conventional commits)
-    const isGitCommit = /^\s*git\s+(commit|tag)\b/.test(command);
-    if (!isGitCommit && /\$\(|`[^`]*`|<\(|>\(/.test(command)) {
+    // Block ALL command substitution — $() and backticks expand in the shell BEFORE the
+    // command runs, so even "safe" commands like git commit can execute arbitrary code via
+    // git commit -m "$(malicious)". No exemptions.
+    if (/\$\(|`[^`]*`|<\(|>\(/.test(command)) {
       return {
         block: true,
         message:
           `BLOCKED: Command substitution ($(), backticks, process substitution) is not allowed during active ${activeStatus} operations. ` +
-          `Use the Write or Edit tool for file operations.`,
+          `Use the Write or Edit tool for file operations. For git commits, use a simple quoted message without backticks.`,
       };
     }
     return { block: false };

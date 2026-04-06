@@ -152,7 +152,7 @@ function evaluate(input) {
       `1. Read the node spec at .forgeplan/specs/${activeNodeId}.yaml\n` +
       `2. For EACH acceptance criterion (AC1, AC2, etc.), verify it is met by the code you wrote. Check the 'test' field for each AC.\n` +
       `3. If ALL criteria pass:\n` +
-      `   - Update .forgeplan/state.json: set nodes.${activeNodeId}.status to "built", set nodes.${activeNodeId}.bounce_count to 0, set active_node to null, set stop_hook_active to false, update last_updated\n` +
+      `   - Update .forgeplan/state.json: set nodes.${activeNodeId}.status to "built", set nodes.${activeNodeId}.last_build_completed to current ISO timestamp, set nodes.${activeNodeId}.bounce_count to 0, set active_node to null, set stop_hook_active to false, update last_updated\n` +
       `   - Then you may stop.\n` +
       `4. If any criterion FAILS: continue working to address it. Do NOT stop until all criteria pass or you've exhausted your attempts.\n`,
   };

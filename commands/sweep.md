@@ -178,17 +178,23 @@ Each agent returns findings in the structured FINDING format or CLEAN.
 **Parallel fix mode (MEDIUM/LARGE tiers with 3+ nodes needing fixes):**
 When multiple nodes need fixes and their file_scopes don't overlap, fix agents can run in parallel using git worktrees for isolation:
 
-1. For each node needing fixes, create an isolated worktree:
+1. **Set up state BEFORE dispatching:** For each node needing fixes, in the main working tree:
+   - Set `nodes.[node-id].previous_status` to current status
+   - Set `nodes.[node-id].status` to `"sweeping"`
+   - Write state.json (all state updates are serialized in the main tree BEFORE parallel dispatch)
+2. For each node, create an isolated worktree:
    ```bash
    node "${CLAUDE_PLUGIN_ROOT}/scripts/worktree-manager.js" create [node-id]
    ```
-2. Dispatch fix agents in parallel (Agent tool, single message, N calls) — each agent works in its worktree path instead of the main working directory.
-3. After all parallel agents complete, merge each worktree back sequentially:
+3. Set `sweep_state.fixing_node` to null (multiple nodes fixing simultaneously — use per-agent context, not global state).
+4. Dispatch fix agents in parallel (Agent tool, single message, N calls) — each agent works in its worktree path instead of the main working directory. **Agents must NOT write to `.forgeplan/state.json`** — they only modify source code within the node's file_scope. State updates happen after merge.
+5. After all parallel agents complete, merge each worktree back sequentially:
    ```bash
    node "${CLAUDE_PLUGIN_ROOT}/scripts/worktree-manager.js" merge [node-id]
    ```
-4. If a merge conflict occurs (exit code 1), fall back to sequential fix for that node in the main working tree.
-5. After all merges, clean up: `node "${CLAUDE_PLUGIN_ROOT}/scripts/worktree-manager.js" cleanup`
+6. **After each successful merge**, update state.json: restore `nodes.[node-id].previous_status`, set `sweep_state.fixing_node` to null, move findings from pending to resolved.
+7. If a merge conflict occurs (exit code 1), fall back to sequential fix for that node in the main working tree.
+8. After all merges, clean up: `node "${CLAUDE_PLUGIN_ROOT}/scripts/worktree-manager.js" cleanup`
 
 **When NOT to parallelize:** If nodes share file_scope (e.g., SMALL tier with `src/**`), or if findings in one node reference files owned by another node, fall back to sequential mode. When in doubt, use sequential.
 

@@ -121,14 +121,22 @@ function mergeWorktree(nodeId) {
   }
 
   // Commit any uncommitted changes in the worktree
-  try {
-    const status = run("git status --porcelain", { cwd: worktreePath });
-    if (status) {
+  const status = run("git status --porcelain", { cwd: worktreePath, throwOnError: false });
+  if (status) {
+    try {
       run("git add -A", { cwd: worktreePath });
       run(`git commit -m "forgeplan: sweep fix for ${nodeId}"`, { cwd: worktreePath });
+    } catch (err) {
+      // Commit failed with real uncommitted changes — do NOT clean up, report error
+      const stderr = err.stderr || err.message || "";
+      console.log(JSON.stringify({
+        status: "error",
+        node_id: nodeId,
+        message: `Failed to commit changes in worktree: ${stderr.substring(0, 300)}`,
+        worktree_path: worktreePath,
+      }));
+      process.exit(2);
     }
-  } catch (err) {
-    // If nothing to commit, that's fine
   }
 
   // Check if worktree has commits ahead of base

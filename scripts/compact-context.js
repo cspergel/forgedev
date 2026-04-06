@@ -187,6 +187,8 @@ function postCompact() {
       content +
       "--- End Restored Context ---\n"
     );
+    // Delete the file after reading to prevent stale context replay in future sessions
+    try { fs.unlinkSync(contextFile); } catch {}
   } catch {
     process.stderr.write(
       "\n--- ForgePlan: Could not restore context after compaction. " +
