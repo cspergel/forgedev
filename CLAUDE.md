@@ -290,8 +290,10 @@ SWEEP AND CROSS-MODEL:
 - 20+ blocked decisions: group by severity (HIGH first), then by node. Add "accept all HIGH" shorthand.
 - High finding density as tier signal: >15 findings/node on SMALL suggests wrong tier. Surface advisory.
 
-### Sprint 7B: Ambient Mode + Confidence Scoring
-**Goal:** Ambient guidance for returning users. Confidence scoring to reduce sweep noise. Document import for the "I brainstormed elsewhere" workflow.
+### Sprint 7B: Ambient Mode + Confidence Scoring (COMPLETE)
+**Goal:** Ambient guidance for returning users. Confidence scoring to reduce sweep noise. Document import for the "I brainstormed elsewhere" workflow. **DONE.**
+
+Deliverables: Ambient SessionStart (healthy-state display, contextual next-command, tier display, sweep progress), Confidence Scoring (0-100 per finding across all 12 sweep agents, calibration guidance, <75 filtered in Phase 3, fallback regex for backward compat), Document Import (--from argument in discover, architect document-extraction mode with 8-step process, contradiction detection, completeness checklist, large doc wiki indexing, formal REQ ID preservation, non-English support).
 
 **Pillar 1: Ambient SessionStart**
 - Enhance session-start.js to detect full project state (not just stuck builds)
