@@ -123,15 +123,32 @@ Run `/forgeplan:sweep` (dispatch all sweep agents in parallel, merge findings, f
 
 After Claude sweep fixes, re-integrate (Phase 3 logic).
 
-### Phase 4.5: Runtime verification (Sprint 8 placeholder)
+### Phase 4.5: Runtime verification (Phase B)
 
-> **NOTE:** This phase will be implemented in Sprint 8. For now it is a no-op — proceed directly to Phase 5.
+**Re-anchor:** Re-read `.forgeplan/manifest.yaml` for complexity_tier and node specs.
 
-After sweep fixes and before cross-model verification, a runtime verification agent will:
-1. Run the project's test suite and dev server
-2. Verify API endpoints respond correctly
-3. Check for runtime errors not caught by static analysis
-4. Feed runtime failures back into the fix cycle
+**Tier gate:** Read `complexity_tier` (with config.yaml `tier_override` check):
+- **SMALL:** Skip Phase B entirely. Log: "Skipping runtime verification — SMALL tier (Phase A sufficient)." Proceed to Phase 5.
+- **MEDIUM/LARGE:** Run runtime verification.
+
+```bash
+node "${CLAUDE_PLUGIN_ROOT}/scripts/runtime-verify.js" --tier [TIER]
+```
+
+Check the result:
+
+**If `status: "pass"` or `status: "skip"`:** Log level reached and endpoints tested. Proceed to Phase 5.
+
+**If `status: "fail"`:** Runtime verification found issues.
+1. Add each finding to `sweep_state.findings.pending` (set `pass_found`, `category: "runtime-verification"`)
+2. Dispatch fix agents for affected nodes (same as sweep Phase 4 fix cycle — fresh agent per node, node-scoped enforcement)
+3. After fixes, re-run `runtime-verify.js`
+4. Repeat up to 3 times. If still failing after 3 attempts, log unresolved findings and proceed to Phase 5 — cross-model and the final report will note the unresolved runtime issues.
+
+**If `status: "environment_error"`:** Log the error. Do NOT add as code findings. Attempt auto-fix:
+- Missing .env → copy from .env.example, set MOCK_MODE=true
+- Port conflict → report to user with port identification guidance
+- After auto-fix attempt, retry once. If still failing, skip Phase B with warning and proceed to Phase 5.
 
 This phase sits between sweep (Phase 4) and cross-model (Phase 5) because runtime issues should be fixed before spending cross-model tokens.
 

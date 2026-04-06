@@ -24,6 +24,7 @@ project:
     deployment: ""                  # e.g., "docker", "vercel", "railway", "fly", "undecided"
     dev_port: null                  # Default dev server port (e.g., 3000, 5173). null = auto-detect.
     mock_mode: false                # If true, builder adds MOCK_MODE support for external services
+    infrastructure: ""              # Optional: external service dependencies (e.g., "docker", "redis", "none")
   created_at: ""                    # ISO 8601 timestamp
   revision_count: 0                 # Incremented on every manifest write
 
