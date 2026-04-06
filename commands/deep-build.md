@@ -139,7 +139,7 @@ node "${CLAUDE_PLUGIN_ROOT}/scripts/runtime-verify.js" --tier [TIER]
 
 Check the result:
 
-**If `status: "pass"` or `status: "skip"`:** Log level reached and endpoints tested. Proceed to Phase 5.
+**If `status: "pass"` or `status: "skip"`:** Log level reached and endpoints tested. If the result contains any LOW/advisory findings (e.g., "public endpoint — verify intentional", "no endpoint contracts"), include them in the deep-build report under "**Runtime Advisories**" so the user sees them in the final output. These are informational, not blocking. Proceed to Phase 5.
 
 **If `status: "fail"`:** Runtime verification found issues.
 1. For each finding from runtime-verify.js output:

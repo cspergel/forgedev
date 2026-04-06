@@ -450,7 +450,7 @@ Upgrade the review/sweep pipeline with team-colored agents that catch fundamenta
   - `sweep-contract-drift` (Orange Team, model: sonnet) — Checks every enum, schema field, import/export, and producer/consumer contract for cross-file consistency. Finds values added in one place but missing in another.
 
 - **Review command enhancement:**
-  - `/forgeplan:review [node] --deep` dispatches Base (7-dimension) + Red + Blue review passes
+  - `/forgeplan:review [node] --deep` dispatches Base (7-dimension) + Red + Blue review passes (Sprint 9+ — not yet implemented in review.md)
   - Default `/forgeplan:review` stays as current Base-only (fast, cheap)
   - Sweep automatically includes team agents for MEDIUM/LARGE tier (3 team agents join the 6-12 domain agents)
 
