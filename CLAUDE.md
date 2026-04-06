@@ -576,8 +576,9 @@ Upgrade the review/sweep pipeline with team-colored agents that catch fundamenta
 | Agent | Model | Team | Domain |
 |-------|-------|------|--------|
 | sweep-adversarial | opus | Red | Security boundaries, adversarial inputs, false-pass/fail |
-| sweep-user-flows | sonnet | Blue | User journey tracing, recovery paths, error message quality |
+| sweep-user-flows | sonnet | Blue (optional) | User journey tracing, recovery paths, error message quality |
 | sweep-contract-drift | sonnet | Orange | Cross-file enum/schema/contract consistency |
+| sweep-holistic | opus | Rainbow (optional) | 10,000ft architecture coherence, systemic risks, tech debt |
 
 ## Six Hook Types
 
