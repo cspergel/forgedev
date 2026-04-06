@@ -1,7 +1,7 @@
 ---
 description: Sweep your entire codebase for cross-cutting issues. Tier-aware agent selection (SMALL 3-5, MEDIUM 7-9, LARGE up to 16) using 12 domain agents + 4 team agents (Red adversarial, Blue user-flows, Orange contract-drift, Architect holistic). Progressive convergence drops clean agents. Findings fixed with node-scoped enforcement, then cross-model verified.
 user-invocable: true
-argument-hint: "[--cross-check (also run cross-model verification)]"
+argument-hint: "[--cross-check (cross-model verification)] [--deep (add Blue+Holistic team agents)]"
 allowed-tools: Read Write Edit Bash Glob Grep Agent
 ---
 
@@ -93,7 +93,7 @@ Run tier-selected sweep agents (3-16) in parallel across the entire codebase: 12
 - **LARGE tier (or no tier set):** Dispatch all 12 domain agents + 2 team agents:
   - All 12 domain agents
   - **Team agents (always):** `sweep-adversarial` (Red — security boundaries), `sweep-contract-drift` (Orange — cross-file consistency)
-  - **Team agents (optional, on request or `--deep` flag):** `sweep-user-flows` (Blue — user journey tracing), `sweep-holistic` (Architect — 10,000ft review). These add value for complex projects but are redundant with domain agents for most sweeps.
+  - **Team agents (only if `--deep` flag is present in $ARGUMENTS):** `sweep-user-flows` (Blue — user journey tracing), `sweep-holistic` (Architect — 10,000ft review). These add value for complex projects but are redundant with domain agents for most sweeps. If `--deep` is NOT present, skip these two agents.
 
 **On the first pass, dispatch agents per the tier rules above. On subsequent passes, follow the precedence rules in "Progressive agent reduction" below.**
 

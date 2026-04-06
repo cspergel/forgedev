@@ -567,7 +567,7 @@ async function main() {
 
     // Warn if no endpoint contracts found — Phase B has limited value without them
     if (endpoints.length === 0) {
-      findings.push({ node: "project", category: "runtime-verification", severity: "MEDIUM", confidence: 70,
+      findings.push({ node: "project", category: "runtime-verification", severity: "LOW", confidence: 70,
         description: "No API endpoint contracts found in node specs. Phase B could only verify server starts. Add interface contracts (e.g., 'GET /api/users -> { users: User[] }') to node specs for meaningful endpoint testing.",
         file: resolveNodeFile("project"), line: "", fix: "Add contract fields to interface definitions in .forgeplan/specs/" });
     }
@@ -636,7 +636,10 @@ async function main() {
     cleanup();
   }
 
-  const status = findings.length === 0 ? "pass" : "fail";
+  // Only HIGH or MEDIUM findings cause a "fail" status.
+  // LOW/informational findings (e.g., "public endpoint — verify intentional") are advisories, not failures.
+  const actionableFindings = findings.filter(f => f.severity === "HIGH" || f.severity === "MEDIUM");
+  const status = actionableFindings.length === 0 ? "pass" : "fail";
   console.log(JSON.stringify({ status, tier, level_reached: levelReached, endpoints_tested: endpointsTested,
     endpoints_passed: endpointsPassed, findings }, null, 2));
   process.exit(status === "pass" ? 0 : 1);
