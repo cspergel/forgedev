@@ -19,7 +19,7 @@
 
 const fs = require("fs");
 const path = require("path");
-const { execSync, execFileSync, spawn } = require("child_process");
+const { execSync, spawnSync, spawn } = require("child_process");
 const yaml = require(path.join(__dirname, "..", "node_modules", "js-yaml"));
 
 async function main() {
@@ -229,11 +229,20 @@ function reviewViaCli(config, prompt, cwd) {
   try {
     fs.writeFileSync(tmpPrompt, prompt, "utf-8");
 
-    // Use execFileSync with argv array — no shell interpretation, safe for all paths/args
+    // Use spawnSync with argv array + shell:true — safe argument passing
+    // AND Windows .cmd shim resolution (execFileSync breaks shims)
     const fullArgs = [...args.map(String), tmpPrompt];
-    const result = execFileSync(command, fullArgs, {
-      encoding: "utf-8", timeout, cwd, stdio: ["pipe", "pipe", "pipe"],
+    const proc = spawnSync(command, fullArgs, {
+      encoding: "utf-8", timeout, cwd, shell: true,
+      stdio: ["pipe", "pipe", "pipe"],
     });
+    if (proc.error) throw proc.error;
+    if (proc.status !== 0) {
+      const err = new Error(proc.stderr || `CLI exited with code ${proc.status}`);
+      err.stderr = proc.stderr;
+      throw err;
+    }
+    const result = proc.stdout;
 
     return parseReviewResponse(result);
   } catch (err) {

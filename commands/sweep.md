@@ -9,7 +9,7 @@ allowed-tools: Read Write Edit Bash Glob Grep Agent
 
 **THIS COMMAND IS AUTONOMOUS WITH ONE EXCEPTION. Execute all phases (1→7) without stopping, pausing, or asking "shall I continue?". Fix ALL findings automatically. Do not present intermediate results and wait. The ONE exception: Category C blocked decisions (architectural choices) require user input — present them all at once, get answers, then continue automatically. Aside from that, run straight through to the final report.**
 
-Run up to 12 parallel sweep agents across the entire codebase, then fix findings with node-scoped enforcement. Agents that return CLEAN are progressively dropped from subsequent passes — only agents with findings re-run.
+Run tier-selected sweep agents (3-12) in parallel across the entire codebase, then fix findings with node-scoped enforcement. Progressive reduction: agents that return CLEAN twice converge and are retired. Cross-cutting agents (code-quality, cross-node-integration) re-run whenever any other agent has findings. See Phase 2 for the full dispatch precedence rules.
 
 ## Prerequisites
 
@@ -48,7 +48,8 @@ Run up to 12 parallel sweep agents across the entire codebase, then fix findings
      4. Set the node's status to "revised" in state.json so it gets rebuilt
    - For skipped decisions: remove from `blocked_decisions`, add to `needs_manual_attention` with `"reason": "user-skipped"`
    - Clear `blocked_decisions` array
-   - Set `sweep_state.current_phase` to "claude-sweep" and proceed to Phase 2 (re-sweep affected agents only — use the agent categories from the blocked findings to determine which agents to re-run)
+   - **Rebuild affected nodes BEFORE re-sweeping:** For each node set to "revised", run `/forgeplan:build [node-id]` to rebuild against the updated spec. The re-sweep must audit current code, not stale code from before the spec change. Use fresh agents for each rebuild.
+   - After all rebuilds complete, set `sweep_state.current_phase` to "claude-sweep" and proceed to Phase 2 (re-sweep affected agents only — use the agent categories from the blocked findings to determine which agents to re-run)
 
 4. Create `.forgeplan/sweeps/` directory if it doesn't exist
 5. Set `sweep_state` in state.json (only when NOT called from deep-build):
@@ -171,7 +172,8 @@ Each agent returns findings in the structured FINDING format or CLEAN.
    ```
 8. Add all findings to `sweep_state.findings.pending`. **Set `pass_found: sweep_state.pass_number`** on each finding before inserting — `extractFindings` and the sweep agents don't include this field, but the state schema requires it.
 9. If there are findings: update `sweep_state.current_phase` to `"claude-fix"` and proceed to Phase 4.
-10. **If zero findings** (all agents returned CLEAN): skip Phase 4, set `sweep_state.current_phase` to `"integrate"`, and proceed directly to Phase 5.
+10. **If zero findings AND zero failed agents** (all agents returned CLEAN successfully): skip Phase 4, set `sweep_state.current_phase` to `"integrate"`, and proceed directly to Phase 5.
+11. **If zero findings BUT some agents failed:** Do NOT treat as clean. Failed agents are re-dispatched on the next pass (their `agent_convergence` status stays `"active"` or `"failed"`). Increment pass_number and loop back to Phase 2. A pass with only failed responses is not a clean pass for convergence purposes.
 
 ### Phase 4: Fix findings (node-scoped)
 

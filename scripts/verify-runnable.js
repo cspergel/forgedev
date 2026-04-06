@@ -451,7 +451,9 @@ async function main() {
             resolve(false);
           });
 
-          child.on("exit", (code) => {
+          // Use 'close' not 'exit' — 'close' fires after stdio is fully drained,
+          // so serverOutputBuf contains the complete output for error classification
+          child.on("close", (code) => {
             if (code !== 0 && code !== null) {
               clearTimeout(timeout);
               resolve(false);
@@ -473,8 +475,8 @@ async function main() {
               name: "server",
               status: "fail",
               output: "Dev server failed: port already in use (EADDRINUSE). " +
-                "This may be from a previous crashed run. Kill the process on the port manually, " +
-                "or delete .forgeplan/.verify-pids and retry.",
+                "Another process is using the port. Find and kill it manually " +
+                "(lsof -i :PORT on Unix, netstat -ano | findstr :PORT on Windows), then retry.",
               errorType: "environment",
             });
             hasEnvErrors = true;
