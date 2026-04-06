@@ -138,7 +138,9 @@ Choose [1/2/3]:
 **Restart pass behavior:**
 - Keep `sweep_state.findings.resolved` from prior passes
 - Reset `sweep_state.findings.pending` to only findings from this pass that weren't resolved
-- Set `sweep_state.current_phase` to `"claude-sweep"` (restart the whole pass)
+- Set `sweep_state.current_phase` based on the operation:
+  - If `operation === "deep-building"` and the interrupted phase was `"build-all"`: restart from `"build-all"` (don't skip to claude-sweep)
+  - Otherwise: restart from `"claude-sweep"` (restart the sweep pass)
 - If `active_node` was set (mid-fix), clear it and set `nodes.[node].status` back to the pre-sweep status
 
 **Abort behavior:**

@@ -21,7 +21,7 @@ This project uses **ForgePlan Core**, an architecture-governed build harness. Fo
 
 | Command | What it does |
 |---------|-------------|
-| `/forgeplan:discover` | Architecture discovery — conversation, document import, or template |
+| `/forgeplan:discover` | Architecture discovery — guided conversation or template |
 | `/forgeplan:spec [node\|--all]` | Generate detailed specs |
 | `/forgeplan:build [node]` | Build a node with enforcement |
 | `/forgeplan:review [node]` | 7-dimension spec-diff review |

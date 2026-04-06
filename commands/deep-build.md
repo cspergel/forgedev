@@ -50,6 +50,7 @@ This is a sequential loop using existing commands:
    - `"recommendation"`:
      - If status is `"pending"`: run `/forgeplan:spec [node-id]` first to generate a complete spec with filled-in acceptance criteria and test fields. Verify the spec file exists and has non-empty `test` fields for each AC before proceeding. Then `/forgeplan:build [node-id]`.
      - If status is `"specced"`: verify the spec has non-empty acceptance criteria test fields (skeleton specs from discover have empty fields). If test fields are empty, re-run `/forgeplan:spec [node-id]` to complete them. Then `/forgeplan:build [node-id]`.
+     - If status is `"built"`: node was built but not yet reviewed. Run `/forgeplan:review [node-id]` only.
      - After each build, run `/forgeplan:review [node-id]`
    - `"complete"`: all nodes done, proceed to Phase 3
    - `"stuck"`: auto-recover stuck nodes (set status back to "specced" for building nodes, "built" for reviewing nodes, clear `active_node`), then re-run next-node.js. Do NOT invoke interactive `/forgeplan:recover` — deep-build must stay autonomous.

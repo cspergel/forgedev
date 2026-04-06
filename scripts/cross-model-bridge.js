@@ -217,11 +217,22 @@ async function main() {
   const findings = extractFindings(result.report, reviewConfig.provider || "alternate");
 
   // Determine status — preserve error status, don't mask it as clean
+  // Also detect malformed output: if no FINDING blocks AND the report doesn't
+  // contain recognizable review content (e.g., it's blank, truncated, or gibberish),
+  // treat as error rather than falsely certifying as "clean"
   let finalStatus;
   if (result.status === "error") {
     finalStatus = "error";
   } else if (findings.length === 0) {
-    finalStatus = "clean";
+    const report = result.report || "";
+    const hasSubstantiveContent = report.length > 100 &&
+      (/\bclean\b/i.test(report) || /\bno\s+(issues?|findings?|problems?)\b/i.test(report) || /\bpass/i.test(report) || /FINDING:/i.test(report));
+    if (!hasSubstantiveContent) {
+      console.error(`Warning: Cross-model response appears malformed or truncated (${report.length} chars, no recognizable review content). Treating as error.`);
+      finalStatus = "error";
+    } else {
+      finalStatus = "clean";
+    }
   } else {
     finalStatus = "findings";
   }

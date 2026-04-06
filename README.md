@@ -15,7 +15,7 @@ ForgePlan fixes this by making the architecture the governing constraint, not ju
 ## How It Works
 
 ```
-1. DISCOVER   →  Describe your project (or import a planning document).
+1. DISCOVER   →  Describe your project. ForgePlan decomposes it into nodes
                   ForgePlan decomposes it into nodes with clear boundaries,
                   shared models, and a dependency graph.
 
