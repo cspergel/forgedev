@@ -117,7 +117,7 @@ Sprint 6 hardening (same sprint, post-initial):
 
 - **Not all dimensions apply to every project type.** CLI tools, libraries, data pipelines, and non-web applications may have few applicable dimensions — score only what's relevant. Skip dimensions that don't apply rather than forcing every project into a web-app framework.
 - **The tier is the Architect's judgment call, not a formula.** A 3-entity project with HIPAA compliance and payment processing is LARGE. A 20-entity CRUD admin panel is MEDIUM. Entity count is a signal, not the answer.
-- After assessment, the Architect presents its reasoning AND the pipeline consequences: "I'd rate this MEDIUM, which means: 3-5 nodes, full specs per node, 6-8 sweep agents, cross-model optional. If that feels heavy, SMALL would mean: 1-2 nodes, quick specs, 3-4 agents. Which fits?"
+- After assessment, the Architect presents its reasoning AND the pipeline consequences: "I'd rate this MEDIUM, which means: 3-5 nodes, full specs per node, 6-8 sweep agents, cross-model optional. If that feels heavy, SMALL would mean: 1-2 nodes, quick specs, 3-5 agents. Which fits?"
 - User can always override.
 - **Tier upgrade/downgrade:** If the project changes mid-build (user adds OAuth, payments, new integrations), `/forgeplan:revise` should prompt: "This changes the project complexity. Current tier: SMALL. Reassess?" The `tier_override` field in config.yaml takes effect at the next command invocation. No need to re-run discovery — just update the manifest's `complexity_tier` and the pipeline adapts.
 
@@ -131,7 +131,7 @@ Sprint 6 hardening (same sprint, post-initial):
       Architect drafts, user confirms, no multi-turn refinement
     → Single-pass build — builder generates all code in one session,
       including scaffolding
-    → 3-4 sweep agents, content-adaptive:
+    → 3-5 sweep agents, content-adaptive:
       Always: code-quality + auth-security + error-handling
       If database in tech_stack: + sweep-database
       If frontend nodes exist: + sweep-frontend-ux
@@ -375,7 +375,7 @@ SWEEP AND CROSS-MODEL:
 - Complexity tier determines how much governance the pipeline applies
 - **Exit criteria are tier-aware:**
   ```
-  SMALL: verify-runnable Phase A passes (install + tests + dev server) + 3-4 agent sweep clean.
+  SMALL: verify-runnable Phase A passes (install + tests + dev server) + 3-5 agent sweep clean.
          No Phase B runtime testing. No cross-model.
          "Certified" = it runs, tests pass, basic sweep is clean.
 

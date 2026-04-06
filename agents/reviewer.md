@@ -28,7 +28,7 @@ Read `complexity_tier` from `.forgeplan/manifest.yaml`:
   1. Spec Compliance (are ACs met?)
   2. Constraint Enforcement (are constraints respected?)
   3. Non-Goal Enforcement (nothing out-of-scope implemented?)
-  Skip: Interface Integrity (few nodes = few interfaces), Failure Mode Coverage (basic sweep catches this), Test Completeness (verify-runnable runs tests), Shared Model Compliance (few shared models in SMALL).
+  Skip: Interface Integrity (few nodes = few interfaces), Pattern Consistency (few nodes = minimal cross-node patterns), Anchor Comment Coverage (SMALL tier uses coarse nodes), Failure Mode Coverage (basic sweep catches this).
 
 - **MEDIUM tier:** Full 7-dimension review but compressed output. Report per-criterion PASS/FAIL without extensive narrative.
 

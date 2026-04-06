@@ -18,6 +18,8 @@ project:
     test_framework: "vitest"
     frontend: "react"
     deployment: "vercel"
+    test_command: ""
+    dev_port: null
     mock_mode: false
   created_at: ""
   revision_count: 0

@@ -48,19 +48,6 @@ function loadTechStack() {
   }
 }
 
-// --- Check if a command exists ---
-function commandExists(cmd) {
-  try {
-    execSync(`which ${cmd} 2>/dev/null || where ${cmd} 2>/dev/null`, {
-      stdio: "pipe",
-      encoding: "utf-8",
-    });
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 // --- Run a command with timeout and error classification ---
 function runStep(name, command, timeoutMs) {
   const result = { name, command, status: "pass", output: "", error: "" };
@@ -123,32 +110,20 @@ function cleanupPids() {
       // Process already gone
     }
   }
-  // Wait 2 seconds, then force kill any remaining
-  if (pids.length > 0) {
-    setTimeout(() => {
-      for (const pid of pids) {
-        try {
-          process.kill(pid, "SIGKILL");
-        } catch {
-          // Already gone
-        }
-      }
-      try {
-        fs.unlinkSync(pidFile);
-      } catch {}
-    }, 2000);
-  } else {
-    try {
-      fs.unlinkSync(pidFile);
-    } catch {}
-  }
+  // Clean up the PID file. If processes don't die from SIGTERM,
+  // the next run's initial cleanup will catch them.
+  try {
+    fs.unlinkSync(pidFile);
+  } catch {}
 }
 
 // --- Detect project type ---
 function detectProjectType(techStack, manifestPath) {
-  // Check if there are frontend or API nodes
+  // Check manifest for node types
   let hasFrontend = false;
   let hasApi = false;
+  let hasLibraryNode = false;
+  let hasCliNode = false;
   try {
     const yamlPath = path.join(__dirname, "..", "node_modules", "js-yaml");
     const yaml = require(yamlPath);
@@ -157,13 +132,26 @@ function detectProjectType(techStack, manifestPath) {
       for (const [, node] of Object.entries(manifest.nodes)) {
         if (node.type === "frontend") hasFrontend = true;
         if (node.type === "service" || node.type === "integration") hasApi = true;
+        if (node.type === "library") hasLibraryNode = true;
+        if (node.type === "cli") hasCliNode = true;
       }
     }
   } catch {}
 
-  const isLibrary = !hasFrontend && !hasApi;
-  const isCli =
-    techStack.frontend === "none" && !hasFrontend;
+  // Check package.json for bin field (indicates CLI)
+  let hasBinField = false;
+  try {
+    const pkg = JSON.parse(
+      fs.readFileSync(path.join(cwd, "package.json"), "utf-8")
+    );
+    hasBinField = Boolean(pkg.bin);
+  } catch {}
+
+  // isLibrary: explicit library node in manifest, or no frontend/service nodes and no bin field
+  const isLibrary = hasLibraryNode || (!hasFrontend && !hasApi && !hasBinField);
+
+  // isCli: explicit cli node in manifest, or package.json has a bin field
+  const isCli = hasCliNode || hasBinField;
 
   return { hasFrontend, hasApi, isLibrary, isCli };
 }
@@ -223,13 +211,23 @@ async function main() {
         try {
           const srcDir = path.join(cwd, "src");
           if (fs.existsSync(srcDir)) {
-            const grepCmd = `grep -r "as any\\|@ts-ignore\\|@ts-nocheck" src/ --include="*.ts" --include="*.tsx" -c 2>/dev/null || echo "0"`;
-            const escapeCount = execSync(grepCmd, {
-              encoding: "utf-8",
-              cwd,
-              timeout: 10000,
-            }).trim();
-            if (parseInt(escapeCount) > 0) {
+            const escapePattern = /as any|@ts-ignore|@ts-nocheck/g;
+            let escapeCount = 0;
+            function scanForEscapes(dir) {
+              const entries = fs.readdirSync(dir, { withFileTypes: true });
+              for (const entry of entries) {
+                if (entry.isDirectory()) {
+                  if (entry.name === "node_modules") continue;
+                  scanForEscapes(path.join(dir, entry.name));
+                } else if (/\.(ts|tsx)$/.test(entry.name)) {
+                  const content = fs.readFileSync(path.join(dir, entry.name), "utf-8");
+                  const matches = content.match(escapePattern);
+                  if (matches) escapeCount += matches.length;
+                }
+              }
+            }
+            scanForEscapes(srcDir);
+            if (escapeCount > 0) {
               steps.push({
                 name: "type-escape-warning",
                 status: "warning",
@@ -265,19 +263,31 @@ async function main() {
     }
   }
 
-  // Check if tests exist before running
+  // Check if tests exist before running (cross-platform, no shell find)
   let testsExist = false;
+  function scanForTests(dir) {
+    if (!fs.existsSync(dir)) return false;
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      if (entry.isDirectory()) {
+        if (entry.name === "__tests__") return true;
+        if (entry.name === "node_modules") continue;
+        if (scanForTests(path.join(dir, entry.name))) return true;
+      } else if (/\.(test|spec)\.\w+$/.test(entry.name)) {
+        return true;
+      }
+    }
+    return false;
+  }
   try {
-    const findCmd = `find src -name "*.test.*" -o -name "*.spec.*" -o -name "__tests__" 2>/dev/null | head -1`;
-    const found = execSync(findCmd, {
-      encoding: "utf-8",
-      cwd,
-      timeout: 5000,
-    }).trim();
-    testsExist = found.length > 0;
+    testsExist = scanForTests(path.join(cwd, "src"));
+    if (!testsExist) {
+      // Also check project root for test directories
+      testsExist = scanForTests(path.join(cwd, "test")) ||
+                   scanForTests(path.join(cwd, "tests"));
+    }
   } catch {
-    // find not available or src doesn't exist
-    testsExist = true; // Assume tests exist, let the test runner decide
+    testsExist = true; // On error, assume tests exist and let the test runner decide
   }
 
   if (!testsExist) {

@@ -72,6 +72,8 @@ Read `complexity_tier` from `.forgeplan/manifest.yaml` to adapt behavior:
 
 ## Autonomous Mode (invoked by deep-build)
 
+**This mode overrides the tier-specific interaction styles above. Regardless of tier, autonomous invocation uses the non-interactive flow described here.**
+
 When invoked during `/forgeplan:deep-build`, the spec command runs **non-interactively**:
 
 1. Read the manifest (tech_stack, shared_models, node metadata, connections)
