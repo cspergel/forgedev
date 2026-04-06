@@ -64,6 +64,16 @@
             "default": 0,
             "description": "Number of times Stop hook has bounced this node back. Escalates to user at >= 3."
           },
+          "bounce_exhausted": {
+            "type": "boolean",
+            "default": false,
+            "description": "Set by deep-build when Stop hook bounce limit is reached. Indicates the node was marked built without full AC verification. Unmet ACs are added as sweep findings."
+          },
+          "unverified_acs": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "List of acceptance criteria IDs that were not verified when bounce_exhausted is true. Populated by deep-build, consumed by sweep."
+          },
           "pre_build_files": {
             "type": "array",
             "items": { "type": "string" },

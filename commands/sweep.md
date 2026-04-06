@@ -284,9 +284,10 @@ For each node that has findings, in dependency order (use topological sort from 
        3. Write the updated spec back
        4. Set the node's status to "revised" in state.json so it gets rebuilt
      - For skipped decisions: remove from `blocked_decisions`, add to `needs_manual_attention` with `"reason": "user-skipped"`
+     - **Snapshot affected categories** BEFORE clearing: `const affectedCategories = blocked_decisions.map(d => d.category)`
      - Clear `blocked_decisions` array
      - **Rebuild revised nodes before re-sweeping:** For each node set to "revised", run `/forgeplan:build [node-id]` with a fresh agent. The re-sweep must audit rebuilt code, not stale pre-decision code.
-     - After all rebuilds complete: **re-run Phase 2 (sweep) with ONLY the agents whose categories match the resolved findings** to verify the changes didn't introduce new issues. This is a targeted re-sweep, not a full pass. Continue through Phase 3 → 4 → 5 → 6 → 7 as normal.
+     - After all rebuilds complete: **re-run Phase 2 (sweep) with ONLY the agents whose categories are in `affectedCategories`** to verify the changes didn't introduce new issues. This is a targeted re-sweep, not a full pass. Continue through Phase 3 → 4 → 5 → 6 → 7 as normal.
 
      **If the session ends before the user responds (or user says "later"):** The decisions are already persisted in state.json via `sweep_state.blocked_decisions`. Next session, `session-start.js` detects them and warns the user. The user can resume with `/forgeplan:sweep`, which checks for pending `blocked_decisions` in Phase 1 and presents them for resolution before continuing the sweep.
 7. After fixing all findings for this node:
