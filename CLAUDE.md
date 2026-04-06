@@ -166,19 +166,54 @@ Sprint 6 hardening (same sprint, post-initial):
 **Tier-independent improvements (also P0):**
 - **Deduplication before presentation:** Semantic dedup in sweep Phase 3, not just file+line matching. Target: < 20% duplication rate (was 62%).
 - **Test co-update during rebuild:** Builder MUST update corresponding test files when modifying source. Don't create problems for the sweep to find.
-- **"Make it runnable" gate — concrete implementation:**
-  - New script: `scripts/verify-runnable.js`
-  - Reads `tech_stack` from manifest to determine the right commands (not hardcoded to Node/TypeScript)
-  - Runs after all nodes are built (deep-build: after build, before review) and again at final certification
+- **Verification pipeline — two phases, environment-resilient:**
+
+  **Phase A: "Make it runnable" gate (Sprint 7A) — `scripts/verify-runnable.js`**
+  Quick gate: does it compile, do tests pass, does it start?
+  - Reads `tech_stack` from manifest (not hardcoded to Node/TypeScript)
+  - Runs after build (before review) and again at final certification
   - **Stack-adaptive steps:**
-    - Step 1 — Install deps: `npm install` (Node), `deno cache` (Deno), `bun install` (Bun). Read from `tech_stack.runtime`.
-    - Step 2 — Type check (if applicable): `npx tsc --noEmit` (TypeScript only, skip for JavaScript). Read from `tech_stack.language`.
-    - Step 3 — Run tests: `npm test` / `deno test` / `bun test` or custom command from `tech_stack.test_command`. Tests must pass. Failures become findings.
-    - Step 4 — Dev server check: attempt to start the dev server, verify it binds a port or health endpoint responds. Kill after verification. Skip for library/CLI projects (detected from manifest node types — no frontend/API nodes = skip).
-  - Gate: If any step fails, read the error, dispatch fix agent, retry (up to 3 attempts). If still failing, halt with clear error.
-  - Add to `pre-tool-use.js` Bash whitelist: the verify-runnable script.
-- **Test execution in the pipeline:** Tests are not just written — they are EXECUTED. A "certified" app means tests actually pass, the code compiles, and the app starts. This is verified by real commands, not LLM judgment.
-- **Tests along the way, not just at the end:** The builder should run tests for each node DURING the build (after writing tests, run them to verify they pass). The Stop hook should check test results as part of AC verification. The sweep fix cycle should re-run affected tests after each fix. This catches errors early instead of accumulating them for the final gate.
+    - Step 1 — Install deps: `npm install` / `deno cache` / `bun install` (from `tech_stack.runtime`)
+    - Step 2 — Type check: `npx tsc --noEmit` (TypeScript only, skip for JS)
+    - Step 3 — Run tests: `npm test` / `deno test` / `bun test` / custom from `tech_stack.test_command`
+    - Step 4 — Dev server check: start server, verify port binds, kill after check. Skip for libraries/CLIs.
+  - **Environment cleanup before EVERY verification run:**
+    - Kill any process on the target port(s) — `lsof -ti:PORT | xargs kill -9` (Unix) / `netstat -ano | findstr :PORT` + `taskkill` (Windows)
+    - Kill stale node/python/deno/bun processes from previous runs — match by project directory or known process names
+    - Clear any lock files (`package-lock.json.tmp`, `.tsbuildinfo`, etc.)
+    - Verify required tools are available (`node --version`, `npm --version`, etc.) — if missing, report clearly instead of cryptic errors
+    - Set a timeout on every command (30s for install, 10s for type check, 60s for tests, 15s for server start) — kill and report if exceeded
+  - **Error classification:** Distinguish between:
+    - **Code errors** (syntax, type, test failures) → become findings for fix agents
+    - **Environment errors** (port in use, missing tool, permission denied, network timeout) → attempt auto-fix (kill process, retry with different port, suggest tool install), do NOT create code findings
+    - **Transient errors** (npm registry timeout, DNS failure) → retry with backoff, do NOT treat as code bugs
+  - Gate: 3 retry attempts for code errors. Environment errors get auto-fixed then retried. Transient errors get 3 retries with backoff. If still failing, halt with classified error.
+
+  **Phase B: Runtime verification agent (Sprint 8) — behavioral testing**
+  Does the app actually WORK, not just start?
+  - New agent (not a sweep agent — this executes code, not reads it)
+  - Runs as a deep-build phase: after sweep, before cross-model
+  - **What it does:**
+    1. Start the app (with environment cleanup from Phase A)
+    2. Read manifest interfaces and node specs
+    3. For each API endpoint: construct request from spec contract, send via curl/fetch, verify response status + shape
+    4. For each acceptance criterion with testable behavior: verify at runtime
+    5. For auth boundaries: attempt cross-role access (client→accountant routes should fail)
+    6. Report: which behaviors work, which don't, with actual HTTP responses as evidence
+    7. Kill the app cleanly after verification
+  - **Environment resilience for runtime verification:**
+    - If the app fails to start: classify why (missing env vars → create .env from .env.example, port conflict → find free port, missing dependency → npm install)
+    - If an endpoint times out: distinguish between "endpoint is slow" and "endpoint is broken" (retry once with longer timeout)
+    - If database is required but not available: detect mock mode, use it. If no mock mode, skip database-dependent tests with a warning, don't fail the whole verification
+    - Track all environment fixes applied — report them separately from code issues so the user knows what was environment vs code
+  - **Tier-aware depth:**
+    ```
+    SMALL:  Phase A only (compile + tests + server starts)
+    MEDIUM: Phase A + Phase B Levels 1-3 (+ hit endpoints, verify responses)
+    LARGE:  Phase A + Phase B Levels 1-4 (+ stress: concurrent requests, malformed inputs, auth boundaries)
+    ```
+
+- **Tests along the way, not just at the end:** The builder runs tests for each node DURING the build. The Stop hook checks test results as part of AC verification. The sweep fix cycle re-runs affected tests after each fix. Phase A and B are the final gates, but testing happens continuously.
 
 **Files that need changes for Sprint 7A (~15):**
 - `templates/schemas/manifest-schema.yaml` — add `complexity_tier` field
@@ -193,8 +228,9 @@ Sprint 6 hardening (same sprint, post-initial):
 - `agents/reviewer.md` — tier-aware abbreviated review for SMALL
 - `commands/guide.md` — tier-aware descriptions (don't hardcode "12 agents")
 - `commands/review.md` — tier-aware review depth for SMALL
-- `scripts/verify-runnable.js` — NEW: npm install + tsc + npm test + dev server check
-- `commands/deep-build.md` — call verify-runnable before integration check and at final step
+- `scripts/verify-runnable.js` — NEW: stack-adaptive compilation + test execution + dev server check with environment cleanup
+- `commands/deep-build.md` — add verify-runnable phase after build, tier-aware cross-model, runtime verification phase
+- `scripts/pre-tool-use.js` — whitelist verify-runnable.js, deno, bun in Bash safe patterns
 - `scripts/validate-manifest.js` — validate complexity_tier field
 
 ### Sprint 7B: Ambient Mode + Confidence Scoring
