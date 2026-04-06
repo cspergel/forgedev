@@ -324,7 +324,11 @@ async function runLevel1(baseUrl, endpoints) {
     if (res.status === 401 || res.status === 403) {
       return { pass: true, detail: `GET / -> ${res.status} (protected root — server is responding)` };
     }
-    // GET / returned 404 or other non-success — try the first spec endpoint with its actual method.
+    // 5xx on GET / is a real server error — don't fall back, report failure
+    if (res.status >= 500) {
+      return { pass: false, detail: `GET / -> ${res.status} (server error)` };
+    }
+    // 4xx on GET / (404, 405, etc.) — server runs but root not served. Try a spec endpoint.
     if (res.status >= 400 && endpoints.length > 0) {
       const fallback = endpoints[0];
       const opts = { method: fallback.method, signal: AbortSignal.timeout(10000) };

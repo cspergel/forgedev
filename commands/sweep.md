@@ -402,6 +402,9 @@ node "${CLAUDE_PLUGIN_ROOT}/scripts/cross-model-bridge.js" ".forgeplan/sweeps/sw
      [agent-name]: converged pass [N] | active (N findings) | skipped
      ...
 
+   Manual Attention: [N items requiring human review]
+   [For each item in needs_manual_attention: brief description]
+
    Reports: .forgeplan/sweeps/sweep-[timestamp].md
 
    What's next:

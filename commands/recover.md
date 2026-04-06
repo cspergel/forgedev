@@ -13,7 +13,7 @@ Detect and recover from interrupted builds, reviews, revisions, review-fix cycle
 
 1. **Clean up peripheral artifacts first:**
    - Check for stale worktrees: run `node "${CLAUDE_PLUGIN_ROOT}/scripts/worktree-manager.js" list`. If any exist, run `node "${CLAUDE_PLUGIN_ROOT}/scripts/worktree-manager.js" cleanup` and report: "Cleaned up [N] stale worktrees from a crashed parallel fix."
-   - Check for orphan PIDs: if `.forgeplan/.verify-pids` exists, read it. Lines may be in `timestamp:pid` or plain `pid` format — parse both. For each PID, check if still alive (`process.kill(pid, 0)`), and if so, kill it. Delete the file. Report: "Cleaned up [N] orphan processes from a crashed verify-runnable." Note: stale PIDs may have been reused — only kill if the PID file was written recently (within the last hour).
+   - Check for orphan PIDs: if `.forgeplan/.verify-pids` exists, **delete the file** (do NOT attempt to kill PIDs — they may have been reused by unrelated processes after a hard crash). If a stale server is holding a port, verify-runnable or runtime-verify will detect EADDRINUSE and report it with actionable guidance. Report: "Cleaned up stale .verify-pids file."
    - Check for stale compact context: if `.forgeplan/.compact-context.md` exists, delete it. (Stale context from a previous session could cause confusion after compaction.)
 2. Read `.forgeplan/state.json`
 3. Identify inconsistent states:

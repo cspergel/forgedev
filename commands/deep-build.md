@@ -231,6 +231,12 @@ This phase follows the **exact same logic as sweep Phase 6** (Task 9). All statu
 ## All Findings
 [For each finding: ID, source model, node, category, description, resolution]
 
+## Runtime Advisories
+[LOW-severity findings from Phase B: public endpoint notices, missing contract warnings]
+
+## Issues Requiring Manual Review
+[Items from sweep_state.needs_manual_attention: project-level findings, user-skipped decisions, unresolvable items]
+
 ## Integration Results
 [Final integration check output]
 ```
