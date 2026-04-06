@@ -367,8 +367,10 @@ Deliverables: Ambient SessionStart (healthy-state display, contextual next-comma
 - Guide Skill Enhancement (pattern detection from past sweeps) → Sprint 9
 - Cross-harness support (Codex CLI, Gemini CLI, Cursor) → post-Sprint 8, driven by external user feedback
 
-### Sprint 8: Research Agents + Greenfield Pipeline
-**Goal:** Research agents search for best practices before building. Greenfield deep-build from discovery to certified. (Per Execution Plan scope — focused, not inflated.)
+### Sprint 8: Research Agents + Greenfield Pipeline (COMPLETE)
+**Goal:** Research agents search for best practices before building. Greenfield deep-build from discovery to certified. Phase B runtime verification. **DONE.**
+
+Deliverables: 4 research agents (researcher, license-checker, inspiration, docs-agent) dispatched in parallel by `/forgeplan:research`, `/forgeplan:greenfield` thin orchestrator (discover→research→spec→deep-build with one confirmation), `--autonomous` flags on discover and spec, `scripts/runtime-verify.js` Phase B endpoint verification (Levels 1-5 tier-aware: status codes, response shapes, auth boundaries, stress testing), deep-build Phase 4.5 wiring, builder+architect research awareness, manifest tech_stack.infrastructure field.
 
 **Pillar 1: Research Agents**
 - `/forgeplan:research [topic]` dispatches 4 agent types: Researcher (GitHub/npm search), License Checker, Inspiration (find similar projects), Docs Agent (gather API documentation)
@@ -523,6 +525,7 @@ Deliverables: Ambient SessionStart (healthy-state display, contextual next-comma
 | `/forgeplan:regen-types` | 4 | Rebuild shared TypeScript types from manifest |
 | `/forgeplan:validate` | 4 | Check manifest/specs for cycles, orphans, consistency |
 | `/forgeplan:research` | 8 | Research agents search for existing implementations, check licenses, gather docs |
+| `/forgeplan:greenfield` | 8 | Full pipeline: describe → discover → research → spec → build → certify |
 
 ## Core Agents
 
