@@ -1,5 +1,5 @@
 ---
-description: Sweep your entire codebase for cross-cutting issues. Tier-aware agent selection (SMALL 3-5, MEDIUM 6-8, LARGE all 12) audits auth/security, type consistency, error handling, database, API contracts, imports, code quality, test quality, config/env, frontend UX, documentation, and cross-node integration. Agents that converge (return CLEAN) are dropped from subsequent passes. Findings are fixed with node-scoped enforcement, then cross-model verified.
+description: Sweep your entire codebase for cross-cutting issues. Tier-aware agent selection (SMALL 3-5, MEDIUM 7-9, LARGE up to 16) using 12 domain agents + 4 team agents (Red adversarial, Blue user-flows, Orange contract-drift, Architect holistic). Progressive convergence drops clean agents. Findings fixed with node-scoped enforcement, then cross-model verified.
 user-invocable: true
 argument-hint: "[--cross-check (also run cross-model verification)]"
 allowed-tools: Read Write Edit Bash Glob Grep Agent
@@ -9,7 +9,7 @@ allowed-tools: Read Write Edit Bash Glob Grep Agent
 
 **THIS COMMAND IS AUTONOMOUS WITH ONE EXCEPTION. Execute all phases (1→7) without stopping, pausing, or asking "shall I continue?". Fix ALL findings automatically. Do not present intermediate results and wait. The ONE exception: Category C blocked decisions (architectural choices) require user input — present them all at once, get answers, then continue automatically. Aside from that, run straight through to the final report.**
 
-Run tier-selected sweep agents (3-12) in parallel across the entire codebase, then fix findings with node-scoped enforcement. Progressive reduction: agents that return CLEAN twice converge and are retired. Cross-cutting agents (code-quality, cross-node-integration) re-run whenever any other agent has findings. See Phase 2 for the full dispatch precedence rules.
+Run tier-selected sweep agents (3-16) in parallel across the entire codebase: 12 domain agents + 4 team agents (Red/Blue/Orange/Architect). Progressive reduction: agents that return CLEAN twice converge and are retired. Cross-cutting agents re-run whenever any other agent has findings. See Phase 2 for the full dispatch precedence rules.
 
 ## Prerequisites
 
@@ -117,21 +117,24 @@ Agent definition files (read these, use as system prompts):
 - `agents/sweep-holistic.md` (Architect — LARGE only, 10,000ft system review)
 
 **Progressive agent reduction:**
-1. On **pass 1**: dispatch the **tier-selected agents** from above (SMALL=3-5, MEDIUM=6-8, LARGE=all 12). Skip `frontend-ux` if no frontend nodes regardless of tier.
-2. After merging results, update `sweep_state.agent_convergence` for each agent:
+1. On **pass 1**: dispatch the **tier-selected agents** from above (SMALL=3-5 domain, MEDIUM=7-9 domain+team, LARGE=up to 16 domain+team). Skip `frontend-ux` if no frontend nodes regardless of tier.
+2. After merging results, update `sweep_state.agent_convergence` for each agent. **Keys are agent names** (matching the `.md` filename without extension), NOT category names:
    ```json
    "agent_convergence": {
-     "auth-security": { "status": "clean", "last_findings_pass": null, "consecutive_clean": 1 },
-     "type-consistency": { "status": "active", "last_findings_pass": 1, "consecutive_clean": 0 },
+     "sweep-auth-security": { "status": "clean", "last_findings_pass": null, "consecutive_clean": 1 },
+     "sweep-type-consistency": { "status": "active", "last_findings_pass": 1, "consecutive_clean": 0 },
+     "sweep-adversarial": { "status": "active", "last_findings_pass": 1, "consecutive_clean": 0 },
+     "sweep-holistic": { "status": "clean", "last_findings_pass": null, "consecutive_clean": 1 },
      ...
    }
    ```
+   Note: team agents may emit findings with categories that overlap domain agents (e.g., sweep-adversarial emits `auth-security` findings). This is intentional — domain agents and team agents audit from different angles. Deduplication in step 4 handles genuine duplicates.
    - `status`: `"clean"` (returned CLEAN), `"active"` (had findings), `"failed"` (returned unstructured response), `"converged"` (2 consecutive clean passes — retired), `"force-converged"` (oscillation guard)
    - `last_findings_pass`: which pass this agent last found something
    - `consecutive_clean`: how many consecutive passes returned CLEAN
 3. On **pass 2+**, determine which agents to dispatch using these rules **in precedence order**:
    a. **Converged agents are retired:** Skip any agent with `status: "converged"` or `"force-converged"`.
-   b. **Cross-cutting agents re-run if ANY agent had findings:** `cross-node-integration`, `code-quality`, `sweep-holistic`, and `sweep-contract-drift` re-run whenever any other agent reported findings in the previous pass, even if they themselves were clean. They only converge when they return CLEAN AND no other active agent had findings in the same pass.
+   b. **Cross-cutting agents re-run if ANY agent had findings:** `sweep-cross-node-integration`, `sweep-code-quality`, `sweep-holistic`, and `sweep-contract-drift` re-run whenever any other agent reported findings in the previous pass, even if they themselves were clean. They only converge when they return CLEAN AND no other active agent had findings in the same pass.
    c. **Confirmation pass for clean agents:** An agent that returned CLEAN on pass N gets re-run on pass N+1 to confirm. If clean again → `status: "converged"`, retired.
    d. **Active agents always re-run:** Any agent with `status: "active"` (had findings last pass) is dispatched.
    e. **Failed agents always re-run:** Any agent with `status: "failed"` (returned unstructured response) is re-dispatched. Failed agents are never counted as clean for convergence. After 3 consecutive failures, force-converge with `"force-converged"` and log: "Agent [name] force-converged after 3 consecutive failures."
@@ -162,7 +165,7 @@ Each agent returns findings in the structured FINDING format or CLEAN.
 ### Phase 3: Merge and deduplicate findings
 
 1. Collect all findings from the dispatched agents (excluding failed agents)
-2. **Validate node IDs:** Discard any finding whose `node` field is not in `Object.keys(manifest.nodes)`. For cross-node-integration findings using `Node: [id] -> [id]` format, extract the first node ID (before `->`) as the primary node for fix scoping. Log a warning for each discarded finding ("Finding F[N] references unknown node '[id]' — discarding"). This prevents crashes in Phase 4 when PreToolUse tries to look up a nonexistent node's file_scope. Apply the same validation in Phase 6 for cross-model findings.
+2. **Validate node IDs:** Discard any finding whose `node` field is not in `Object.keys(manifest.nodes)` AND is not the special value `"project"`. The `"project"` pseudo-node is used by team agents (holistic, user-flows, contract-drift) for cross-cutting findings that don't belong to a single node — these go to `sweep_state.needs_manual_attention` instead of the automated fix cycle (they can't be node-scoped). For cross-node-integration findings using `Node: [id] -> [id]` format, extract the first node ID (before `->`) as the primary node for fix scoping. Log a warning for each discarded finding ("Finding F[N] references unknown node '[id]' — discarding"). Apply the same validation in Phase 6 for cross-model findings.
 3. **Re-number** all remaining findings sequentially as F1, F2, F3... (discard the agents' self-assigned IDs, which will collide across agents)
 4. Deduplicate: if two agents report the same file + same issue, keep the one with higher severity
 5. Group findings by node
