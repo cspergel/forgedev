@@ -306,12 +306,17 @@ async function runLevel1(baseUrl, endpoints) {
     if (res.ok || res.status === 302 || res.status === 301) {
       return { pass: true, detail: `GET / -> ${res.status}` };
     }
-    // GET / returned 404 — this is normal for API-only apps. Try the first spec endpoint instead.
+    // GET / returned 404 — this is normal for API-only apps. Try the first spec endpoint with its actual method.
     if (res.status === 404 && endpoints.length > 0) {
       const fallback = endpoints[0];
-      const fallbackRes = await fetch(`${baseUrl}${fallback.path}`, { signal: AbortSignal.timeout(10000) });
+      const opts = { method: fallback.method, signal: AbortSignal.timeout(10000) };
+      if (fallback.method !== "GET" && fallback.method !== "DELETE") {
+        opts.headers = { "Content-Type": "application/json" };
+        opts.body = JSON.stringify({});
+      }
+      const fallbackRes = await fetch(`${baseUrl}${fallback.path}`, opts);
       if (fallbackRes.status < 500) {
-        return { pass: true, detail: `GET / -> 404 (API-only app), but ${fallback.path} -> ${fallbackRes.status} (server is responding)` };
+        return { pass: true, detail: `GET / -> 404 (API-only app), but ${fallback.method} ${fallback.path} -> ${fallbackRes.status} (server is responding)` };
       }
     }
     return { pass: false, detail: `GET / -> ${res.status} and no spec endpoints respond` };
@@ -446,15 +451,18 @@ async function runLevel5(baseUrl, endpoints) {
     if (ep.method !== "GET") continue;
     try {
       const times = [];
+      let serverErrors = 0;
       for (let i = 0; i < 50; i++) {
         const start = Date.now();
-        await fetch(`${baseUrl}${ep.path}`, { signal: AbortSignal.timeout(10000) });
+        const res = await fetch(`${baseUrl}${ep.path}`, { signal: AbortSignal.timeout(10000) });
         times.push(Date.now() - start);
+        if (res.status >= 500) serverErrors++;
       }
       const avgFirst10 = times.slice(0, 10).reduce((a, b) => a + b, 0) / 10;
       const avgLast10 = times.slice(-10).reduce((a, b) => a + b, 0) / 10;
       const degradation = avgLast10 / Math.max(avgFirst10, 1);
-      results.push({ pass: degradation < 3, endpoint: `${ep.method} ${ep.path}`, test: "rapid-sequential-50", degradation: degradation.toFixed(1) + "x", node: ep.node });
+      // Fail if latency degrades >3x OR if any requests returned 500+
+      results.push({ pass: degradation < 3 && serverErrors === 0, endpoint: `${ep.method} ${ep.path}`, test: "rapid-sequential-50", degradation: degradation.toFixed(1) + "x", serverErrors, node: ep.node });
     } catch (err) {
       results.push({ pass: false, endpoint: `${ep.method} ${ep.path}`, test: "rapid-sequential-50", node: ep.node, detail: err.message });
     }
@@ -589,10 +597,15 @@ async function main() {
       for (const r of l3) {
         endpointsTested++;
         if (r.pass) { endpointsPassed++; }
-        else if (r.missingFields && r.missingFields.length > 0) {
+        else {
+          const desc = (r.missingFields && r.missingFields.length > 0)
+            ? `${r.endpoint} response missing fields: ${r.missingFields.join(", ")}`
+            : `${r.endpoint} response invalid: ${r.detail || "non-JSON or error"}`;
+          const fix = (r.missingFields && r.missingFields.length > 0)
+            ? `Add missing fields to the response: ${r.missingFields.join(", ")}`
+            : `Ensure endpoint returns valid JSON with expected fields`;
           findings.push({ node: r.node, category: "runtime-verification", severity: "MEDIUM", confidence: 85,
-            description: `${r.endpoint} response missing fields: ${r.missingFields.join(", ")}`, file: resolveNodeFile(r ? r.node : "app-shell"), line: "",
-            fix: `Add missing fields to the response: ${r.missingFields.join(", ")}` });
+            description: desc, file: resolveNodeFile(r ? r.node : "app-shell"), line: "", fix });
         }
       }
     }

@@ -186,8 +186,10 @@ Each agent returns findings in the structured FINDING format or CLEAN.
    - F1 [category] [severity]: [description] — [file]:[line]
    ...
    ```
-8. Add all findings to `sweep_state.findings.pending`. **Set `pass_found: sweep_state.pass_number`** on each finding before inserting — `extractFindings` and the sweep agents don't include this field, but the state schema requires it.
-9. If there are findings: update `sweep_state.current_phase` to `"claude-fix"` and proceed to Phase 4.
+8. **Route findings by node type:** For each finding, set `pass_found: sweep_state.pass_number`, then:
+   - If `node` is a real manifest node ID → add to `sweep_state.findings.pending` (enters Phase 4 fix cycle)
+   - If `node` is `"project"` (cross-cutting/systemic from team agents) → add to `sweep_state.needs_manual_attention` with reason "project-level finding — no single node to fix". Do NOT add to `pending`. These appear in the final report but do not enter the automated fix cycle.
+9. If there are node-scoped findings in `pending`: update `sweep_state.current_phase` to `"claude-fix"` and proceed to Phase 4.
 10. **If zero findings AND zero failed agents** (all agents returned CLEAN successfully): skip Phase 4, set `sweep_state.current_phase` to `"integrate"`, and proceed directly to Phase 5.
 11. **If zero findings BUT some agents failed:** Do NOT treat as clean. Failed agents are re-dispatched on the next pass (their `agent_convergence` status stays `"active"` or `"failed"`). Increment pass_number and loop back to Phase 2. A pass with only failed responses is not a clean pass for convergence purposes.
 
@@ -367,7 +369,7 @@ node "${CLAUDE_PLUGIN_ROOT}/scripts/cross-model-bridge.js" ".forgeplan/sweeps/sw
    **If `status: "findings"`:**
    - **Re-score confidence:** The external model's self-assigned confidence scores are unreliable (it has no context about ForgePlan's calibration system). For each cross-model finding, Claude must re-evaluate the confidence score by reading the cited file and line, assessing the evidence strength, and assigning a new confidence value using the same 0-100 calibration guide the sweep agents use. Replace the external model's confidence with Claude's re-scored value. Then apply the same `< 75` filter — discard re-scored findings below 75. Log: "Re-scored [N] cross-model findings. Kept [M] (confidence >= 75), filtered [K]."
    - Re-number finding IDs to avoid collision with Claude findings. Use prefix `X` for cross-model: X1, X2, X3... (Claude findings use F1, F2, F3...)
-   - Add to `sweep_state.findings.pending` (set `pass_found` on each)
+   - Route findings by node type (same as Phase 3 step 8): real node IDs → `pending`, `"project"` → `needs_manual_attention`. Set `pass_found` on each.
    - Set `sweep_state.consecutive_clean_passes` to 0
    - Increment `sweep_state.pass_number`
    - Update `sweep_state.current_phase` to `"cross-fix"`

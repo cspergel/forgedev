@@ -130,8 +130,10 @@ Choose [1/2/3]:
 - Re-read any sweep/crosscheck reports already on disk in `.forgeplan/sweeps/`
 - Continue from `current_phase`:
   - If `build-all`: resume the build-all loop — run `next-node.js`, continue building/reviewing remaining nodes. If `active_node` is stuck, recover it first (run per-node building recovery inline), then continue the loop.
+  - If `verify-runnable`: re-run `node "${CLAUDE_PLUGIN_ROOT}/scripts/verify-runnable.js"` (Phase A gate was interrupted)
   - If `claude-sweep`: re-run the sweep agents
   - If `claude-fix`: re-fix all pending findings (restart the fix loop for this pass)
+  - If `runtime-verify`: re-run `node "${CLAUDE_PLUGIN_ROOT}/scripts/runtime-verify.js" --tier [TIER]` (Phase B gate was interrupted)
   - If `cross-check`: re-run cross-model verification
   - If `cross-fix`: re-fix all cross-model findings (restart fix loop)
   - If `integrate`: re-run integration

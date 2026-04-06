@@ -144,8 +144,9 @@ Check the result:
 **If `status: "fail"`:** Runtime verification found issues.
 1. For each finding from runtime-verify.js output:
    - Add required fields: `id: "R[N]"` (sequential), `source_model: "runtime-verify"`, `pass_found: sweep_state.pass_number`
-   - **If the finding has a non-empty `file` field:** add to `sweep_state.findings.pending` for the normal fix cycle (fix agent can target the file)
-   - **If the finding has an empty `file` field:** add to `sweep_state.needs_manual_attention` instead (runtime findings without file anchors can't be auto-fixed — they need a developer to trace the endpoint to its handler). Include the endpoint, status code, and description so the deep-build report surfaces them.
+   - **If severity is LOW:** add to `sweep_state.needs_manual_attention` as advisory (not actionable by fix agents). These appear in the report under "Runtime Advisories."
+   - **If the finding has a non-empty `file` field AND severity is HIGH or MEDIUM:** add to `sweep_state.findings.pending` for the normal fix cycle (fix agent can target the file)
+   - **If the finding has an empty `file` field AND severity is HIGH or MEDIUM:** add to `sweep_state.needs_manual_attention` instead (runtime findings without file anchors can't be auto-fixed). Include the endpoint details so the deep-build report surfaces them.
 2. For findings in `pending` (with file anchors): dispatch fix agents, re-run `runtime-verify.js`, repeat up to 3 times
 3. For findings in `needs_manual_attention`: log them in the deep-build report under "**Runtime Issues Requiring Manual Review**" with the endpoint details. Do NOT attempt automated fixes.
 4. Proceed to Phase 5 after fix attempts complete (or immediately if all findings went to manual attention).
