@@ -470,7 +470,7 @@ function crossCheckViaCli(config, prompt, cwd) {
     fs.writeFileSync(tmpPrompt, prompt, "utf-8");
     // Quote tmpPrompt to handle paths with spaces (e.g., "Coding Projects")
     const fullArgs = [...args, `"${tmpPrompt}"`];
-    const result = execSync(`${command} ${fullArgs.join(" ")}`, {
+    const result = execSync(`"${command}" ${fullArgs.join(" ")}`, {
       encoding: "utf-8",
       timeout,
       cwd,

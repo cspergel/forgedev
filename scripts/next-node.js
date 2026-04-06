@@ -100,7 +100,9 @@ function main() {
       message: `WARNING: ${stuck.length} node(s) stuck: ${stuck.join(", ")}. Run /forgeplan:recover first.`,
     };
     console.log(JSON.stringify(result, null, 2));
-    process.exit(1);
+    // Exit 0 for all structured JSON responses — callers parse the `type` field,
+    // and non-zero exits can short-circuit shell orchestration before JSON is consumed.
+    process.exit(0);
   }
 
   // --- Priority 1b: Sweep/deep-build in progress ---

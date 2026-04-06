@@ -232,7 +232,7 @@ function reviewViaCli(config, prompt, cwd) {
 
     const fullArgs = [...args, `"${tmpPrompt}"`];
     const result = execSync(
-      `${command} ${fullArgs.join(" ")}`,
+      `"${command}" ${fullArgs.join(" ")}`,
       { encoding: "utf-8", timeout, cwd, stdio: ["pipe", "pipe", "pipe"] }
     );
 

@@ -193,7 +193,7 @@ When multiple nodes need fixes and their file_scopes don't overlap, fix agents c
    node "${CLAUDE_PLUGIN_ROOT}/scripts/worktree-manager.js" merge [node-id]
    ```
 6. **After each successful merge**, update state.json: restore `nodes.[node-id].previous_status`, set `sweep_state.fixing_node` to null, move findings from pending to resolved.
-7. If a merge conflict occurs (exit code 1), fall back to sequential fix for that node in the main working tree.
+7. If a merge conflict occurs (exit code 1), fall back to sequential fix for that node in the main working tree. **Important:** the node is already in `"sweeping"` status with `previous_status` set from step 1 — do NOT re-save `previous_status` when entering sequential mode (it would overwrite the real prior status with `"sweeping"`). Skip directly to the fix step (step 7 of sequential mode).
 8. After all merges, clean up: `node "${CLAUDE_PLUGIN_ROOT}/scripts/worktree-manager.js" cleanup`
 
 **When NOT to parallelize:** If nodes share file_scope (e.g., SMALL tier with `src/**`), or if findings in one node reference files owned by another node, fall back to sequential mode. When in doubt, use sequential.

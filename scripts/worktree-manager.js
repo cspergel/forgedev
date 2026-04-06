@@ -74,8 +74,19 @@ function createWorktree(nodeId) {
   const branchName = `${BRANCH_PREFIX}${nodeId}`;
   const worktreePath = path.join(worktreeDir, nodeId);
 
-  // Clean up if stale worktree exists
+  // Check for existing worktree — refuse to overwrite if it has uncommitted changes
   if (fs.existsSync(worktreePath)) {
+    const dirty = run("git status --porcelain", { cwd: worktreePath, throwOnError: false });
+    if (dirty) {
+      console.log(JSON.stringify({
+        status: "error",
+        node_id: nodeId,
+        message: `Worktree for ${nodeId} already exists with uncommitted changes. Merge or clean up first: node worktree-manager.js merge ${nodeId} OR node worktree-manager.js cleanup`,
+        worktree_path: worktreePath,
+      }));
+      process.exit(2);
+    }
+    // Clean empty/committed worktree
     try {
       run(`git worktree remove "${worktreePath}" --force`, { throwOnError: false });
     } catch {}

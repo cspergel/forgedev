@@ -139,10 +139,29 @@ function killPid(pid) {
   }
 }
 
+function killPidTree(pid) {
+  // Kill the entire process tree, not just the PID (handles shell:true spawns)
+  const isWindows = process.platform === "win32";
+  try {
+    if (isWindows) {
+      execSync(`taskkill /T /F /PID ${pid}`, { stdio: "pipe", timeout: 5000 });
+    } else {
+      // Try process group kill first (negative PID), fall back to single PID
+      try { process.kill(-pid, "SIGTERM"); } catch { process.kill(pid, "SIGTERM"); }
+      const buf = new SharedArrayBuffer(4);
+      Atomics.wait(new Int32Array(buf), 0, 0, 3000);
+      try { process.kill(-pid, "SIGKILL"); } catch {}
+      try { process.kill(pid, "SIGKILL"); } catch {}
+    }
+  } catch {
+    // Process already gone
+  }
+}
+
 function cleanupPids() {
   const pids = readPids();
   for (const pid of pids) {
-    killPid(pid);
+    killPidTree(pid);
   }
   try {
     fs.unlinkSync(pidFile);
