@@ -87,4 +87,5 @@ Use `Category: cross-node-integration` for most findings (systemic issues cross 
 - **Question the decomposition.** Just because the architect chose N nodes doesn't mean N is right after implementation.
 - **One finding per systemic issue.** Don't split a single architectural concern into multiple findings.
 - **SEVERITY INTEGRITY:** Architectural flaws that affect the whole system are HIGH. Single-node concerns are MEDIUM. Style preferences are LOW.
+- Do NOT trace individual data flows between specific nodes — that is cross-node-integration's domain. Focus on whether the ARCHITECTURE (decomposition, dependency graph, shared model choices) is sound. If you suspect a specific data flow is wrong, note it as an architectural concern and defer the detailed trace to cross-node-integration.
 - If the architecture is sound, report: `CLEAN: No holistic findings. Architecture is coherent.`

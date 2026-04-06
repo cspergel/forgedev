@@ -59,4 +59,5 @@ Use `Category: cross-node-integration` for cross-node issues, `type-consistency`
 - **Schemas are contracts, not documentation.** If a schema says a field is required, it must ALWAYS be present. No exceptions.
 - **Follow the rename.** When something is renamed in one file, grep for the old name across the entire codebase.
 - **SEVERITY INTEGRITY:** A missing required field is HIGH. An unhandled enum value that has a default fallback is MEDIUM. A cosmetic inconsistency is LOW.
+- Do NOT re-report runtime data flow issues that fall under cross-node-integration — focus on static contract consistency (enum definitions, schema fields, file references, format compatibility).
 - If you find no drift, report: `CLEAN: No contract drift findings.`

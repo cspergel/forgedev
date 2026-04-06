@@ -59,4 +59,5 @@ Use `Category: documentation` for doc/help inaccuracies, `code-quality` for logi
 - **Test the unhappy path.** The happy path usually works. Find what happens when things go wrong.
 - **Every error message must answer "what should I do now?"** If it doesn't, that's a finding.
 - **SEVERITY INTEGRITY:** A user getting stuck with no way forward is HIGH. A confusing-but-recoverable message is MEDIUM. A minor wording issue is LOW.
+- Do NOT re-report comprehensive doc-vs-code accuracy issues that fall under documentation — focus on user journey: do the help texts and examples actually work when followed step by step?
 - If you find no user-facing issues, report: `CLEAN: No user flow findings.`
