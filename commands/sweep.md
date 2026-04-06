@@ -151,7 +151,8 @@ Each agent returns findings in the structured FINDING format or CLEAN.
 3. **Re-number** all remaining findings sequentially as F1, F2, F3... (discard the agents' self-assigned IDs, which will collide across agents)
 4. Deduplicate: if two agents report the same file + same issue, keep the one with higher severity
 5. Group findings by node
-6. Write the sweep report to `.forgeplan/sweeps/sweep-[ISO-timestamp].md`:
+6. **Filter low-confidence findings:** Discard any finding with `confidence < 75`. Log: "Filtered [N] low-confidence findings (below 75)." This reduces noise and prevents the fix cycle from chasing uncertain issues. Findings with confidence 75+ proceed to Phase 4.
+7. Write the sweep report to `.forgeplan/sweeps/sweep-[ISO-timestamp].md`:
    ```markdown
    # Sweep Report — Pass [N]
 
@@ -166,9 +167,9 @@ Each agent returns findings in the structured FINDING format or CLEAN.
    - F1 [category] [severity]: [description] — [file]:[line]
    ...
    ```
-7. Add all findings to `sweep_state.findings.pending`. **Set `pass_found: sweep_state.pass_number`** on each finding before inserting — `extractFindings` and the sweep agents don't include this field, but the state schema requires it.
-8. If there are findings: update `sweep_state.current_phase` to `"claude-fix"` and proceed to Phase 4.
-9. **If zero findings** (all agents returned CLEAN): skip Phase 4, set `sweep_state.current_phase` to `"integrate"`, and proceed directly to Phase 5.
+8. Add all findings to `sweep_state.findings.pending`. **Set `pass_found: sweep_state.pass_number`** on each finding before inserting — `extractFindings` and the sweep agents don't include this field, but the state schema requires it.
+9. If there are findings: update `sweep_state.current_phase` to `"claude-fix"` and proceed to Phase 4.
+10. **If zero findings** (all agents returned CLEAN): skip Phase 4, set `sweep_state.current_phase` to `"integrate"`, and proceed directly to Phase 5.
 
 ### Phase 4: Fix findings (node-scoped)
 

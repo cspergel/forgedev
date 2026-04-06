@@ -325,7 +325,7 @@ function assembleCrossCheckPrompt(
   prompt += `   - Auth/security, type consistency, error handling, database, API contracts, imports\n`;
   prompt += `   - Code quality, test quality, config/environment, frontend UX, documentation, cross-node integration\n`;
   prompt += `3. Report findings in this EXACT format (one field per line, NO multiline values, keep Description and Fix on a single line each):\n\n`;
-  prompt += `\`\`\`\nFINDING: F[N]\nNode: [node-id]\nCategory: [auth-security|type-consistency|error-handling|database|api-contracts|imports|code-quality|test-quality|config-environment|frontend-ux|documentation|cross-node-integration]\nSeverity: HIGH | MEDIUM | LOW\nDescription: [what's wrong — single line]\nFile: [exact file path]\nLine: [approximate line number]\nFix: [specific remediation — single line]\n\`\`\`\n\n`;
+  prompt += `\`\`\`\nFINDING: F[N]\nNode: [node-id]\nCategory: [auth-security|type-consistency|error-handling|database|api-contracts|imports|code-quality|test-quality|config-environment|frontend-ux|documentation|cross-node-integration]\nSeverity: HIGH | MEDIUM | LOW\nConfidence: [0-100]\nDescription: [what's wrong — single line]\nFile: [exact file path]\nLine: [approximate line number]\nFix: [specific remediation — single line]\n\`\`\`\n\n`;
   prompt += `IMPORTANT: Each field MUST be exactly one line. The parser uses line-by-line extraction.\n\n`;
   prompt += `If everything is clean, report: CLEAN: No findings. All fixes verified.\n`;
 
@@ -338,6 +338,10 @@ function assembleCrossCheckPrompt(
 function extractFindings(report, sourceModel) {
   const findings = [];
   const findingRegex =
+    /FINDING:\s*F(\d+)\s*\n\s*Node:\s*(.+)\s*\n\s*Category:\s*(.+)\s*\n\s*Severity:\s*(.+)\s*\n\s*Confidence:\s*(\d+)\s*\n\s*Description:\s*(.+)\s*\n\s*File:\s*(.+)\s*\n\s*Line:\s*(.+)\s*\n\s*Fix:\s*(.+)/gi;
+
+  // Fallback regex without Confidence field (for backward compatibility with older agents)
+  const fallbackRegex =
     /FINDING:\s*F(\d+)\s*\n\s*Node:\s*(.+)\s*\n\s*Category:\s*(.+)\s*\n\s*Severity:\s*(.+)\s*\n\s*Description:\s*(.+)\s*\n\s*File:\s*(.+)\s*\n\s*Line:\s*(.+)\s*\n\s*Fix:\s*(.+)/gi;
 
   let match;
@@ -348,11 +352,30 @@ function extractFindings(report, sourceModel) {
       node: match[2].trim(),
       category: match[3].trim().toLowerCase(),
       severity: match[4].trim(),
-      description: match[5].trim(),
-      file: match[6].trim(),
-      line: match[7].trim(),
-      fix: match[8].trim(),
+      confidence: parseInt(match[5], 10),
+      description: match[6].trim(),
+      file: match[7].trim(),
+      line: match[8].trim(),
+      fix: match[9].trim(),
     });
+  }
+
+  // If primary regex found nothing, try fallback without Confidence field
+  if (findings.length === 0) {
+    while ((match = fallbackRegex.exec(report)) !== null) {
+      findings.push({
+        id: `F${match[1]}`,
+        source_model: sourceModel,
+        node: match[2].trim(),
+        category: match[3].trim().toLowerCase(),
+        severity: match[4].trim(),
+        confidence: 80, // Default confidence for findings without explicit score
+        description: match[5].trim(),
+        file: match[6].trim(),
+        line: match[7].trim(),
+        fix: match[8].trim(),
+      });
+    }
   }
 
   return findings;

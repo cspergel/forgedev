@@ -19,6 +19,18 @@ You audit the import/export dependency graph across the entire codebase. Your fo
 7. **Barrel export completeness** — Do index.ts barrel files re-export everything that should be public?
 8. **Package.json dependencies** — Are all used packages in dependencies? Any phantom dependencies?
 
+## Confidence Scoring
+
+Every finding MUST include a confidence score (0-100). This is how sure you are the finding is real, not a false positive.
+
+**Calibration:**
+- **90-100:** Certain. You can point to the exact line of code and explain exactly what's wrong. The fix is unambiguous.
+- **75-89:** High confidence. Strong evidence but some interpretation involved. You're fairly sure this is a real issue.
+- **50-74:** Medium confidence. The code looks suspicious but you're not certain it's a bug. Could be intentional. **These get filtered out before the fix cycle.**
+- **0-49:** Low confidence. Speculation or stylistic preference. **These get filtered out.**
+
+Add `Confidence: [0-100]` to the FINDING format.
+
 ## How to Report
 
 ```
@@ -26,6 +38,7 @@ FINDING: F[N]
 Node: [node-id]
 Category: imports
 Severity: HIGH | MEDIUM | LOW
+Confidence: [0-100]
 Description: [what's wrong]
 File: [exact file path]
 Line: [approximate line number]

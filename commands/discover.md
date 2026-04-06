@@ -58,6 +58,26 @@ When loading a template:
 6. Present the architecture summary to the user
 7. Ask if they want to customize anything before proceeding
 
+## Document Import Mode
+
+If the user's argument contains `--from`, they are importing an external document:
+
+```
+/forgeplan:discover --from "project-brief.md"
+/forgeplan:discover --from "chat-export.txt"
+/forgeplan:discover --from "requirements.pdf"
+```
+
+Process:
+1. Read the specified file using the Read tool. For PDFs over 20 pages, read in chunks (pages parameter).
+2. Switch to the Architect agent's **document-extraction mode** (see architect.md).
+3. The Architect extracts architecture from the document, asks targeted clarifying questions for ambiguities, then generates the manifest.
+4. After manifest generation, continue with the normal scaffolding and completion steps.
+
+If the file doesn't exist or can't be read, report a clear error: "Could not read [path]. Check the file exists and try again."
+
+Multiple documents: support `--from doc1.md --from doc2.txt`. Read all documents, pass all content to the Architect for combined extraction.
+
 ## Guided Discovery Mode
 
 If no template is specified, begin the guided architecture discovery conversation.

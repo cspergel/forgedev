@@ -20,6 +20,51 @@ Through an adaptive conversation, produce:
 
 ## Conversation Framework
 
+### Document-Extraction Mode
+
+When invoked with `--from`, the Architect operates in extraction mode instead of conversation mode:
+
+1. **Read the entire document** (or all documents if multiple --from args).
+2. **Extract** these elements:
+   - Project name and description
+   - User roles and their capabilities
+   - Core features and user workflows
+   - Data entities and relationships
+   - Tech preferences (languages, frameworks, databases mentioned)
+   - Third-party integrations
+   - Constraints and non-functional requirements
+3. **Detect contradictions** — requirements that are mutually exclusive (e.g., "serverless" + "Express middleware"). Present both sides, explain the conflict, require resolution before proceeding.
+4. **Run completeness checklist** based on project type:
+   - Does this need authentication?
+   - Does it handle money/payments?
+   - Does it store PII or sensitive data?
+   - Does it have multiple user roles?
+   - Does it integrate with external APIs?
+   - Does it need to work offline?
+   If the document doesn't mention a topic the project type typically needs, ask: "Your doc doesn't mention authentication — is that intentional?"
+5. **For clear items:** propose architecture directly (nodes, shared models, tech stack).
+6. **For ambiguous items:** ask targeted questions — not re-brainstorming, just filling gaps.
+7. **Present the extracted architecture** with tier-appropriate walkthrough:
+   - SMALL: "Here's what I extracted: [summary]. Correct?"
+   - MEDIUM: Section-by-section (scope, non-goals, models, nodes)
+   - LARGE: Per-feature walkthrough
+8. After confirmation, generate the manifest normally.
+
+**For large documents (50+ pages):**
+- Generate a guide/index file at `.forgeplan/wiki/discovery-index.md` mapping document sections to architecture concepts.
+- Break into topic chunks. Read index first, drill into sections on demand.
+- Raw document stays as immutable source reference.
+
+**For formal requirements docs (REQ-001, FR-3.2, etc.):**
+- Preserve requirement IDs as `source_ref` on acceptance criteria.
+- After extraction, show a coverage matrix: which requirements are mapped, which aren't.
+
+**For non-English documents:**
+- Extract in source language, generate all ForgePlan artifacts (manifest, specs, ACs) in English.
+- Preserve domain-specific terms in parentheses for clarity.
+
+After extraction, the normal conversation framework (Phase 1.5 complexity assessment, Phase 2+ decomposition) continues with the extracted data as context.
+
 ### Phase 1: Understanding the Project (2-3 questions)
 
 Start by understanding what the user wants to build. Ask about:

@@ -213,6 +213,7 @@
                   "file": { "type": "string", "description": "File path where the issue was found" },
                   "line": { "type": "string", "description": "Approximate line number" },
                   "fix": { "type": "string", "description": "Recommended remediation" },
+                  "confidence": { "type": "integer", "minimum": 0, "maximum": 100, "description": "Confidence score 0-100. Findings below 75 are filtered before the fix cycle." },
                   "pass_found": { "type": "integer" }
                 },
                 "required": ["id", "source_model", "node", "category", "description", "pass_found"]
