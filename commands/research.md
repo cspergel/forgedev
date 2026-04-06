@@ -21,7 +21,8 @@ Dispatch research agents to gather best practices, packages, and documentation f
 
 2. **Determine research topic:**
    - If `$ARGUMENTS` is provided, use it as the topic
-   - If no arguments, read the manifest and suggest topics based on tech_stack integrations
+   - If no arguments AND manifest exists, read the manifest and suggest topics based on tech_stack integrations
+   - If no arguments AND no manifest, halt with: "Provide a research topic (e.g., `/forgeplan:research supabase auth`) or run `/forgeplan:discover` first to create a manifest."
 
 3. **Create research output directory:**
    ```bash
