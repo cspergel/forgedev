@@ -62,7 +62,7 @@ When loading a template:
 
 **Existing project guard:** Before entering document import mode, check if `.forgeplan/` already exists or if `src/` contains files. If so, warn the user:
 - If `.forgeplan/manifest.yaml` exists with built/reviewed nodes: "An existing ForgePlan project was detected with built nodes. To modify the architecture, use `/forgeplan:revise`. To start fresh, delete `.forgeplan/` first. Continue with re-discovery? (y/n)"
-- If `src/` has files but no `.forgeplan/`: "Existing source code detected. Document import will create a new ForgePlan architecture. The build phase will generate new files and MAY modify root config files (package.json, tsconfig.json) and entry points (App.tsx, server.ts). Your existing source files in subdirectories will not be overwritten — new code goes into node-scoped directories. Continue? (y/n)"
+- If `src/` has files but no `.forgeplan/`: "Existing source code detected. ForgePlan will create an architecture and generate code. The build phase will create new files in node-scoped directories AND may modify shared files (package.json, tsconfig.json, entry points like App.tsx, src/server.ts). Consider committing your current state first so you can revert if needed. Continue? (y/n)"
 Only proceed if confirmed.
 
 If the user's argument contains `--from`, they are importing an external document:

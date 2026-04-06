@@ -85,19 +85,30 @@ function runStep(name, command, timeoutMs) {
 }
 
 // --- PID tracking for safe process cleanup ---
+// Format: "timestamp:pid" per line. Timestamp prevents killing reused PIDs from stale sessions.
+const PID_MAX_AGE_MS = 10 * 60 * 1000; // 10 minutes — no verify-runnable run lasts longer
+
 function writePid(pid) {
-  const pids = readPids();
-  pids.push(pid);
-  fs.writeFileSync(pidFile, pids.join("\n"), "utf-8");
+  const entries = readPidEntries();
+  entries.push({ ts: Date.now(), pid });
+  fs.writeFileSync(pidFile, entries.map(e => `${e.ts}:${e.pid}`).join("\n"), "utf-8");
 }
 
-function readPids() {
+function readPidEntries() {
   if (!fs.existsSync(pidFile)) return [];
   return fs
     .readFileSync(pidFile, "utf-8")
     .split("\n")
     .filter(Boolean)
-    .map(Number);
+    .map(line => {
+      const [ts, pid] = line.split(":");
+      return { ts: parseInt(ts, 10) || 0, pid: parseInt(pid, 10) };
+    })
+    .filter(e => e.pid > 0);
+}
+
+function readPids() {
+  return readPidEntries().map(e => e.pid);
 }
 
 function killPid(pid) {
@@ -159,8 +170,13 @@ function killPidTree(pid) {
 }
 
 function cleanupPids() {
-  const pids = readPids();
-  for (const pid of pids) {
+  const entries = readPidEntries();
+  const now = Date.now();
+  for (const { ts, pid } of entries) {
+    if (now - ts > PID_MAX_AGE_MS) {
+      // Stale entry — PID was likely reused by another process. Do NOT kill.
+      continue;
+    }
     killPidTree(pid);
   }
   try {

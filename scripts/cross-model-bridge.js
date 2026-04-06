@@ -470,7 +470,9 @@ function crossCheckViaCli(config, prompt, cwd) {
     fs.writeFileSync(tmpPrompt, prompt, "utf-8");
     // Quote tmpPrompt to handle paths with spaces (e.g., "Coding Projects")
     const fullArgs = [...args, `"${tmpPrompt}"`];
-    const result = execSync(`"${command}" ${fullArgs.join(" ")}`, {
+    // Only quote if command contains spaces — quoting shim commands like "npm" breaks .cmd on Windows
+    const quotedCmd = command.includes(" ") ? `"${command}"` : command;
+    const result = execSync(`${quotedCmd} ${fullArgs.join(" ")}`, {
       encoding: "utf-8",
       timeout,
       cwd,

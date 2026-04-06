@@ -231,8 +231,11 @@ function reviewViaCli(config, prompt, cwd) {
     fs.writeFileSync(tmpPrompt, prompt, "utf-8");
 
     const fullArgs = [...args, `"${tmpPrompt}"`];
+    // Only quote the command if it contains spaces (paths like C:\Program Files\...).
+    // Quoting shim commands like "npm" breaks .cmd resolution on Windows.
+    const quotedCmd = command.includes(" ") ? `"${command}"` : command;
     const result = execSync(
-      `"${command}" ${fullArgs.join(" ")}`,
+      `${quotedCmd} ${fullArgs.join(" ")}`,
       { encoding: "utf-8", timeout, cwd, stdio: ["pipe", "pipe", "pipe"] }
     );
 
