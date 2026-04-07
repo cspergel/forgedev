@@ -362,8 +362,8 @@ function isWikiStale(state, forgePlanDir) {
   if (!state) return "not-initialized"; // State is null (corrupted or missing)
   if (!state.wiki_last_compiled) return "not-initialized"; // Never compiled
   if (!fs.existsSync(path.join(forgePlanDir, "wiki", "index.md"))) return "deleted"; // Wiki dir deleted
+  if ((state.wiki_compile_attempts || 0) >= 3) return "failed"; // Exhausted retries (check BEFORE wiki_compiling — compiling is false after lockout)
   if (state.wiki_compiling) {
-    if ((state.wiki_compile_attempts || 0) >= 3) return "failed"; // Exhausted retries
     return "interrupted"; // Previous compile crashed
   }
   const lastCompiled = new Date(state.wiki_last_compiled);

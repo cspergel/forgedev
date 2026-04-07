@@ -68,6 +68,7 @@ Run tier-selected sweep agents (3-5) in parallel across the entire codebase: 5 c
        "findings": { "pending": [], "resolved": [] },
        "modified_files_by_pass": {},
        "agent_convergence": {},
+       "needs_manual_attention": [],
        "integration_results": { "last_run": null, "passed": false, "failures": [] }
      }
    }
@@ -107,9 +108,9 @@ Agent definition files (read these, use as system prompts):
 2. After merging results, update `sweep_state.agent_convergence` for each agent. **Keys are agent names** (matching the `.md` filename without extension), NOT category names:
    ```json
    "agent_convergence": {
-     "sweep-red": { "status": "active", "last_findings_pass": 1, "consecutive_clean": 0 },
-     "sweep-orange": { "status": "clean", "last_findings_pass": null, "consecutive_clean": 1 },
-     "sweep-white": { "status": "active", "last_findings_pass": 1, "consecutive_clean": 0 },
+     "sweep-red": { "status": "active", "last_findings_pass": 1, "consecutive_clean": 0, "findings_history": [3] },
+     "sweep-orange": { "status": "clean", "last_findings_pass": null, "consecutive_clean": 1, "findings_history": [0] },
+     "sweep-white": { "status": "active", "last_findings_pass": 1, "consecutive_clean": 0, "findings_history": [2] },
      ...
    }
    ```
@@ -117,6 +118,7 @@ Agent definition files (read these, use as system prompts):
    - `status`: `"clean"` (returned CLEAN), `"active"` (had findings), `"failed"` (returned unstructured response), `"converged"` (2 consecutive clean passes — retired), `"force-converged"` (oscillation guard)
    - `last_findings_pass`: which pass this agent last found something
    - `consecutive_clean`: how many consecutive passes returned CLEAN
+   - `findings_history`: array of integers — append the agent's finding count after each pass (e.g., `[5, 3, 3]` means 5 findings on pass 1, 3 on pass 2, 3 on pass 3). Used by rule (f) to detect oscillation: if the last 3 entries are non-decreasing, force-converge.
 3. On **pass 2+**, determine which agents to dispatch using these rules **in precedence order**:
    a. **Converged agents are retired:** Skip any agent with `status: "converged"` or `"force-converged"`.
    b. **Cross-cutting agents re-run if ANY agent had findings:** `sweep-orange` (contracts span all boundaries), `sweep-rainbow` (architecture affected by any code change), and `sweep-white` (gap-finding depends on full picture) re-run whenever any other agent reported findings in the previous pass, even if they themselves were clean. They only converge when they return CLEAN AND no other active agent had findings in the same pass.

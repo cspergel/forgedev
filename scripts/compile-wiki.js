@@ -35,7 +35,7 @@ function globSync(pattern, cwd) {
   return results;
 }
 
-const { atomicWriteJson } = require("./lib/atomic-write");
+const { atomicWriteJson, NODE_ID_REGEX } = require("./lib/atomic-write");
 const wb = require("./lib/wiki-builder");
 
 const BINARY_EXTS = new Set([".png",".jpg",".gif",".ico",".woff",".eot",".ttf",".pdf",".zip"]);
@@ -107,7 +107,6 @@ async function main() {
   let nodeCount = 0, ruleCount = 0, patternCount = 0, decisionCount = 0;
 
   // Step 1-2: Process each node
-  const NODE_ID_REGEX = /^[a-zA-Z0-9][a-zA-Z0-9_-]*$/;
   for (const nodeId of nodeIds) {
     // Defense-in-depth: validate nodeId format before using in file paths
     if (!NODE_ID_REGEX.test(nodeId)) {

@@ -470,12 +470,12 @@ function evaluateBash(toolInput, cwd) {
     /^\s*more\s/,                       // pager
     /^\s*grep\s/,                       // search
     /^\s*rg\s/,                         // ripgrep
-    /^\s*find\s(?!.*(-exec|-execdir|-delete|-ok|-okdir)\b)/,  // find files (block -exec/-execdir/-delete/-ok/-okdir)
+    /^\s*find\s(?!.*(-exec|-execdir|-delete|-ok|-okdir|-fprint|-fprint0|-fprintf|-fls)\b)/,  // find files (block -exec/-execdir/-delete/-ok/-okdir/-fprint/-fls)
     /^\s*wc\s/,                         // word count
     /^\s*diff\s/,                       // diff
     /^\s*git\s+(status|log|diff|show|branch|remote|tag|stash\s+list)\b/,
     /^\s*git\s+add\b/,                      // git add (staging files)
-    /^\s*git\s+commit\s+(-[amSnN]\s+|--(?:message|author|signoff|no-edit|allow-empty|amend|gpg-sign)\b|"[^"]*"|'[^']*'|\s+)*\s*$/, // git commit: safe flags only (blocks -e/--edit/-p/--patch/-i/--interactive)
+    /^\s*git\s+commit\s+(-[amSnN]\s+|--(?:message|author|signoff|no-edit|allow-empty|amend|gpg-sign)\b|"[^"]*"|'[^']*'|\s+)*(-[amSnN]|--(?:message|author|signoff|no-edit|allow-empty|amend|gpg-sign)\b|"[^"]*"|'[^']*')\s*$/, // git commit: requires at least one safe flag (blocks bare git commit and -e/--edit/-p/--patch/-i/--interactive)
     /^\s*node\s+[^\s]*validate-manifest\.js/,  // our own validation script
     /^\s*node\s+[^\s]*validate-spec\.js/,     // our own spec validator
     /^\s*node\s+[^\s]*next-node\.js/,         // our own next-node script
