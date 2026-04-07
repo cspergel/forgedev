@@ -2,7 +2,7 @@
 
 **Date:** 2026-04-07
 **Status:** Draft v2 (revised after 5-team review of Sprint 10 v1)
-**Goal:** Formalize the 4-stage design-to-build pipeline with the universal review panel. Make "architecture-down, sprint-forward, governance-continuous" the default workflow. Every stage loops until clean.
+**Goal:** Formalize the 3-stage design-to-build pipeline with the universal review panel. Make "architecture-down, sprint-forward, governance-continuous" the default workflow. Every stage loops until clean.
 
 > **Split from Sprint 10 v1:** The original Sprint 10 was too large (11 CRITICALs in first review). Split into 10A (pipeline + panel) and 10B (phased builds + repo ingestion). 10A is foundational — 10B layers on top.
 
@@ -18,13 +18,15 @@
 | Loop behavior | Always loop until clean, every tier | Scale agent COUNT by tier. Tokens are investment, not cost |
 | SMALL shortcut | Collapse Stages 2+3 into single sanity check | SMALL should complete in one session. 4 full stages is too much ceremony |
 | Stage 3 home | Planner is a mode of the Architect, not a separate agent | Architect designs, Architect plans. Same agent, different output. Reduces agent count |
-| Dispatch mechanism | Commands pass `--lens design\|plan\|code` to review agents | One agent file per role with stage-specific sections. No file explosion |
-| Max review passes | 5 per stage (circuit breaker) | Prevents infinite loops in autonomous mode. Surface remaining findings as warnings |
+| Dispatch mechanism | Dispatching command includes "You are reviewing a [DESIGN/PLAN/CODE] document" in the Agent tool prompt | Each review agent file has all 3 lenses. The dispatching command (discover, greenfield, build) tells the agent which lens to use via the prompt context, not a flag. Standard Claude Code Agent tool pattern — no special mechanism needed. |
+| Max review passes | 5 per stage (circuit breaker) | Prevents infinite loops. Unresolved CRITICALs HALT pipeline (require user acknowledgment). Unresolved IMPORTANTs become warnings and proceed. |
 | North star | Prompt-level guidance, not enforcement | Honest about what it is. Multi-agent loop provides practical guarantees |
 
 ---
 
-## The Four-Stage Pipeline
+## The Three-Stage Pipeline
+
+The pipeline has 3 stages (not 4). The existing sweep/deep-build is NOT a separate stage — it is part of Stage 3 (Build). The sweep runs after each batch as part of the build process, not as an independent stage.
 
 ### Stage 1: Discovery & Research
 
@@ -45,8 +47,21 @@ Three agents, sequential:
 **The Translator** (`agents/translator.md`, model: opus)
 - Design Intake: maps external docs to ForgePlan methodology
 - Document mode: reads PRDs, brainstorm exports, chat logs
-- Outputs: proposed manifest structure
-- **Relationship to existing `--from`:** The Translator REPLACES the architect's document-extraction mode. The `--from` flag in discover.md routes to the Translator instead of the architect's inline extraction. Migration: move the extraction logic from architect.md to translator.md.
+- Outputs: structured mapping JSON with proposed nodes, shared models, tier, and dependencies
+- **Relationship to existing `--from`:** The Translator REPLACES the architect's document-extraction mode. The `--from` flag in discover.md routes to the Translator instead of the architect's inline extraction. Migration: move the extraction logic from architect.md to translator.md. Keep architect extraction as a degraded fallback (if Translator fails, architect falls back to inline extraction with a warning).
+- **Handoff to Architect:** The Translator outputs a structured mapping. The discover command passes this mapping to the Architect as input context. The Architect then generates the actual manifest.yaml, skeleton specs, and scaffolding from the mapping — exactly as it does today from conversational input. The Translator does NOT generate the manifest — it proposes the structure, the Architect builds it.
+
+**Orchestration flow for `--from`:**
+```
+1. discover.md receives --from argument
+2. discover.md dispatches Translator agent with the document
+3. Translator outputs: proposed mapping (nodes, shared models, tier, deps)
+4. discover.md dispatches Interviewer to fill gaps in the mapping (if any ambiguities)
+5. discover.md dispatches Researcher for ecosystem context
+6. discover.md passes mapping + research to Architect
+7. Architect generates manifest + skeleton specs (existing behavior, new input format)
+8. Review panel runs on the design
+```
 
 **Stage 1 output:** Clear requirements + research context + proposed manifest mapping
 
@@ -67,7 +82,9 @@ Three agents, sequential:
 | **Pathfinder** | User journeys complete? Dead ends? Recovery? | All requirements have tasks? Coverage gaps? |
 | **Adversary** | Security by design? Scalability? Abuse scenarios? | Security in planned code? Trust boundaries? |
 
-**Loop:** Architect fixes → Panel re-reviews → until zero CRITICAL/IMPORTANT (max 5 passes)
+**Finding aggregation:** All agents' findings are merged, deduplicated by location, sorted by severity. Cross-cutting findings (tagged CROSS:[AgentName]) are routed to the named agent for verification on the next pass. The Architect receives the consolidated list, not raw per-agent output.
+
+**Loop:** Architect fixes → Panel re-reviews → until zero CRITICAL/IMPORTANT (max 5 passes). If CRITICALs remain after 5 passes, pipeline HALTS and requires user acknowledgment. IMPORTANTs become warnings and proceed.
 
 **SMALL shortcut:** Design + plan reviewed in ONE pass by 3 agents (Structuralist, Skeptic, Adversary). No separate plan review stage.
 
@@ -100,11 +117,7 @@ Note: The Skeptic's code lens includes performance and test quality checks (addr
 
 **Stage 3 output:** Committed, reviewed code
 
-### Stage 4: Sweep & Certification
-
-This is the existing sweep/deep-build pipeline. No changes needed — it already works. The consolidated sweep agents (sweep-adversary.md, sweep-contractualist.md, etc.) run here.
-
-**Stage 4 output:** Certified, swept codebase
+After code review passes, the existing sweep/deep-build pipeline runs as part of Stage 3 to certify the final output. No changes needed to sweep — it already works with the renamed consolidated agents.
 
 ---
 
@@ -153,8 +166,13 @@ You are **[Name]**, [one-sentence identity].
 ## Output Format
 CRITICAL / IMPORTANT / MINOR — finding, location, evidence, recommendation
 
+## Cross-Cutting Findings
+If your finding spans another agent's domain (e.g., "this interface contract
+is insecure"), tag it with CROSS:[AgentName] so the aggregation step routes
+it for cross-verification. Do NOT drop it because it is "not your domain."
+
 ## What You Do NOT Check
-[Explicit scope boundaries]
+[Primary scope boundaries — but cross-cutting findings are always reported]
 ```
 
 ### The Five Review Agents — Full Spec
@@ -296,19 +314,19 @@ When a project is imported via document or (Sprint 10B) via repo ingestion, comp
 
 ## Build Order
 
-1. Create `agents/interviewer.md`
-2. Create `agents/translator.md`
-3. Enhance `agents/researcher.md` for design-level operation
-4. Add Planner mode to `agents/architect.md`, remove --from extraction
-5. Create 5 review agent files (review-adversary, review-contractualist, review-pathfinder, review-structuralist, review-skeptic)
-6. Rename 5 sweep agent files (sweep-red→sweep-adversary, etc.)
-7. Update `commands/sweep.md` with new agent names
-8. Update `commands/discover.md` with Translator routing + Interviewer + Researcher
+1. Rename 5 sweep agent files (sweep-red→sweep-adversary, etc.) + delete old 12 domain agents + delete old 4 Sprint 9 team agents (sweep-adversarial, sweep-user-flows, sweep-contract-drift, sweep-holistic). Final agents/ should have only the 5 consolidated sweep agents.
+2. Update `commands/sweep.md` with new agent names
+3. Create `agents/interviewer.md`
+4. Create `agents/translator.md`
+5. Enhance `agents/researcher.md` for design-level operation
+6. Update `commands/discover.md` with Translator routing + Interviewer + Researcher (do this BEFORE step 7 so --from still works via Translator, with architect inline extraction as fallback)
+7. Add Planner mode to `agents/architect.md`. Mark --from extraction as deprecated (fallback only — Translator is primary). Do NOT delete --from extraction yet — it serves as fallback until Translator is proven.
+8. Create 5 review agent files (review-adversary, review-contractualist, review-pathfinder, review-structuralist, review-skeptic)
 9. Update `commands/greenfield.md` with 3-stage pipeline
 10. Update `commands/guide.md` with pipeline recommendations
-11. Update `scripts/compact-context.js` with project goals
-12. Update `CLAUDE.md` with Sprint 10A changes
-13. End-to-end verification
+11. Update `scripts/compact-context.js` with project goals (project.description from manifest)
+12. Update `CLAUDE.md` with Sprint 10A changes (methodology, agent table, sprint description)
+13. End-to-end verification: SMALL greenfield + MEDIUM document import through full pipeline
 
 ## Success Criteria
 

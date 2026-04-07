@@ -60,6 +60,10 @@ nodes:
 - `total_phases` = `Math.max(...nodes.map(n => n.phase))`
 - No `interfaces.provides/consumes` field — interface contracts live in the spec's existing `interfaces` section, which is already structured YAML
 
+### Backward Compatibility
+
+`phase` is OPTIONAL with default 1. Existing manifests without `phase` fields pass validation — every node is treated as phase 1. `build_phase` defaults to 1 if absent. No migration script needed. This is the same pattern used for `wiki_last_compiled` and `split_from` in Sprint 9.
+
 ### Enforcement: Stub Nodes Cannot Be Built
 
 **Hard gate in pre-tool-use.js:**
@@ -110,8 +114,10 @@ A fail-closed stub DENIES access by default. The only safe stub for security is 
 3. Deep-build (or user via `/forgeplan:guide`) detects: "All phase N nodes certified"
 4. Prompt: "Advance to phase N+1? This will: (a) run cross-phase integration check, (b) increment build_phase, (c) promote phase N+1 nodes to full spec depth. [Y/n]"
 5. Cross-phase review: universal panel runs with cross-phase lens
-6. If clean: `build_phase` increments. New spec cycle starts for promoted nodes.
-7. If issues: fix cycle, then re-check.
+6. If clean: `build_phase` increments in manifest. `build_phase_started_at` timestamp set in state.
+7. Promoted nodes (now at build_phase) need full specs. Deep-build runs `/forgeplan:spec` for each promoted node to flesh out interface-only specs into full specs with ACs, constraints, tests. Interface-only specs have status "specced" in state — deep-build detects they need spec promotion because they have a spec file but no `acceptance_criteria` section (interface specs only have `interfaces`).
+8. New build cycle starts for promoted nodes.
+9. If cross-phase issues: fix cycle, then re-check.
 
 **Cross-phase review lens:**
 
@@ -130,7 +136,7 @@ Add to session-start.js ambient display:
 Phase: 2 of 3 (auth, database, api built | frontend, reporting pending)
 ```
 
-If phase has been active for >10 sessions without advancement:
+If phase has been active for >7 days without advancement (compare `state.last_updated` timestamp against a `build_phase_started_at` timestamp stored when build_phase changes):
 ```
 WARNING: Phase 1 has been active for 15 sessions. Phase 2 stubs (auth) are fail-closed — security boundaries not enforced at runtime.
 ```
@@ -259,7 +265,16 @@ nodes:
 
 ### State Schema
 
-No new state fields for phased builds. `build_phase` lives in the manifest (single source of truth).
+```json
+"build_phase_started_at": {
+  "type": ["string", "null"],
+  "format": "date-time",
+  "default": null,
+  "description": "When the current build_phase was entered. Used for staleness warning (>7 days without advancement). Set when build_phase changes."
+}
+```
+
+`build_phase` itself lives in the manifest (single source of truth), not state.
 
 ### Spec Schema
 
@@ -274,7 +289,7 @@ generated_from: null        # "repo-ingestion" | "document-import" | null
 `validate-manifest.js` additions:
 - `build_phase` must be integer >= 1
 - `build_phase` must not exceed max node phase
-- Every node must have `phase` (integer >= 1)
+- If `phase` is present, must be integer >= 1 (optional — defaults to 1 if absent for backward compat)
 - All nodes in phases <= build_phase must have spec files (enforces "can't build without spec")
 
 ---
