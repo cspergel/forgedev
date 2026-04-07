@@ -96,6 +96,46 @@ function validateManifest(manifest) {
         errors.push(`Node "${nodeId}": "files" must be an array.`);
       }
     }
+
+    // Sprint 9: Node ID format validation (defense-in-depth for wiki file paths)
+    if (!/^[a-zA-Z0-9][a-zA-Z0-9_-]*$/.test(nodeId)) {
+      errors.push(`Node "${nodeId}": node ID must be alphanumeric with hyphens/underscores, starting with a letter or digit.`);
+    }
+
+    // Sprint 9: split_from validation (check explicitly — empty string "" is falsy and would skip silently)
+    if (node.split_from !== undefined && node.split_from !== null) {
+      if (node.split_from === "") {
+        errors.push(`Node "${nodeId}": split_from cannot be an empty string. Remove it or set to a valid parent node ID.`);
+      } else if (typeof node.split_from !== "string") {
+        errors.push(`Node "${nodeId}": split_from must be a string if present.`);
+      } else if (!/^[a-zA-Z0-9][a-zA-Z0-9_-]*$/.test(node.split_from)) {
+        errors.push(`Node "${nodeId}": split_from "${node.split_from}" has invalid format (must be alphanumeric with hyphens/underscores).`);
+      } else if (node.split_from === nodeId) {
+        errors.push(`Node "${nodeId}": split_from cannot reference itself.`);
+      }
+    }
+  }
+
+  // Sprint 9: sibling consistency check — split siblings must not have overlapping file_scopes
+  const splitGroups = {};
+  for (const nid of nodeIds) {
+    const n = manifest.nodes[nid];
+    if (n.split_from) {
+      if (!splitGroups[n.split_from]) splitGroups[n.split_from] = [];
+      splitGroups[n.split_from].push({ id: nid, file_scope: n.file_scope });
+    }
+  }
+  for (const [parent, siblings] of Object.entries(splitGroups)) {
+    for (let i = 0; i < siblings.length; i++) {
+      for (let j = i + 1; j < siblings.length; j++) {
+        // Use existing scopesOverlap() function for real glob overlap detection
+        if (scopesOverlap(siblings[i].file_scope, siblings[j].file_scope)) {
+          errors.push(
+            `Nodes "${siblings[i].id}" and "${siblings[j].id}" (both split from "${parent}") have overlapping file_scopes: "${siblings[i].file_scope}" and "${siblings[j].file_scope}".`
+          );
+        }
+      }
+    }
   }
 
   // --- 2. Orphan Node Detection ---

@@ -151,6 +151,69 @@ If the user pushes back on decomposition at MEDIUM/LARGE ("can't we just have a 
 
 For SMALL, if the user wants MORE decomposition, respect it — the tier is a suggestion, not a mandate.
 
+### Node Split Mode (Sprint 9)
+
+When invoked with `--split [node-id]`, operate in **split mode** — this is code analysis, NOT discovery. Read the existing code structure, not the user's project description.
+
+**IMPORTANT: Your role in split mode is ANALYSIS ONLY.** Do NOT write files, modify code, move files, or update the manifest. Present the proposal and wait for user confirmation. The `/forgeplan:split` command handles all execution (writing specs, updating manifest, state transitions, wiki updates).
+
+#### Analysis Steps
+1. Read the existing node spec from `.forgeplan/specs/[node-id].yaml`
+2. Glob the node's `file_scope` to get file list
+3. Analyze code structure:
+   - **Directory groupings:** `src/auth/` vs `src/api/` vs `src/database/` → natural boundaries
+   - **Import clusters:** files that import each other heavily belong together (scan `import` and `require()` statements)
+   - **Domain boundaries:** auth logic vs business logic vs data access
+4. Assess: how many ACs, how many responsibilities, how many files?
+5. Propose split with reasoning using the Split Proposal Template below
+
+#### Split Proposal Template
+
+Present this structured proposal to the user:
+
+```
+## Split Proposal: [node-id] → [child-1], [child-2], ...
+
+### Current State
+- Files: [count]
+- ACs: [count]
+- Responsibilities: [list of concerns found in the code]
+
+### Proposed Split
+
+**[child-1]: [name]**
+- File scope: [glob pattern]
+- Files: [count]
+- ACs: [list] (from @forgeplan-spec markers in code files)
+- Depends on: [traced from import statements]
+- Connects to: [traced from exports consumed by other nodes]
+- split_from: [parent-id]
+
+**[child-2]: [name]**
+- [same structure as above]
+
+### Orphan Files (need assignment)
+- [file] — used by both [child-1] and [child-2] (import analysis shows...)
+  Options: assign to specific child / create shared node / move to lib/
+
+### Consequence
+- Node count: [before] → [after] (total project: [total])
+- Tier impact: Current tier [TIER]. You now have [N] nodes.
+  Would you like to reassess complexity? [NEXT_TIER] governance adds: [consequences].
+  (Node count is a signal, not a formula — your project may still be [TIER]
+  if the domain complexity hasn't changed.)
+- Mandatory: /forgeplan:integrate after split
+
+Confirm? [Y/n/modify]
+```
+
+#### Rules
+- Tier upgrade is ADVISORY, not a hard threshold — present consequences, let user decide
+- AC assignment uses @forgeplan-spec markers in code to distribute ACs to children
+- Dependency redistribution traces import/require() statements (static only, V1 does NOT trace dynamic `import()` or re-exports)
+- Orphan files (not cleanly assignable): present to user with import analysis
+- split_from field added to each child node in manifest
+
 ### Phase 3: Shared Model Identification
 
 As you decompose nodes, identify shared models:

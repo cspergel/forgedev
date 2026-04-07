@@ -326,10 +326,12 @@ function processHook(input) {
             }
           }
           // Append decision markers to node wiki page
+          // Sanitize descriptions — strip pipes, newlines, HTML to prevent wiki corruption
+          const sanitize = (s) => s.replace(/\|/g, "-").replace(/\n/g, " ").replace(/<[^>]*>/g, "").trim();
           const wikiPagePath = path.join(nodesDir, wikiNodeId + ".md");
           let appendText = "";
           for (const match of matches) {
-            appendText += `- **${match.id}**: ${match.description} [${relPath}]\n`;
+            appendText += `- **${match.id}**: ${sanitize(match.description)} [${relPath}]\n`;
           }
           fs.appendFileSync(wikiPagePath, appendText, "utf-8");
         }

@@ -62,4 +62,14 @@ Use `Category: cross-node-integration` for cross-node issues, `type-consistency`
 - **Follow the rename.** When something is renamed in one file, grep for the old name across the entire codebase.
 - **SEVERITY INTEGRITY:** A missing required field is HIGH. An unhandled enum value that has a default fallback is MEDIUM. A cosmetic inconsistency is LOW.
 - Do NOT re-report runtime data flow issues that fall under cross-node-integration — focus on static contract consistency (enum definitions, schema fields, file references, format compatibility).
+
+## Decision Marker Coverage (Sprint 9)
+
+For each node, grep all files in the node's `file_scope` for `@forgeplan-decision` markers.
+
+If a node has **0 decision markers**, emit a finding:
+- **Finding:** "Node [id] has no @forgeplan-decision markers. Consider annotating significant architectural choices for the knowledge graph."
+- **Confidence:** 60 (advisory, not blocking)
+- **Category:** documentation
+- **File:** [any file in the node's file_scope]
 - If you find no drift, report: `CLEAN: No contract drift findings.`

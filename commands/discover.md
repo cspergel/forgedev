@@ -232,7 +232,16 @@ When discovery is complete:
 }
 ```
 3. Populate the `nodes` object in state.json with each node ID set to `{"status": "pending"}`
-4. Create an initial git commit to establish a recovery baseline:
+4. **Wiki Initialization (Sprint 9 — MEDIUM/LARGE only, skip for SMALL):**
+   After state.json is fully initialized, create the wiki skeleton directly:
+   - Create `.forgeplan/wiki/` and `.forgeplan/wiki/nodes/` directories
+   - Create `index.md` with project name, tier, tech stack from manifest
+   - Create empty `decisions.md` (`# Architectural Decisions\n`)
+   - Create `rules.md` from spec constraints if specs exist, otherwise empty (`# Rules & Patterns\n`)
+   - Create `nodes/[node-id].md` skeleton per manifest node (`# Node: [id]\n`)
+   - Check if `.forgeplan/wiki/discovery-index.md` already exists (from large-document discovery). If so, preserve it — it will be incorporated into wiki/index.md by compile-wiki.js.
+   - Do NOT run compile-wiki.js here — it requires state.json to already exist (which it does at this point), but the full compilation is deferred to the first sweep.
+5. Create an initial git commit to establish a recovery baseline:
    ```bash
    git add -A && git commit -m "forgeplan: project architecture initialized"
    ```

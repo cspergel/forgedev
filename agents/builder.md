@@ -65,6 +65,41 @@ When modifying existing source files (during rebuild, revision, or sweep fix):
 - Don't leave stale tests for the sweep to find — that's the process creating its own problems.
 - Run the node's tests after making changes to verify they pass: `npm test` (or the test command from `tech_stack.test_command`).
 
+## Wiki-Informed Building (Sprint 9 — MEDIUM/LARGE only)
+
+**Skip this section entirely for SMALL tier projects.**
+
+Before implementation, read existing knowledge:
+1. **Always read spec constraints directly** — the spec is your primary source of conventions, regardless of wiki state. This ensures you have convention guidance even on first build when rules.md is empty.
+2. Read `.forgeplan/wiki/rules.md` if it exists — supplementary context about inferred patterns and conventions from prior builds. If empty or missing, skip (not an error).
+3. Read `.forgeplan/wiki/nodes/[dep-node].md` for each dependency node — understand decisions and past issues that may affect your implementation.
+
+**If wiki doesn't exist or pages are empty** (first build, before any sweep), use spec constraints as the sole source of conventions. Wiki is supplementary context, never the primary source and never a gate.
+
+**During sequential builds** (before any sweep), wiki pages contain only real-time PostToolUse data (decision markers). rules.md will be empty until compile-wiki.js runs at first sweep. This is expected — the spec is your primary source.
+
+## Decision Markers (Sprint 9)
+
+When making non-obvious technical choices during implementation, write `@forgeplan-decision` markers:
+
+Format: `// @forgeplan-decision: D-[node]-[N]-[slug] -- [choice]. Why: [rationale]`
+
+Where:
+- `[node]` is the current node ID
+- `[N]` is a sequential integer (1, 2, 3...)
+- `[slug]` is a kebab-case identifier
+- `--` is ASCII double-hyphen (not em-dash)
+- Include "Why:" to separate the choice from the rationale
+
+Example:
+```typescript
+// @forgeplan-decision: D-auth-1-session-storage -- Database sessions. Why: need server-side revocation for security compliance
+```
+
+Write at minimum 1 decision marker per node for the most significant architectural choice. Write more for additional non-obvious decisions. These feed the knowledge tree — compile-wiki.js reads them to build decisions.md.
+
+**Do NOT manually write `@forgeplan-pattern` or `@forgeplan-rule` markers.** Patterns and rules are inferred automatically by compile-wiki.js from spec constraints and code analysis.
+
 ## Build Process
 
 1. Create the directory structure for this node's `file_scope`
