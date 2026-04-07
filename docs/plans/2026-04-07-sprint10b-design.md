@@ -159,42 +159,58 @@ For existing projects that want governance retroactively.
 
 ```
 1. Translator scans repo (NOT Researcher — Researcher does ecosystem search, not code scanning)
-   - Directory structure → proposed nodes
+   - Directory structure → proposed nodes (outputs Translator JSON schema from 10A)
    - package.json / imports → dependencies
    - Shared types (files imported by 3+ others) → shared models
    - Test directories → test coverage baseline
    - Containment checks: symlinks, .forgeplan existence, scope breadth
+   - Monorepo detection: check for workspaces in package.json, pnpm-workspace.yaml, turbo.json.
+     If monorepo detected, propose one node per workspace. Scope breadth rules apply per-workspace.
 
-2. Ground-truth validation (DETERMINISTIC, not LLM) — NO user prompts. Ingest is fully autonomous.
-   - Script verifies: every claimed directory exists, file counts per scope are accurate,
-     claimed shared types actually exist in codebase, no scope overlaps
-   - If validation fails: Translator re-maps with corrections
+2. Ground-truth validation (DETERMINISTIC — scripts/validate-ingest.js)
+   - Script verifies: every claimed directory exists, file counts per scope match (±10%),
+     claimed shared types actually imported by 3+ files, no scope overlaps, no symlink escapes
+   - Input: Translator's JSON output (Translator Output Schema from 10A)
+   - Output: JSON with PASS/FAIL per check + details for failures
+   - If validation fails: Translator re-maps with corrections (max 3 retries, then halt with
+     "repo structure too unusual for automatic ingestion — run /forgeplan:discover manually")
 
-4. Universal Review Panel — Mapping Review (design lens)
+3. Universal Review Panel — Mapping Review (design lens, 3 agents: Structuralist + Contractualist + Skeptic)
    - Structuralist: are node boundaries in the right places?
    - Contractualist: are shared models correctly identified?
    - Skeptic: does this mapping match what the code actually does?
    - Loop until clean (max 5 passes)
 
-5. Architect validates and generates manifest + specs
+4. Single confirmation gate: display proposed node map with file counts
+   "ForgePlan proposes this decomposition:
+     auth (src/auth/**, 8 files) — depends on: database
+     api (src/api/**, 15 files) — depends on: auth, database
+     database (src/db/**, 5 files)
+     Shared models: User, Document
+   Accept? [Y to accept / N to re-run Translator / E to edit manifest manually]"
+   For deep-build calling ingest autonomously: pass --confirm-auto to skip this gate.
+
+5. Architect generates manifest + descriptive specs
    - Specs are DESCRIPTIVE — labeled `spec_type: "descriptive"`
    - Specs describe what the code DOES, not what it SHOULD do
    - User can edit specs later to add requirements, constraints, non-goals
+   - Node statuses set to "built" (code exists) — satisfies sweep prerequisites
 
-6. Universal Review Panel — Spec Review (design lens)
+6. Universal Review Panel — Spec Review (design lens, same 3 agents)
    - Second gate: review generated specs for coherence
    - Loop until clean (max 5 passes)
 
-7. Manifest + specs written automatically (no user confirmation — ingest is autonomous)
+7. Manifest + specs written
 
 8. compile-wiki.js runs immediately
    - Wiki captures: existing patterns, decisions inferred from code, rules from spec constraints
-   - For legacy repos this is CRITICAL — the wiki becomes "here's what this codebase does and why"
-   - Institutional knowledge extracted and made explicit
+   - For legacy repos: the wiki becomes "here's what this codebase does and why"
 
-9. First sweep runs automatically as part of ingest (baseline quality assessment, wiki enriched with findings)
+9. First sweep runs automatically (baseline quality assessment, wiki enriched)
 
-10. `/forgeplan:guide` surfaces onboarding: "Your project has been ingested. [N] nodes mapped, [N] shared models identified, [N] findings from baseline sweep. Here's what to do next: review specs, edit to add requirements, or start building."
+10. `/forgeplan:guide` surfaces onboarding: "Your project has been ingested. [N] nodes mapped,
+    [N] shared models, [N] findings from baseline sweep. Next: review specs, edit to add
+    requirements, or start building."
 
 11. Governance active from this point forward
 ```
@@ -334,7 +350,9 @@ generated_from: null        # "repo-ingestion" | "document-import" | null
 ### Phase 3: Repo Ingestion
 14. Create scripts/validate-ingest.js
 15. Create commands/ingest.md
-16. Wire ingest flow: Translator → Interviewer → validate-ingest → Review Panel (x2) → Architect → compile-wiki
+16a. Wire ingest flow step 1-2: Translator scanning → validate-ingest.js (with retry loop, max 3)
+16b. Wire ingest flow step 3-4: Review Panel mapping review → confirmation gate (with --confirm-auto for autonomous)
+16c. Wire ingest flow step 5-11: Architect spec generation → Review Panel spec review → compile-wiki → sweep → guide onboarding
 17. Update CLAUDE.md
 
 ### Phase 4: Verification
@@ -351,4 +369,4 @@ generated_from: null        # "repo-ingestion" | "document-import" | null
 6. **Ground-truth validation:** validate-ingest.js catches incorrect Translator mappings
 7. **Descriptive specs labeled:** Ingested specs clearly marked as descriptive, editable by user
 8. **Wiki on ingest:** compile-wiki.js runs after ingest, captures institutional knowledge
-9. **Phase staleness warning:** session-start warns after 10+ sessions without advancement
+9. **Phase staleness warning:** session-start warns after >7 days without advancement (uses build_phase_started_at timestamp)

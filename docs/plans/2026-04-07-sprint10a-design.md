@@ -63,6 +63,51 @@ Three agents, sequential:
 8. Review panel runs on the design
 ```
 
+### Translator Output Schema
+
+The Translator outputs a structured JSON mapping consumed by three agents: Architect, Interviewer, and validate-ingest.js (10B). The schema:
+
+```json
+{
+  "project_name": "My App",
+  "tier_assessment": "MEDIUM",
+  "tier_reasoning": "Auth + database + API = 3 major concerns",
+  "proposed_nodes": [
+    {
+      "id": "auth",
+      "name": "Authentication Service",
+      "type": "service",
+      "file_scope": "src/auth/**",
+      "phase": 1,
+      "depends_on": ["database"],
+      "connects_to": ["api"]
+    }
+  ],
+  "shared_models": [
+    {
+      "name": "User",
+      "fields": ["id", "email", "role", "name"],
+      "used_by": ["auth", "api"]
+    }
+  ],
+  "tech_stack": {
+    "runtime": "node",
+    "framework": "express",
+    "database": "postgresql",
+    "test_framework": "vitest"
+  },
+  "ambiguities": [
+    "Document mentions both REST and GraphQL — which is primary?"
+  ],
+  "source": "document" | "repo" | "hybrid"
+}
+```
+
+**Consumers:**
+- **Architect:** reads `proposed_nodes`, `shared_models`, `tech_stack`, `tier_assessment` to generate manifest
+- **Interviewer:** reads `ambiguities` array — dispatches only if non-empty
+- **validate-ingest.js (10B):** reads `proposed_nodes` to verify directories exist, file counts match, shared types are real
+
 **Stage 1 output:** Clear requirements + research context + proposed manifest mapping
 
 ### Stage 2: Architecture & Design
@@ -82,11 +127,37 @@ Three agents, sequential:
 | **Pathfinder** | User journeys complete? Dead ends? Recovery? | All requirements have tasks? Coverage gaps? |
 | **Adversary** | Security by design? Scalability? Abuse scenarios? | Security in planned code? Trust boundaries? |
 
-**Finding aggregation:** All agents' findings are merged, deduplicated by location, sorted by severity. Cross-cutting findings (tagged CROSS:[AgentName]) are routed to the named agent for verification on the next pass. The Architect receives the consolidated list, not raw per-agent output.
+### Review Panel Orchestration
 
-**Loop:** Architect fixes → Panel re-reviews → until zero CRITICAL/IMPORTANT (max 5 passes). If CRITICALs remain after 5 passes, pipeline HALTS and requires user acknowledgment. IMPORTANTs become warnings and proceed.
+The dispatching command (discover.md, greenfield.md, build.md) drives the review panel loop. The orchestration logic is INLINE in the command, not a separate script — same pattern as sweep.md Phase 2-7.
 
-**SMALL shortcut:** SMALL skips Stage 1 entirely (no Interviewer/Researcher/Translator — the user's description IS the design). Architect produces design + plan directly. Reviewed in ONE pass by 3 agents (Structuralist, Skeptic, Adversary). No separate plan review. This keeps SMALL as fast as the current greenfield pipeline.
+**Dispatch steps per pass:**
+1. Command dispatches N agents in parallel (via Agent tool, each with "You are reviewing a [DESIGN/PLAN/CODE] document" context)
+2. Collect all agent outputs
+3. Merge findings, deduplicate by location (same file+line = same finding), sort by severity
+4. Cross-cutting findings (tagged CROSS:[AgentName]) are noted for next pass
+5. Present consolidated finding list to the Architect (or Builder for code review)
+6. If zero CRITICAL/IMPORTANT: exit loop, proceed to next stage
+7. If findings remain: Architect/Builder fixes → loop back to step 1
+
+**Severity mapping to state schema:** Review panel findings use the same vocabulary as sweep findings for storage:
+- CRITICAL → `severity: "HIGH"` in state schema
+- IMPORTANT → `severity: "MEDIUM"`
+- MINOR → `severity: "LOW"`
+
+Review panel findings are stored in `.forgeplan/reviews/design-review-pass-N.md` (or `plan-review-pass-N.md`, `code-review-pass-N.md`). They do NOT flow into `sweep_state.findings` — those are for sweep only. The review panel has its own tracking, scoped to the command that dispatches it.
+
+**Circuit breaker:**
+- Max 5 passes per review stage (SMALL: max 3 passes)
+- If CRITICALs remain after max passes: pipeline HALTS, requires user acknowledgment
+- If only IMPORTANTs remain: become warnings, proceed
+- Review panel HALT prevents downstream stages from starting (no sweep until code review passes)
+- Review panel halt is INDEPENDENT of sweep halt — they are separate loop mechanisms
+- Total agent dispatch budget for full pipeline: ~80 for SMALL, ~150 for MEDIUM, ~250 for LARGE
+
+**SMALL shortcut:** SMALL skips Stage 1 for GREENFIELD only (no Interviewer/Researcher/Translator — the description IS the design). **Exception:** if `--from` is provided, the Translator runs even for SMALL (it is the only Stage 1 agent that activates). Interviewer and Researcher still skip for SMALL.
+
+Architect produces design + plan directly. Reviewed in ONE pass by 3 agents (Structuralist, Skeptic, Adversary). If CRITICALs found, up to 2 more passes (max 3 total for SMALL). This keeps SMALL fast while allowing basic convergence.
 
 **MEDIUM:** 4 agents (add Contractualist), design and plan reviewed separately
 
@@ -314,19 +385,28 @@ When a project is imported via document or (Sprint 10B) via repo ingestion, comp
 
 ## Build Order
 
-1. Rename 5 sweep agent files (sweep-red→sweep-adversary, etc.) + delete old 12 domain agents + delete old 4 Sprint 9 team agents (sweep-adversarial, sweep-user-flows, sweep-contract-drift, sweep-holistic). Final agents/ should have only the 5 consolidated sweep agents.
-2. Update `commands/sweep.md` with new agent names
-3. Create `agents/interviewer.md`
-4. Create `agents/translator.md`
-5. Enhance `agents/researcher.md` for design-level operation
-6. Update `commands/discover.md` with Translator routing + Interviewer + Researcher (do this BEFORE step 7 so --from still works via Translator, with architect inline extraction as fallback)
-7. Add Planner mode to `agents/architect.md`. Mark --from extraction as deprecated (fallback only — Translator is primary). Do NOT delete --from extraction yet — it serves as fallback until Translator is proven.
-8. Create 5 review agent files (review-adversary, review-contractualist, review-pathfinder, review-structuralist, review-skeptic)
-9. Update `commands/greenfield.md` with 3-stage pipeline
-10. Update `commands/guide.md` with pipeline recommendations
-11. Update `scripts/compact-context.js` with project goals (project.description from manifest)
-12. Update `CLAUDE.md` with Sprint 10A changes (methodology, agent table, sprint description)
-13. End-to-end verification: SMALL greenfield + MEDIUM document import through full pipeline
+1. **Rename** the 5 consolidated sweep agents. The CONTENT of sweep-red.md becomes sweep-adversary.md (NOT sweep-adversarial.md — note the spelling difference). The Sprint 9 team agent `sweep-adversarial.md` is a DIFFERENT file that gets DELETED in step 1b.
+   - `sweep-red.md` → `sweep-adversary.md` (content: consolidated Red Team prompt)
+   - `sweep-orange.md` → `sweep-contractualist.md`
+   - `sweep-blue.md` → `sweep-pathfinder.md`
+   - `sweep-rainbow.md` → `sweep-structuralist.md`
+   - `sweep-white.md` → `sweep-skeptic.md`
+1b. **Update** `commands/sweep.md` with new agent names. Verify sweep still works with renamed agents.
+1c. **Delete** old agents AFTER verifying sweep works:
+   - 12 domain agents: sweep-auth-security.md, sweep-type-consistency.md, sweep-error-handling.md, sweep-database.md, sweep-api-contracts.md, sweep-imports.md, sweep-code-quality.md, sweep-test-quality.md, sweep-config-environment.md, sweep-frontend-ux.md, sweep-documentation.md, sweep-cross-node-integration.md
+   - 4 Sprint 9 team agents: sweep-adversarial.md, sweep-user-flows.md, sweep-contract-drift.md, sweep-holistic.md
+   - Never leave the project with zero functioning sweep agents.
+2. Create `agents/interviewer.md`
+3. Create `agents/translator.md` (with defined output schema — see Translator Output Schema below)
+4. Enhance `agents/researcher.md` for design-level operation
+5. Update `commands/discover.md` with Translator routing + Interviewer + Researcher. Keep architect --from as fallback.
+6. Add Planner mode to `agents/architect.md`. Mark --from extraction as deprecated (fallback only).
+7. Create 5 review agent files (review-adversary, review-contractualist, review-pathfinder, review-structuralist, review-skeptic). Each has 3 lens sections + cross-cutting tag instructions.
+8. Update `commands/greenfield.md` with 3-stage pipeline including review panel orchestration logic
+9. Update `commands/guide.md` with pipeline recommendations
+10. Update `scripts/compact-context.js` with project goals (project.description from manifest)
+11. Update `CLAUDE.md` with Sprint 10A changes
+12. End-to-end verification: SMALL greenfield + SMALL --from + MEDIUM greenfield. Verify sweep with renamed agents.
 
 ## Success Criteria
 
