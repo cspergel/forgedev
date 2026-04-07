@@ -61,7 +61,7 @@ function loadEndpoints() {
 
   let yaml;
   try {
-    yaml = require(path.join(__dirname, "..", "node_modules", "js-yaml"));
+    yaml = require("js-yaml");
   } catch {
     return endpoints;
   }
@@ -88,7 +88,7 @@ function loadEndpoints() {
 // Resolve a node ID to its file_scope from the manifest (gives fix agents a directory target)
 function resolveNodeFile(nodeId) {
   try {
-    const yaml = require(path.join(__dirname, "..", "node_modules", "js-yaml"));
+    const yaml = require("js-yaml");
     const manifest = yaml.load(fs.readFileSync(path.join(forgePlanDir, "manifest.yaml"), "utf-8"));
     if (manifest.nodes && manifest.nodes[nodeId] && manifest.nodes[nodeId].file_scope) {
       // Convert glob to directory: "src/api/**" → "src/api/"
@@ -535,7 +535,7 @@ async function main() {
 
   let techStack = {};
   try {
-    const yaml = require(path.join(__dirname, "..", "node_modules", "js-yaml"));
+    const yaml = require("js-yaml");
     const manifest = yaml.load(fs.readFileSync(path.join(forgePlanDir, "manifest.yaml"), "utf-8"));
     techStack = (manifest.project && manifest.project.tech_stack) || {};
   } catch {}

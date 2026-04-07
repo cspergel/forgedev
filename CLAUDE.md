@@ -119,7 +119,7 @@ Deliverables: complexity_tier field in manifest schema + validation, tier-condit
 
 - **Not all dimensions apply to every project type.** CLI tools, libraries, data pipelines, and non-web applications may have few applicable dimensions — score only what's relevant. Skip dimensions that don't apply rather than forcing every project into a web-app framework.
 - **The tier is the Architect's judgment call, not a formula.** A 3-entity project with HIPAA compliance and payment processing is LARGE. A 20-entity CRUD admin panel is MEDIUM. Entity count is a signal, not the answer.
-- After assessment, the Architect presents its reasoning AND the pipeline consequences: "I'd rate this MEDIUM, which means: 3-5 nodes, full specs per node, 6-8 sweep agents, cross-model optional. If that feels heavy, SMALL would mean: 1-2 nodes, quick specs, 3-5 agents. Which fits?"
+- After assessment, the Architect presents its reasoning AND the pipeline consequences: "I'd rate this MEDIUM, which means: 3-5 nodes, full specs per node, 4 sweep agents, cross-model optional. If that feels heavy, SMALL would mean: 1-2 nodes, quick specs, 3 agents. Which fits?"
 - User can always override.
 - **Tier upgrade/downgrade:** If the project changes mid-build (user adds OAuth, payments, new integrations), `/forgeplan:revise` should prompt: "This changes the project complexity. Current tier: SMALL. Reassess?" The `tier_override` field in config.yaml takes effect at the next command invocation. No need to re-run discovery — just update the manifest's `complexity_tier` and the pipeline adapts.
 
@@ -133,10 +133,7 @@ Deliverables: complexity_tier field in manifest schema + validation, tier-condit
       Architect drafts, user confirms, no multi-turn refinement
     → Single-pass build — builder generates all code in one session,
       including scaffolding
-    → 3-5 sweep agents, content-adaptive:
-      Always: code-quality + auth-security + error-handling
-      If database in tech_stack: + sweep-database
-      If frontend nodes exist: + sweep-frontend-ux
+    → 3 sweep agents: Red (adversarial) + Orange (contract) + White (compliance)
     → No cross-model unless requested
     → Output: working, runnable app in one session
 
@@ -146,7 +143,7 @@ Deliverables: complexity_tier field in manifest schema + validation, tier-condit
     → 3-5 nodes with sensible boundaries
     → Full spec conversation per node — detailed ACs, tests, failure modes
     → Sequential build with review after each
-    → 6-8 sweep agents (skip documentation, frontend-ux if no frontend)
+    → 4 sweep agents: Red + Orange + Blue (experience) + White
     → Cross-model optional
     → Output: well-structured app with enforcement
 
@@ -155,7 +152,7 @@ Deliverables: complexity_tier field in manifest schema + validation, tier-condit
     → Per-feature walkthrough during discovery
     → Fine-grained nodes with strict boundaries
     → Full spec conversation with pre-build spec challenge
-    → 12 sweep agents, progressive convergence
+    → 5 sweep agents (all opus), progressive convergence
     → Cross-model verification (Codex/GPT/Gemini)
     → Deep-build with convergence certification
     → Output: certified, sweep-verified codebase
@@ -244,7 +241,7 @@ VERIFICATION PIPELINE:
 - If project has no tests: detect before running test suite. Check for test files matching runner glob. If none exist, create a single finding "no tests written" — don't burn 3 retries on empty test suite.
 - postinstall failures: classify as environment error, suggest pure-JS alternatives (bcrypt→bcryptjs, sharp→@napi-rs/image).
 - Dev server port detection: priority chain — tech_stack.dev_port → PORT in .env → framework detection (scan for vite.config/next.config/app.listen) → fallback 3000. Use ACTUAL reported port from stdout, not expected.
-- tsc passes but runtime types unsafe: scan for `as any`, `@ts-ignore`, untyped JSON.parse. Report as warnings, forward to sweep-type-consistency.
+- tsc passes but runtime types unsafe: scan for `as any`, `@ts-ignore`, untyped JSON.parse. Report as warnings, forward to sweep-orange (type consistency).
 - Tests pass individually but fail together: run twice — parallel then serial. If serial passes, classify as "shared state" finding.
 - Docker dependencies: add optional `tech_stack.infrastructure` field. Before tests, check if required services are running. If Docker unavailable, classify as environment error.
 - Local vs CI differences: record tool versions in deep-build report. Check package.json engines constraint.
@@ -410,16 +407,16 @@ Deliverables: 4 research agents (researcher, license-checker, inspiration, docs-
 - Complexity tier determines how much governance the pipeline applies
 - **Exit criteria are tier-aware:**
   ```
-  SMALL: verify-runnable Phase A passes (install + tests + dev server) + 3-5 agent sweep clean.
+  SMALL: verify-runnable Phase A passes (install + tests + dev server) + 3-agent sweep clean.
          No Phase B runtime testing. No cross-model.
          "Certified" = it runs, tests pass, basic sweep is clean.
 
   MEDIUM: verify-runnable Phase A passes + Phase B runtime verification (endpoints + responses) +
-          6-8 agent sweep clean + integration check passes. Cross-model optional.
+          4-agent sweep clean + integration check passes. Cross-model optional.
           "Certified" = runs + endpoints work + thorough sweep + interfaces verified.
 
   LARGE: verify-runnable Phase A passes + Phase B runtime verification (endpoints + auth boundaries + stress) +
-         12-agent sweep converged + integration passes + cross-model verified (2 consecutive clean passes).
+         5-agent sweep converged + integration passes + cross-model verified (2 consecutive clean passes).
          "Certified" = full pipeline, everything tested at every level.
   ```
 
@@ -441,27 +438,24 @@ Deliverables: 4 research agents (researcher, license-checker, inspiration, docs-
 - Parallel fix agents with per-agent temp state
 - Session-end hook for cross-session context
 
-**Pillar 3: Five-Team Review Model**
-Upgrade the review/sweep pipeline with team-colored agents that catch fundamentally different bug classes. Proven during Sprint 7B-8 hardening where the Red Team caught a CRITICAL security bypass (deno/bun eval) that 35 Claude agents + 7 Codex rounds + 2 Qwen rounds all missed.
+**Pillar 3: Consolidated Five-Team Sweep Model**
+Consolidated from 12 domain agents + 4 team agents (16 total) into 5 team-colored agents, all opus. Each agent covers a broad domain with the depth that opus provides, eliminating inter-agent disagreement and reducing convergence from 3-4 passes to 1-2. Proven during Sprint 7B-8 hardening where the Red Team caught a CRITICAL security bypass that 35 Claude agents + 7 Codex rounds + 2 Qwen rounds all missed.
 
-- **Three new sweep agents:**
-  - `sweep-adversarial` (Red Team, model: opus) — Tests adversarial inputs: empty strings, injection payloads, boundary violations. For each whitelisted tool/command, checks if it can bypass enforcement. For each pass condition, tries to find an input that passes incorrectly.
-  - `sweep-user-flows` (Blue Team, model: sonnet) — Traces each user journey from spec acceptance criteria through actual code. Finds dead-end error paths, misleading messages, recovery failures, and states where no command helps.
-  - `sweep-contract-drift` (Orange Team, model: sonnet) — Checks every enum, schema field, import/export, and producer/consumer contract for cross-file consistency. Finds values added in one place but missing in another.
-
-- **Review command enhancement:**
-  - `/forgeplan:review [node] --deep` dispatches Base (7-dimension) + Red + Blue review passes (Sprint 9+ — not yet implemented in review.md)
-  - Default `/forgeplan:review` stays as current Base-only (fast, cheap)
-  - Sweep automatically includes team agents for MEDIUM/LARGE tier (3 team agents join the 6-12 domain agents)
+- **Five consolidated sweep agents:**
+  - `sweep-red` (Red Team, opus) — Adversarial. Absorbs auth-security, error-handling, config-environment, database. Tries to BREAK the code with pathological inputs, traces false-pass/fail conditions, checks security boundaries and state machine holes.
+  - `sweep-orange` (Orange Team, opus) — Contract. Absorbs type-consistency, api-contracts, imports, cross-node-integration. Diffs both sides of every producer/consumer boundary for shape, naming, and behavior agreement.
+  - `sweep-blue` (Blue Team, opus) — Experience. Absorbs frontend-ux, test-quality, user-flows. Walks every user journey end-to-end, checks UX states (loading/empty/error), verifies test quality and coverage.
+  - `sweep-rainbow` (Rainbow Team, opus) — Architect. Absorbs code-quality, documentation, holistic. Zooms out on architecture, checks for over-engineering and unnecessary complexity, verifies documentation accuracy.
+  - `sweep-white` (White Team, opus) — Compliance. NEW agent. Traces every spec acceptance criterion to code implementation, provides fresh-eyes generalist review, and on pass 2+ finds gaps in other agents' coverage.
 
 - **Tier-aware dispatch:**
   ```
-  SMALL:  No team agents in sweep (3-5 domain agents sufficient)
-  MEDIUM: Add sweep-contract-drift (Orange) to the domain agents
-  LARGE:  Add all 3 team agents (Red + Blue + Orange) to the domain agents
+  SMALL:  3 agents — Red + Orange + White
+  MEDIUM: 4 agents — + Blue
+  LARGE:  5 agents — + Rainbow
   ```
 
-- **Green Team (efficiency) deferred to Sprint 10** — token usage optimization requires semantic memory (Sprint 9 Pillar 1) to measure what agents actually read vs what they were sent.
+- **Design doc:** `docs/plans/2026-04-07-agent-consolidation-design.md` — full design with agent responsibilities, confidence calibration, and migration path.
 
 **Pillar 4: Node Splitting** (deferred from Sprint 7A)
 - `/forgeplan:split [node-id]` — decompose an existing node into finer-grained nodes
@@ -534,7 +528,7 @@ Upgrade the review/sweep pipeline with team-colored agents that catch fundamenta
 | `/forgeplan:status` | 4 | Full project status visualization |
 | `/forgeplan:integrate` | 4 | Cross-node interface verification |
 | `/forgeplan:recover` | 3 | Crash recovery |
-| `/forgeplan:sweep` | 6 | Tier-aware parallel sweep (3-12 agents) + progressive convergence + cross-model verification |
+| `/forgeplan:sweep` | 6 | Tier-aware parallel sweep (3-5 agents) + progressive convergence + cross-model verification |
 | `/forgeplan:deep-build` | 6 | Full autonomous build→review→sweep→cross-check pipeline |
 | `/forgeplan:configure` | 6 | Automated cross-model setup wizard (Codex/Gemini MCP/CLI/API) |
 | `/forgeplan:guide` | 6 | Evaluates project state, recommends best next step with explanations |
@@ -554,31 +548,15 @@ Upgrade the review/sweep pipeline with team-colored agents that catch fundamenta
 | Builder | Node code generation | Pre-build spec challenge, anchor comments, constraint directive |
 | Reviewer | Spec-diff audit | 7 audit dimensions, per-criterion PASS/FAIL, code evidence |
 
-### 12 Sweep Agents (dispatched in parallel by `/forgeplan:sweep`)
-
-| Agent | Model | Domain |
-|-------|-------|--------|
-| sweep-auth-security | opus | Auth, authz, sessions, input validation |
-| sweep-type-consistency | sonnet | Types, shared models, interface drift |
-| sweep-error-handling | sonnet | Try/catch, promises, error responses |
-| sweep-database | sonnet | Queries, migrations, connections |
-| sweep-api-contracts | sonnet | Endpoints, routes, request/response |
-| sweep-imports | sonnet | Import chains, circular deps |
-| sweep-code-quality | sonnet | Readability, performance, dead code, duplication |
-| sweep-test-quality | sonnet | Assertion quality, coverage gaps, flaky tests |
-| sweep-config-environment | sonnet | Env vars, config drift, secrets |
-| sweep-frontend-ux | sonnet | Accessibility, loading/error/empty states |
-| sweep-documentation | sonnet | README/JSDoc/API doc accuracy |
-| sweep-cross-node-integration | opus | Data flow across boundaries, field mismatches |
-
-### Team-Colored Sweep Agents (Sprint 9)
+### 5 Consolidated Sweep Agents (dispatched in parallel by `/forgeplan:sweep`)
 
 | Agent | Model | Team | Domain |
 |-------|-------|------|--------|
-| sweep-adversarial | opus | Red | Security boundaries, adversarial inputs, false-pass/fail |
-| sweep-user-flows | sonnet | Blue (optional) | User journey tracing, recovery paths, error message quality |
-| sweep-contract-drift | sonnet | Orange | Cross-file enum/schema/contract consistency |
-| sweep-holistic | opus | Rainbow (optional) | 10,000ft architecture coherence, systemic risks, tech debt |
+| sweep-red | opus | Red (Adversarial) | Security, errors, config, database — tries to BREAK the code |
+| sweep-orange | opus | Orange (Contract) | Types, API contracts, imports, cross-node — diffs both sides of every boundary |
+| sweep-blue | opus | Blue (Experience) | User flows, frontend UX, test quality — walks every journey end-to-end |
+| sweep-rainbow | opus | Rainbow (Architect) | Code quality, docs, architecture, simplicity — zooms out |
+| sweep-white | opus | White (Compliance) | Spec tracing, fresh eyes, gap finding — does the code do what the spec says? |
 
 ## Six Hook Types
 

@@ -195,7 +195,7 @@
         "agent_convergence": {
           "type": "object",
           "default": {},
-          "description": "Per-agent convergence tracking. Keys are agent names (e.g., 'sweep-auth-security', NOT category names). Agents with status 'converged' are not re-dispatched.",
+          "description": "Per-agent convergence tracking. Keys are agent names (e.g., 'sweep-red', 'sweep-orange', 'sweep-white'). Agents with status 'converged' are not re-dispatched.",
           "additionalProperties": {
             "type": "object",
             "properties": {
@@ -233,7 +233,7 @@
                   "id": { "type": "string", "description": "Finding ID. Claude findings: F1, F2... Cross-model findings: X1, X2..." },
                   "source_model": { "type": "string" },
                   "node": { "type": "string" },
-                  "category": { "type": "string", "enum": ["auth-security", "type-consistency", "error-handling", "database", "api-contracts", "imports", "code-quality", "test-quality", "config-environment", "frontend-ux", "documentation", "cross-node-integration", "runtime-verification"] },
+                  "category": { "type": "string", "enum": ["auth-security", "type-consistency", "error-handling", "database", "api-contracts", "imports", "code-quality", "test-quality", "config-environment", "frontend-ux", "documentation", "cross-node-integration", "runtime-verification", "spec-compliance", "logic-bug", "missing-functionality", "gap-finding", "user-flows", "architecture"] },
                   "severity": { "type": "string", "enum": ["HIGH", "MEDIUM", "LOW"] },
                   "description": { "type": "string" },
                   "file": { "type": "string", "description": "File path where the issue was found" },

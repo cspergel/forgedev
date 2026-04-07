@@ -131,7 +131,7 @@ function measureDuplicateTypes(projectDir) {
 
   if (fs.existsSync(manifestPath)) {
     try {
-      const yaml = require(path.join(__dirname, "..", "node_modules", "js-yaml"));
+      const yaml = require("js-yaml");
       const manifest = yaml.load(fs.readFileSync(manifestPath, "utf-8"));
       if (manifest.shared_models) {
         sharedModelNames = Object.keys(manifest.shared_models);

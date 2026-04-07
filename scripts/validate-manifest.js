@@ -21,8 +21,9 @@
 
 const fs = require("fs");
 const path = require("path");
-const yaml = require(path.join(__dirname, "..", "node_modules", "js-yaml"));
+const yaml = require("js-yaml");
 const { minimatch } = require(path.join(__dirname, "..", "node_modules", "minimatch"));
+const { NODE_ID_REGEX } = require("./lib/atomic-write");
 
 // ---------- Validation Logic ----------
 
@@ -98,7 +99,7 @@ function validateManifest(manifest) {
     }
 
     // Sprint 9: Node ID format validation (defense-in-depth for wiki file paths)
-    if (!/^[a-zA-Z0-9][a-zA-Z0-9_-]*$/.test(nodeId)) {
+    if (!NODE_ID_REGEX.test(nodeId)) {
       errors.push(`Node "${nodeId}": node ID must be alphanumeric with hyphens/underscores, starting with a letter or digit.`);
     }
 
@@ -108,7 +109,7 @@ function validateManifest(manifest) {
         errors.push(`Node "${nodeId}": split_from cannot be an empty string. Remove it or set to a valid parent node ID.`);
       } else if (typeof node.split_from !== "string") {
         errors.push(`Node "${nodeId}": split_from must be a string if present.`);
-      } else if (!/^[a-zA-Z0-9][a-zA-Z0-9_-]*$/.test(node.split_from)) {
+      } else if (!NODE_ID_REGEX.test(node.split_from)) {
         errors.push(`Node "${nodeId}": split_from "${node.split_from}" has invalid format (must be alphanumeric with hyphens/underscores).`);
       } else if (node.split_from === nodeId) {
         errors.push(`Node "${nodeId}": split_from cannot reference itself.`);

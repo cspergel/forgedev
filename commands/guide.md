@@ -153,11 +153,10 @@ code evidence. The reviewer does NOT trust the builder's claims.
     → /forgeplan:next             See the recommended review order
 
   Option B: Sweep the whole codebase at once
-    → /forgeplan:sweep            3-12 specialized agents (tier-aware) run in
-                                   parallel, each auditing a different dimension
-                                   (security, types, errors, DB, APIs, imports,
-                                   code quality, tests, config, frontend UX, docs,
-                                   and cross-node integration). Findings are fixed
+    → /forgeplan:sweep            3-5 consolidated team agents (tier-aware) run in
+                                   parallel: Red (adversarial), Orange (contract),
+                                   Blue (experience), Rainbow (architect), White
+                                   (compliance). All opus. Findings are fixed
                                    automatically with node-scoped enforcement.
     → /forgeplan:sweep --cross-check   Same + a different AI model (Codex/GPT/
                                         Gemini) independently verifies the code.
@@ -197,19 +196,12 @@ You're at the verification stage. Here's the natural progression:
 
   Step 2: Sweep for cross-cutting issues
     → /forgeplan:sweep
-    3-12 specialized agents (tier-aware) run in parallel. Each audits a different dimension:
-      - auth-security      — authentication, authorization, input validation
-      - type-consistency   — shared model usage, type drift across nodes
-      - error-handling     — try/catch, unhandled promises, error responses
-      - database           — queries, migrations, connections, transactions
-      - api-contracts      — endpoints, routes, request/response shapes
-      - imports            — import chains, circular deps, dead imports
-      - code-quality       — readability, performance, dead code, duplication
-      - test-quality       — assertion quality, coverage gaps, flaky tests
-      - config-environment — env vars, config drift, secrets
-      - frontend-ux        — accessibility, loading/error/empty states
-      - documentation      — README/JSDoc accuracy, stale comments
-      - cross-node-integration — data flow across boundaries, field mismatches
+    3-5 consolidated team agents (tier-aware), all opus:
+      - Red (adversarial)  — security, errors, config, database — tries to BREAK the code
+      - Orange (contract)  — types, API contracts, imports, cross-node boundaries
+      - Blue (experience)  — user flows, frontend UX, test quality (MEDIUM+)
+      - Rainbow (architect) — code quality, docs, architecture, simplicity (LARGE only)
+      - White (compliance) — spec tracing, fresh eyes, gap finding
 
     Agents that find nothing are progressively dropped from later passes.
     Only agents with findings re-run until everything converges.

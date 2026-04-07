@@ -77,13 +77,20 @@ async function main() {
   // Compile attempt tracking
   const attempts = state.wiki_compile_attempts || 0;
   if (attempts >= 3) {
-    // Clear stale wiki_compiling flag so SessionStart doesn't show misleading "will retry" message
-    if (state.wiki_compiling) {
-      state.wiki_compiling = false;
+    if (VERBOSE) {
+      // --verbose bypasses the failure lockout so manual diagnostic runs can succeed and reset the counter
+      log("Wiki compile: bypassing failure lockout (--verbose). Resetting attempt counter.");
+      state.wiki_compile_attempts = 0;
       atomicWriteJson(statePath, state);
+    } else {
+      // Clear stale wiki_compiling flag so SessionStart doesn't show misleading "will retry" message
+      if (state.wiki_compiling) {
+        state.wiki_compiling = false;
+        atomicWriteJson(statePath, state);
+      }
+      log("Wiki compilation has failed 3 times. Run 'node scripts/compile-wiki.js --verbose' to diagnose, or /forgeplan:recover to reset.");
+      return;
     }
-    log("Wiki compilation has failed 3 times. Run 'node scripts/compile-wiki.js --verbose' to diagnose.");
-    return;
   }
 
   // Step 0: Create wiki directory if missing (handles tier upgrades, manual deletion)
@@ -345,7 +352,8 @@ async function main() {
       }
     }
 
-    // Step 6: Update timestamp
+    // Step 6: Update timestamp and clear compiling flag before final write
+    state.wiki_compiling = false;
     state.wiki_last_compiled = new Date().toISOString();
     state.wiki_compile_attempts = 0; // Reset on success
     atomicWriteJson(statePath, state);
@@ -353,11 +361,15 @@ async function main() {
     const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
     log(`Wiki compiled: ${nodeCount} nodes, ${ruleCount} rules, ${patternCount} patterns, ${decisionCount} decisions. (${elapsed}s)`);
   } finally {
-    // 5f: ALWAYS reset compiling flag
+    // 5f: Clean up staging directory if it still exists (crash mid-write)
     try {
-      state.wiki_compiling = false;
-      atomicWriteJson(statePath, state);
-    } catch (_) { /* cannot write state \u2014 will be detected by SessionStart */ }
+      if (fs.existsSync(stagingDir)) {
+        fs.rmSync(stagingDir, { recursive: true, force: true });
+      }
+    } catch (_) { /* best effort cleanup */ }
+    // NOTE: wiki_compiling state writes are handled by the success path (Step 6 above)
+    // and the .catch() error handler below. The finally block does NOT write state
+    // to avoid racing with .catch() which also writes state.
   }
 }
 

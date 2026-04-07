@@ -27,4 +27,7 @@ function atomicWriteJson(filePath, data) {
   }
 }
 
-module.exports = { atomicWriteJson };
+/** Regex for valid ForgePlan node IDs — alphanumeric with hyphens/underscores, starting with a letter or digit. */
+const NODE_ID_REGEX = /^[a-zA-Z0-9][a-zA-Z0-9_-]*$/;
+
+module.exports = { atomicWriteJson, NODE_ID_REGEX };

@@ -16,7 +16,7 @@ const fs = require("fs");
 const path = require("path");
 const yaml = require("js-yaml");
 
-const { atomicWriteJson } = require("./lib/atomic-write");
+const { atomicWriteJson, NODE_ID_REGEX } = require("./lib/atomic-write");
 
 let inputData = "";
 process.stdin.setEncoding("utf-8");
@@ -145,7 +145,6 @@ function processHook(input) {
       // Source 2: manifest files list
       if (!preExisting) {
         try {
-          const yaml = require(path.join(__dirname, "..", "node_modules", "js-yaml"));
           const mText = fs.readFileSync(manifestPath, "utf-8");
           const mData = yaml.load(mText);
           if (mData.nodes) {
@@ -164,9 +163,9 @@ function processHook(input) {
       // Source 3: git tracking
       if (!preExisting) {
         try {
-          const { execSync } = require("child_process");
-          const result = execSync(
-            `git ls-files "${relPath}"`,
+          const { execFileSync } = require("child_process");
+          const result = execFileSync(
+            "git", ["ls-files", "--", relPath],
             { cwd, encoding: "utf-8", timeout: 3000, stdio: ["pipe", "pipe", "pipe"] }
           ).trim();
           if (result.length > 0) preExisting = true;
@@ -222,7 +221,6 @@ function processHook(input) {
 
   // --- 2. Register file in manifest (after classification) ---
   try {
-    const yaml = require(path.join(__dirname, "..", "node_modules", "js-yaml"));
     const manifestText = fs.readFileSync(manifestPath, "utf-8");
     const manifest = yaml.load(manifestText);
 
@@ -287,20 +285,24 @@ function processHook(input) {
     if (tier && tier !== "SMALL" && state.active_node && state.active_node.node) {
       const wikiNodeId = state.active_node.node;
       // Defense-in-depth: validate nodeId format before using in file path
-      if (!/^[a-zA-Z0-9][a-zA-Z0-9_-]*$/.test(wikiNodeId)) return;
+      if (!NODE_ID_REGEX.test(wikiNodeId)) return;
       // Get content to scan: Write = full content, Edit = new_string only (partial — acceptable)
       const content = toolName === "Write" ? (toolInput.content || "") : (toolInput.new_string || "");
       const ext = path.extname(relPath || "").toLowerCase();
       const binaryExts = [".png",".jpg",".gif",".woff",".eot",".ico",".pdf",".zip",".ttf"];
       // Skip large files (>50KB) and binary files
       if (content.length <= 50000 && !binaryExts.includes(ext)) {
-        // Import DECISION_REGEX from wiki-builder to avoid duplication
-        // If wiki-builder is unavailable (not yet built), use inline fallback
+        // Import DECISION_REGEX and sanitizeForMarkdown from wiki-builder to avoid duplication
+        // If wiki-builder is unavailable (not yet built), use inline fallbacks
         let DECISION_RE;
+        let sanitize;
         try {
-          DECISION_RE = require("./lib/wiki-builder").DECISION_REGEX;
+          const wb = require("./lib/wiki-builder");
+          DECISION_RE = wb.DECISION_REGEX;
+          sanitize = wb.sanitizeForMarkdown;
         } catch (_) {
           DECISION_RE = /@forgeplan-decision:\s*(D-\S+-\d+-\S+)\s*--\s*([^\n]+)/g;
+          sanitize = (s) => s.replace(/\|/g, "-").replace(/\n/g, " ").replace(/<[^>]*>/g, "").trim();
         }
         const matches = [];
         let m;
@@ -326,8 +328,6 @@ function processHook(input) {
             }
           }
           // Append decision markers to node wiki page
-          // Sanitize descriptions — strip pipes, newlines, HTML to prevent wiki corruption
-          const sanitize = (s) => s.replace(/\|/g, "-").replace(/\n/g, " ").replace(/<[^>]*>/g, "").trim();
           const wikiPagePath = path.join(nodesDir, wikiNodeId + ".md");
           let appendText = "";
           for (const match of matches) {

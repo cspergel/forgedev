@@ -22,7 +22,7 @@ If any prerequisite fails, explain which one and stop.
 
 ### Step 1: Invoke Architect in Split Mode
 
-Dispatch the architect agent with `--split [node-id]` argument. The architect:
+Use the Agent tool to dispatch the architect agent. Read `agents/architect.md` and pass it as the system prompt with `--split [node-id]` in the prompt. The architect:
 1. Reads the node's spec from `.forgeplan/specs/[node-id].yaml`
 2. Globs the node's `file_scope` to get file list
 3. Analyzes code structure: directory groupings, import clusters, domain boundaries
@@ -36,7 +36,7 @@ Write the hypothetical new manifest to a temp file (`.forgeplan/.manifest-split-
 ```bash
 node "${CLAUDE_PLUGIN_ROOT}/scripts/validate-manifest.js" .forgeplan/.manifest-split-check.yaml
 ```
-Delete the temp file after validation. If validation fails, show errors and stop.
+Delete `.forgeplan/.manifest-split-check.yaml` whether validation passes or fails. If validation fails, show errors and stop.
 
 ### Step 3: Write Recovery Breadcrumb
 

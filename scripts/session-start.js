@@ -218,7 +218,7 @@ function buildAmbientStatus(forgePlanDir, manifestPath, statePath, state) {
   // Load manifest via js-yaml
   let yaml;
   try {
-    yaml = require(path.join(__dirname, "..", "node_modules", "js-yaml"));
+    yaml = require("js-yaml");
   } catch {
     // js-yaml not installed — skip ambient display
     return null;
@@ -329,7 +329,7 @@ function buildAmbientStatus(forgePlanDir, manifestPath, statePath, state) {
   if (wikiTier && wikiTier !== "SMALL") {
     const wikiStatus = isWikiStale(state, forgePlanDir);
     if (wikiStatus === "failed") {
-      lines.push("  Wiki: compilation failed 3 times. Run 'node scripts/compile-wiki.js --verbose' to diagnose.");
+      lines.push("  Wiki: compilation failed 3 times. Run 'node scripts/compile-wiki.js --verbose' to diagnose, or /forgeplan:recover to reset the counter.");
     } else if (wikiStatus === "not-initialized") {
       lines.push("  Wiki: not yet initialized. Will be created during first sweep.");
     } else if (wikiStatus === "deleted") {
@@ -359,6 +359,7 @@ function buildAmbientStatus(forgePlanDir, manifestPath, statePath, state) {
  * Sprint 9.
  */
 function isWikiStale(state, forgePlanDir) {
+  if (!state) return "not-initialized"; // State is null (corrupted or missing)
   if (!state.wiki_last_compiled) return "not-initialized"; // Never compiled
   if (!fs.existsSync(path.join(forgePlanDir, "wiki", "index.md"))) return "deleted"; // Wiki dir deleted
   if (state.wiki_compiling) {
@@ -367,6 +368,7 @@ function isWikiStale(state, forgePlanDir) {
   }
   const lastCompiled = new Date(state.wiki_last_compiled);
   const lastStateUpdate = new Date(state.last_updated);
+  if (isNaN(lastCompiled.getTime()) || isNaN(lastStateUpdate.getTime())) return "stale"; // Corrupted timestamps
   if (lastStateUpdate > lastCompiled) return "stale";
   return false; // Wiki is fresh
 }

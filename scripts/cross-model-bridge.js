@@ -20,7 +20,7 @@
 const fs = require("fs");
 const path = require("path");
 const { execSync, spawnSync } = require("child_process");
-const yaml = require(path.join(__dirname, "..", "node_modules", "js-yaml"));
+const yaml = require("js-yaml");
 
 // Import shared utilities from cross-model-review.js
 const { collectNodeFiles } = require(

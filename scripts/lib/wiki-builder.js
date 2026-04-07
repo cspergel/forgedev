@@ -309,7 +309,8 @@ module.exports = {
   buildDecisionsPage,
   buildRulesPage,
   buildIndexPage,
-  // Exported for PostToolUse to use instead of duplicating regex
+  // Exported for PostToolUse to use instead of duplicating regex/functions
   DECISION_REGEX,
+  sanitizeForMarkdown,
   isTestFile,
 };

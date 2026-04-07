@@ -16,7 +16,7 @@
 
 const fs = require("fs");
 const path = require("path");
-const yaml = require(path.join(__dirname, "..", "node_modules", "js-yaml"));
+const yaml = require("js-yaml");
 
 function main() {
   const specPath = process.argv[2];

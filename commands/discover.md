@@ -245,7 +245,7 @@ When discovery is complete:
    ```bash
    git add -A && git commit -m "forgeplan: project architecture initialized"
    ```
-5. Present the final summary and suggest next steps:
+6. Present the final summary and suggest next steps:
    ```
    Architecture complete! [N] nodes, [N] shared models.
 

@@ -20,7 +20,7 @@
 const fs = require("fs");
 const path = require("path");
 const { execSync, spawnSync, spawn } = require("child_process");
-const yaml = require(path.join(__dirname, "..", "node_modules", "js-yaml"));
+const yaml = require("js-yaml");
 
 async function main() {
   const nodeId = process.argv[2];

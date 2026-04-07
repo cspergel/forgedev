@@ -30,7 +30,7 @@ function main() {
     process.exit(2);
   }
 
-  const yaml = require(path.join(__dirname, "..", "node_modules", "js-yaml"));
+  const yaml = require("js-yaml");
   let manifest;
   try {
     manifest = yaml.load(fs.readFileSync(manifestPath, "utf-8"));

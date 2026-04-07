@@ -36,6 +36,18 @@ After resolving the split (resume or rollback), continue to the normal recovery 
 
 ---
 
+**Step 0b: Check for wiki compilation failures**
+
+Read `.forgeplan/state.json`. If `wiki_compile_attempts >= 3`:
+
+1. Reset `wiki_compile_attempts` to `0` in state.json
+2. Log: "Wiki compilation counter reset. Wiki will recompile on next sweep."
+3. Optionally re-run wiki compilation: `node "${CLAUDE_PLUGIN_ROOT}/scripts/compile-wiki.js" --verbose`
+   - The `--verbose` flag bypasses the failure lockout and provides diagnostic output
+   - If compilation succeeds, the wiki is restored. If it fails again, the counter starts fresh.
+
+---
+
 1. **Clean up peripheral artifacts first:**
    - Check for stale worktrees: run `node "${CLAUDE_PLUGIN_ROOT}/scripts/worktree-manager.js" list`. If any exist, run `node "${CLAUDE_PLUGIN_ROOT}/scripts/worktree-manager.js" cleanup` and report: "Cleaned up [N] stale worktrees from a crashed parallel fix."
    - Check for orphan PIDs: if `.forgeplan/.verify-pids` exists, **delete the file** (do NOT attempt to kill PIDs — they may have been reused by unrelated processes after a hard crash). If a stale server is holding a port, verify-runnable or runtime-verify will detect EADDRINUSE and report it with actionable guidance. Report: "Cleaned up stale .verify-pids file."

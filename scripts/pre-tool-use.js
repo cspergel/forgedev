@@ -283,7 +283,7 @@ function evaluate(input) {
 
   let manifest;
   try {
-    const yaml = require(path.join(__dirname, "..", "node_modules", "js-yaml"));
+    const yaml = require("js-yaml");
     manifest = yaml.load(fs.readFileSync(manifestPath, "utf-8"));
   } catch (err) {
     return {
@@ -355,11 +355,13 @@ function evaluate(input) {
     const sharedModelNames = Object.keys(manifest.shared_models);
 
     for (const modelName of sharedModelNames) {
+      // Escape regex metacharacters in model name to prevent ReDoS
+      const escaped = modelName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       // Look for type/interface/class definitions (not imports)
       const redefPatterns = [
-        new RegExp(`\\btype\\s+${modelName}\\b\\s*=`, "m"),
-        new RegExp(`\\binterface\\s+${modelName}\\b\\s*\\{`, "m"),
-        new RegExp(`\\bclass\\s+${modelName}\\b`, "m"),
+        new RegExp(`\\btype\\s+${escaped}\\b\\s*=`, "m"),
+        new RegExp(`\\binterface\\s+${escaped}\\b\\s*\\{`, "m"),
+        new RegExp(`\\bclass\\s+${escaped}\\b`, "m"),
       ];
 
       for (const pattern of redefPatterns) {
@@ -384,10 +386,12 @@ function evaluate(input) {
     const sharedModelNames = Object.keys(manifest.shared_models);
 
     for (const modelName of sharedModelNames) {
+      // Escape regex metacharacters in model name to prevent ReDoS
+      const escaped = modelName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       const redefPatterns = [
-        new RegExp(`\\btype\\s+${modelName}\\b\\s*=`, "m"),
-        new RegExp(`\\binterface\\s+${modelName}\\b\\s*\\{`, "m"),
-        new RegExp(`\\bclass\\s+${modelName}\\b`, "m"),
+        new RegExp(`\\btype\\s+${escaped}\\b\\s*=`, "m"),
+        new RegExp(`\\binterface\\s+${escaped}\\b\\s*\\{`, "m"),
+        new RegExp(`\\bclass\\s+${escaped}\\b`, "m"),
       ];
 
       for (const pattern of redefPatterns) {
@@ -470,7 +474,8 @@ function evaluateBash(toolInput, cwd) {
     /^\s*wc\s/,                         // word count
     /^\s*diff\s/,                       // diff
     /^\s*git\s+(status|log|diff|show|branch|remote|tag|stash\s+list)\b/,
-    /^\s*git\s+(add|commit)\b/,           // per-pass commits during sweep/deep-build
+    /^\s*git\s+add\b/,                      // git add (staging files)
+    /^\s*git\s+commit\s+(-[amSnN]\s+|--(?:message|author|signoff|no-edit|allow-empty|amend|gpg-sign)\b|"[^"]*"|'[^']*'|\s+)*\s*$/, // git commit: safe flags only (blocks -e/--edit/-p/--patch/-i/--interactive)
     /^\s*node\s+[^\s]*validate-manifest\.js/,  // our own validation script
     /^\s*node\s+[^\s]*validate-spec\.js/,     // our own spec validator
     /^\s*node\s+[^\s]*next-node\.js/,         // our own next-node script

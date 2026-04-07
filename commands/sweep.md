@@ -1,7 +1,7 @@
 ---
-description: Sweep your entire codebase for cross-cutting issues. Tier-aware agent selection (SMALL 3-5, MEDIUM 7-9, LARGE up to 16) using 12 domain agents + 4 team agents (Red adversarial, Blue user-flows, Orange contract-drift, Architect holistic). Progressive convergence drops clean agents. Findings fixed with node-scoped enforcement, then cross-model verified.
+description: Sweep your entire codebase for cross-cutting issues. Tier-aware agent selection (SMALL 3, MEDIUM 4, LARGE 5) using 5 consolidated team agents (Red adversarial, Orange contract, Blue experience, Rainbow architect, White compliance). All opus. Progressive convergence drops clean agents. Findings fixed with node-scoped enforcement, then cross-model verified.
 user-invocable: true
-argument-hint: "[--cross-check (cross-model verification)] [--deep (add Blue+Holistic team agents)]"
+argument-hint: "[--cross-check (cross-model verification)]"
 allowed-tools: Read Write Edit Bash Glob Grep Agent
 ---
 
@@ -9,7 +9,7 @@ allowed-tools: Read Write Edit Bash Glob Grep Agent
 
 **THIS COMMAND IS AUTONOMOUS WITH ONE EXCEPTION. Execute all phases (1→7) without stopping, pausing, or asking "shall I continue?". Fix ALL findings automatically. Do not present intermediate results and wait. The ONE exception: Category C blocked decisions (architectural choices) require user input — present them all at once, get answers, then continue automatically. Aside from that, run straight through to the final report.**
 
-Run tier-selected sweep agents (3-16) in parallel across the entire codebase: 12 domain agents + 4 team agents (Red/Blue/Orange/Architect). Progressive reduction: agents that return CLEAN twice converge and are retired. Cross-cutting agents re-run whenever any other agent has findings. See Phase 2 for the full dispatch precedence rules.
+Run tier-selected sweep agents (3-5) in parallel across the entire codebase: 5 consolidated team agents (Red/Orange/Blue/Rainbow/White), all opus. Progressive reduction: agents that return CLEAN twice converge and are retired. Cross-cutting agents re-run whenever any other agent has findings. See Phase 2 for the full dispatch precedence rules.
 
 ## Prerequisites
 
@@ -80,74 +80,53 @@ Run tier-selected sweep agents (3-16) in parallel across the entire codebase: 12
 
 **Tier-aware agent selection:** Read `complexity_tier` from `.forgeplan/manifest.yaml`. **Also check** `.forgeplan/config.yaml` for `complexity.tier_override` — if set and non-empty, use the override instead of the manifest tier:
 
-- **SMALL tier:** Dispatch 3-5 domain agents:
-  - Always: `sweep-code-quality`, `sweep-auth-security`, `sweep-error-handling`
-  - If `tech_stack.database` is not "none": add `sweep-database`
-  - If frontend nodes exist in manifest: add `sweep-frontend-ux`
-  - No team agents (too lightweight to benefit)
+- **SMALL tier:** Dispatch 3 agents:
+  - Always: `sweep-red` (adversarial — security, errors, database, config), `sweep-orange` (contract — types, APIs, imports, cross-node), `sweep-white` (compliance — spec tracing, fresh eyes)
 
-- **MEDIUM tier:** Dispatch 6-8 domain agents + 1 team agent:
-  - All SMALL agents plus: `sweep-type-consistency`, `sweep-imports`, `sweep-api-contracts`
-  - If frontend nodes exist: add `sweep-frontend-ux`
-  - If project has 5+ nodes: add `sweep-cross-node-integration`
-  - **Team agent:** `sweep-contract-drift` (Orange — catches cross-file enum/schema drift)
+- **MEDIUM tier:** Dispatch 4 agents:
+  - All SMALL agents plus: `sweep-blue` (experience — user flows, frontend UX, test quality)
 
-- **LARGE tier (or no tier set):** Dispatch all 12 domain agents + 2 team agents:
-  - All 12 domain agents
-  - **Team agents (always):** `sweep-adversarial` (Red — security boundaries), `sweep-contract-drift` (Orange — cross-file consistency)
-  - **Team agents (only if `--deep` flag is present in $ARGUMENTS):** `sweep-user-flows` (Blue — user journey tracing), `sweep-holistic` (Architect — 10,000ft review). These add value for complex projects but are redundant with domain agents for most sweeps. If `--deep` is NOT present, skip these two agents.
+- **LARGE tier (or no tier set):** Dispatch all 5 agents:
+  - All MEDIUM agents plus: `sweep-rainbow` (architect — code quality, docs, architecture, simplicity)
 
 **On the first pass, dispatch agents per the tier rules above. On subsequent passes, follow the precedence rules in "Progressive agent reduction" below.**
 
 Agent definition files (read these, use as system prompts):
-- `agents/sweep-auth-security.md`
-- `agents/sweep-type-consistency.md`
-- `agents/sweep-error-handling.md`
-- `agents/sweep-database.md`
-- `agents/sweep-api-contracts.md`
-- `agents/sweep-imports.md`
-- `agents/sweep-code-quality.md`
-- `agents/sweep-test-quality.md`
-- `agents/sweep-config-environment.md`
-- `agents/sweep-frontend-ux.md` (skip if no frontend nodes in manifest)
-- `agents/sweep-documentation.md`
-- `agents/sweep-cross-node-integration.md`
-
-**Team-colored agents (tier-aware — see above):**
-- `agents/sweep-adversarial.md` (Red Team — LARGE only)
-- `agents/sweep-user-flows.md` (Blue Team — LARGE only)
-- `agents/sweep-contract-drift.md` (Orange Team — MEDIUM + LARGE)
-- `agents/sweep-holistic.md` (Architect — LARGE only, 10,000ft system review)
+- `agents/sweep-red.md` (Red — adversarial: security, errors, config, database)
+- `agents/sweep-orange.md` (Orange — contract: types, APIs, imports, cross-node)
+- `agents/sweep-blue.md` (Blue — experience: user flows, frontend UX, test quality)
+- `agents/sweep-rainbow.md` (Rainbow — architect: code quality, docs, architecture, simplicity)
+- `agents/sweep-white.md` (White — compliance: spec tracing, fresh eyes, gap finding)
 
 **Progressive agent reduction:**
-1. On **pass 1**: dispatch the **tier-selected agents** from above (SMALL=3-5 domain, MEDIUM=7-9 domain+team, LARGE=up to 16 domain+team). Skip `frontend-ux` if no frontend nodes regardless of tier.
-   - **Sprint 9 (MEDIUM/LARGE):** Pass 1 agents receive ALL source files (existing behavior) PLUS wiki node pages (decisions + past findings) if wiki exists. Do NOT send `wiki/rules.md` to sweep agents (trust boundary). Exception: `sweep-adversarial` (Red Team) receives `wiki/rules.md` specifically to AUDIT it for dangerous rules.
-   - **Sprint 9 Pass 2+ optimization (MEDIUM/LARGE):** Agents receive wiki node pages (NOT rules.md) + source files modified since last pass (from `sweep_state.modified_files_by_pass`) + source files referenced by any PENDING finding for the agent's category. Agents still have Read/Grep tools for on-demand source inspection. Exception: `sweep-adversarial` ALWAYS receives full source + rules.md on every pass.
-   - **Sprint 9 Convergence rule:** Do NOT retire an agent if its category still has pending findings in `sweep_state.findings.pending`. Only count a clean pass when agent returns CLEAN AND zero pending findings in its category.
+1. On **pass 1**: dispatch the **tier-selected agents** from above (SMALL=3, MEDIUM=4, LARGE=5).
+   - **Sprint 9 (MEDIUM/LARGE):** Pass 1 agents receive ALL source files (existing behavior) PLUS wiki node pages (decisions + past findings) if wiki exists. Do NOT send `wiki/rules.md` to sweep agents (trust boundary). Exception: `sweep-red` (Red Team) receives `wiki/rules.md` specifically to AUDIT it for dangerous rules.
+   - **Sprint 9 Pass 2+ optimization (MEDIUM/LARGE):** Agents receive wiki node pages (NOT rules.md) + source files modified since last pass (from `sweep_state.modified_files_by_pass`) + source files referenced by any PENDING finding for the agent's categories. Agents still have Read/Grep tools for on-demand source inspection. Exception: `sweep-red` ALWAYS receives full source + rules.md on every pass.
+   - **Sprint 9 Convergence rule:** Do NOT retire an agent if its categories still have pending findings in `sweep_state.findings.pending`. Only count a clean pass when agent returns CLEAN AND zero pending findings in its categories.
+   - **White agent pass 2+ context:** On pass 2 and beyond, `sweep-white` additionally receives the previous pass's finding lists from all other agents. This enables its cross-agent gap-finding capability. On pass 1, White runs without this context (spec compliance + fresh eyes only).
 2. After merging results, update `sweep_state.agent_convergence` for each agent. **Keys are agent names** (matching the `.md` filename without extension), NOT category names:
    ```json
    "agent_convergence": {
-     "sweep-auth-security": { "status": "clean", "last_findings_pass": null, "consecutive_clean": 1 },
-     "sweep-type-consistency": { "status": "active", "last_findings_pass": 1, "consecutive_clean": 0 },
-     "sweep-adversarial": { "status": "active", "last_findings_pass": 1, "consecutive_clean": 0 },
-     "sweep-holistic": { "status": "clean", "last_findings_pass": null, "consecutive_clean": 1 },
+     "sweep-red": { "status": "active", "last_findings_pass": 1, "consecutive_clean": 0 },
+     "sweep-orange": { "status": "clean", "last_findings_pass": null, "consecutive_clean": 1 },
+     "sweep-white": { "status": "active", "last_findings_pass": 1, "consecutive_clean": 0 },
      ...
    }
    ```
-   Note: team agents may emit findings with categories that overlap domain agents (e.g., sweep-adversarial emits `auth-security` findings). This is intentional — domain agents and team agents audit from different angles. Deduplication in step 4 handles genuine duplicates.
+   Note: agents may emit findings with overlapping categories (e.g., both sweep-red and sweep-orange may flag issues at API boundaries). Deduplication in Phase 3 step 4 handles genuine duplicates.
    - `status`: `"clean"` (returned CLEAN), `"active"` (had findings), `"failed"` (returned unstructured response), `"converged"` (2 consecutive clean passes — retired), `"force-converged"` (oscillation guard)
    - `last_findings_pass`: which pass this agent last found something
    - `consecutive_clean`: how many consecutive passes returned CLEAN
 3. On **pass 2+**, determine which agents to dispatch using these rules **in precedence order**:
    a. **Converged agents are retired:** Skip any agent with `status: "converged"` or `"force-converged"`.
-   b. **Cross-cutting agents re-run if ANY agent had findings:** `sweep-cross-node-integration`, `sweep-code-quality`, and `sweep-contract-drift` re-run whenever any other agent reported findings in the previous pass, even if they themselves were clean. They only converge when they return CLEAN AND no other active agent had findings in the same pass. (If optional agents `sweep-holistic` or `sweep-user-flows` are active, they also follow this rule.)
+   b. **Cross-cutting agents re-run if ANY agent had findings:** `sweep-orange` (contracts span all boundaries), `sweep-rainbow` (architecture affected by any code change), and `sweep-white` (gap-finding depends on full picture) re-run whenever any other agent reported findings in the previous pass, even if they themselves were clean. They only converge when they return CLEAN AND no other active agent had findings in the same pass.
    c. **Confirmation pass for clean agents:** An agent that returned CLEAN on pass N gets re-run on pass N+1 to confirm. If clean again → `status: "converged"`, retired.
    d. **Active agents always re-run:** Any agent with `status: "active"` (had findings last pass) is dispatched.
    e. **Failed agents always re-run:** Any agent with `status: "failed"` (returned unstructured response) is re-dispatched. Failed agents are never counted as clean for convergence. After 3 consecutive failures, force-converge with `"force-converged"` and log: "Agent [name] force-converged after 3 consecutive failures."
    f. **Anti-oscillation guard:** If an agent's finding count stays the same or increases for 3 consecutive passes, force-converge it with `status: "force-converged"` and move remaining findings to `needs_manual_attention`.
 
 **Token budget:** Before dispatching, estimate total content size (sum of all file sizes in bytes). If over 200KB, use a tiered approach:
-1. Give each agent only the files relevant to its domain — e.g., `sweep-database` gets database node files + shared types, `sweep-frontend-ux` gets frontend node files + shared types. Map agent names to node IDs by matching the agent's domain keyword against node IDs and `file_scope` patterns.
+1. For very large codebases (200KB+), agents can use Read/Grep tools on-demand instead of receiving all files upfront. Provide file paths and manifest so agents know what to inspect.
 2. Always include shared types (`src/shared/types/index.ts`) and manifest for context with every agent.
 3. If a single node's files exceed 100KB, instruct the agent to use Read/Grep tools on-demand instead of receiving file content upfront. Provide only file paths and the manifest so the agent knows what to inspect.
 
@@ -171,7 +150,7 @@ Each agent returns findings in the structured FINDING format or CLEAN.
 ### Phase 3: Merge and deduplicate findings
 
 1. Collect all findings from the dispatched agents (excluding failed agents)
-2. **Validate node IDs:** Discard any finding whose `node` field is not in `Object.keys(manifest.nodes)` AND is not the special value `"project"`. The `"project"` pseudo-node is used by team agents (holistic, user-flows, contract-drift) for cross-cutting findings that don't belong to a single node — these go to `sweep_state.needs_manual_attention` instead of the automated fix cycle (they can't be node-scoped). For cross-node-integration findings using `Node: [id] -> [id]` format, extract the first node ID (before `->`) as the primary node for fix scoping. Log a warning for each discarded finding ("Finding F[N] references unknown node '[id]' — discarding"). Apply the same validation in Phase 6 for cross-model findings.
+2. **Validate node IDs:** Discard any finding whose `node` field is not in `Object.keys(manifest.nodes)` AND is not the special value `"project"`. The `"project"` pseudo-node is used by agents (especially rainbow, white) for cross-cutting findings that don't belong to a single node — these go to `sweep_state.needs_manual_attention` instead of the automated fix cycle (they can't be node-scoped). For cross-node findings using `Node: [id] -> [id]` format (from sweep-orange), extract the first node ID (before `->`) as the primary node for fix scoping. Log a warning for each discarded finding ("Finding F[N] references unknown node '[id]' — discarding"). Apply the same validation in Phase 6 for cross-model findings.
 3. **Re-number** all remaining findings sequentially as F1, F2, F3... (discard the agents' self-assigned IDs, which will collide across agents)
 4. Deduplicate: if two agents report the same file + same issue, keep the one with higher severity
 5. Group findings by node
@@ -341,7 +320,9 @@ node "${CLAUDE_PLUGIN_ROOT}/scripts/integrate-check.js"
    - **Add** only failures where both participating nodes are in `built`, `reviewed`, `revised`, or `sweeping` status as new findings in `sweep_state.findings.pending` and loop back to Phase 4 (set `current_phase` back to `"claude-fix"`).
    - If all failures were skipped (none actionable), treat as pass with a warning to prevent an empty-fix infinite loop.
    If integration fails but `failures.length === 0` (edge case — non-PASS verdict with no FAIL interfaces), treat as pass with a warning to prevent an empty-fix infinite loop.
-6. If integration passes and no `--cross-check` flag: set `current_phase` to `"finalizing"` and proceed to Phase 7.
+6. If integration passes and no `--cross-check` flag:
+   - **If findings were fixed in this pass** (i.e., `sweep_state.findings.resolved` grew during this pass — compare resolved count before Phase 4 to after): increment `pass_number`, set `current_phase` to `"claude-sweep"`, and loop back to Phase 2 for re-verification. The fix cycle may have introduced new issues — re-sweeping catches them.
+   - **If NO findings were fixed** (pass was clean from Phase 3 step 11, which sent us to Phase 5 directly): set `current_phase` to `"finalizing"` and proceed to Phase 7.
 7. If integration passes and `--cross-check` flag: proceed to Phase 6.
 
 ### Phase 6: Cross-model verification (if --cross-check flag or auto in deep-build)

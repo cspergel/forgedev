@@ -28,7 +28,7 @@
 const fs = require("fs");
 const path = require("path");
 
-const { atomicWriteJson } = require("./lib/atomic-write");
+const { atomicWriteJson, NODE_ID_REGEX } = require("./lib/atomic-write");
 
 let inputData = "";
 process.stdin.setEncoding("utf-8");
@@ -82,6 +82,14 @@ function evaluate(input) {
   }
 
   const activeNodeId = state.active_node.node;
+
+  // --- Validate node ID format before using in path constructions ---
+  if (!NODE_ID_REGEX.test(activeNodeId)) {
+    process.stderr.write(
+      `ForgePlan Stop: active node ID "${activeNodeId}" has invalid format — skipping AC evaluation.\n`
+    );
+    return { block: false };
+  }
 
   // --- Clear stop_hook_active from previous bounce cycle ---
   // This flag is only meaningful within a single bounce cycle. Clearing it
