@@ -6,9 +6,9 @@
 
 ## v2 Revisions (from 5-team review + design session)
 - Keep Layer 3 (Rules) with 5-layer resilience + self-correction loop
-- Drop infer patterns fallback — markers only, no inference
-- Add cross-references (pattern-to-rule-to-decision links / knowledge graph)
-- Add evidence tracking (WHY + history on every rule/pattern/decision)
+- Drop infer patterns fallback -- markers only, no inference
+- Add cross-references (pattern-to-rule-to-decision knowledge graph)
+- Add evidence tracking (WHY + history on every entry)
 - Simplify update-state.js to shared utility (no file locking)
 - Add pre-tool-use.js wiki whitelist
 - Builder writes 3 new marker types + Stop hook enforces existing markers
@@ -18,149 +18,157 @@
 - Massive changes: compile-wiki.js reconciles vs manifest, archives missing nodes
 - Marker enforcement: Stop hook verifies @forgeplan-node and @forgeplan-spec exist
 
-NOTE: The complete design specification is in the project memory file at:
-.claude/projects/.../memory/project_sprint9_design.md
-This file was saved via memory because the Layer 2 PreToolUse hook blocks
-large Write/Edit operations in the plugin repo (no .forgeplan/state.json).
-The next session will read the memory and generate the full implementation plan.
-
-
-## Design Decisions
-
-| Decision | Choice | Rationale |
-|----------|--------|-----------|
-| Wiki layers | Full Karpathy: Rules (L3) + Wiki (L2) + Source (L1) | Rules = deterministic checks, Wiki = cheap reads, Source = always available |
-| Rules extraction | Markers + spec constraints only. NO inference. | Grep-based is deterministic. Inference dropped per review. |
-| Rules self-correction | 5-layer resilience + auto-fix via full regeneration | rules.md is generated output. Fix source, rules auto-correct. |
-| Cross-references | Entries link (pattern to rule to decision) | Changes propagate through linked knowledge. Agents trace impact. |
-| Evidence tracking | Every entry tracks WHY + violation history | Agents judge relevance from evidence, not just existence. |
-| PostToolUse wiki | Scan tool_input only, append, no full-file read | Accept staleness between recompiles. compile-wiki.js reconciles. |
-| State hardening | Shared atomicWriteJson utility (no file locking) | Hooks are serial. No concurrency. Locking overengineered. |
-| Node split | Architect-assisted, atomic manifest, pre-validate, mandatory integrate | Non-destructive, crash-safe, validated before execution. |
-| Session persistence | SessionEnd hook writes summary to wiki | Verified: Claude Code supports SessionEnd. Fallback via session-start. |
-| Marker enforcement | Stop hook verifies node+spec markers exist | Ensures code annotated enough for wiki extraction. |
-| Massive changes | compile-wiki.js reconciles vs manifest, archives missing | Wiki survives redesigns. History preserved. |
-
 ---
 
-## Pillar 1: Semantic Memory (Living Knowledge Tree)
+## Sprint 9: 4 Pillars (Pillar 3 Five-Team already shipped in Sprint 8)
 
-### Three Layers (Full Karpathy)
+### Pillar 1: Semantic Memory (Living Knowledge Tree)
 
-\
-Agent read strategy: Rules first (instant check) -> Wiki second (cheap) -> Source last (expensive, verify only). Any agent can fall back to source at any time.
+**Full Karpathy 3-layer model:**
+- Layer 3: Rules (deterministic conventions from markers + spec constraints)
+- Layer 2: Wiki (compiled summaries with [file:line] citations + cross-references + evidence)
+- Layer 1: Source (fallback, always available, never gated)
 
-### Anchor Markers (5 types)
+**5 anchor marker types (builder writes all 5):**
+- @forgeplan-node (existing), @forgeplan-spec (existing)
+- @forgeplan-pattern (NEW), @forgeplan-rule (NEW), @forgeplan-decision (NEW, ID: D[N]-[slug])
 
-Builder writes ALL 5. Stop hook enforces node+spec markers. New 3 encouraged, not enforced.
+**Cross-references (knowledge graph):** Entries link to each other. Pattern→Rule→Decision. When pattern changes, agents trace impact through links.
 
-- @forgeplan-node: [node-id] (existing, file ownership)
-- @forgeplan-spec: [AC-ID] (existing, AC implementation)
-- @forgeplan-pattern: [name] (NEW, reusable pattern)
-- @forgeplan-rule: [convention] (NEW, codebase rule)
-- @forgeplan-decision: D[N]-[slug] (NEW, architectural decision)
+**Evidence tracking (WHY + history):** Every rule/pattern/decision tracks WHY it exists, evidence of value (passes since adoption, violations), when added, when last verified. Agents judge relevance from evidence.
 
-### Cross-References (Knowledge Graph)
+**Rules: 5-layer resilience:**
+1. Spec constraints → rules.md at spec time (before code exists!)
+2. Code markers → rules.md at build time
+3. Verified timestamps (stale rules tagged [STALE])
+4. Agent self-validation (read cited line before reporting violation)
+5. Source fallback (always available)
 
-Entries link to each other creating a web of knowledge:
-- Pattern auth-middleware -> enforces Rule always-validate-token -> based on Decision D3
-- When pattern changes, agents trace: does Rule X still hold? Is Decision D3 still valid?
+**Self-correction loop (rules.md regenerated from scratch every compile):**
+- Stale rule (marker deleted) → vanishes on recompile
+- Missing rule (spec constraint) → auto-appears
+- Wrong rule → Red Team finds contradiction → fix agent removes marker → recompile drops
+- Builder self-repair: sees [STALE] tag → re-adds marker if still valid
 
-### Evidence Tracking (WHY + History)
+**Wiki lifecycle — grows at EVERY phase:**
+- Discovery: index.md + skeleton node pages + wiki/ dirs
+- Spec: node pages get ACs/interfaces/constraints. rules.md gets spec constraints (useful before first build!)
+- Build: PostToolUse appends file entries + extracts markers from tool_input
+- Review: findings → node "Past Findings"
+- Sweep: full recompile via compile-wiki.js + recompile between passes after Phase 4 fixes
+- Revise: impact → decisions.md, interface changes on node pages
+
+**PostToolUse wiki (lightweight, <20ms):**
+- Scan tool_input only (not full file). Regex for markers. Append to wiki files. Direct fs writes (bypasses PreToolUse). If wiki dir missing: create silently.
+
+**compile-wiki.js (~300 lines, full recompile):**
+- Runs at: sweep Phase 1.5, between sweep passes, SessionStart if stale
+- Reads specs + source + previous wiki + sweep reports
+- Builds cross-references + evidence
+- REGENERATES from scratch (self-correction)
+- Reconciles vs manifest (missing nodes → archived)
+- Atomic writes
+
+**Massive change handling:** Nodes removed → archived (history preserved). Nodes added → created from spec+source. Full rediscovery → archives all, fresh start.
+
+**Marker enforcement:** Stop hook verifies @forgeplan-node and @forgeplan-spec before build completion. Sweep contract-drift flags nodes with 0 pattern/rule markers.
+
+**Builder reads wiki before building:** rules.md + patterns.md + wiki/nodes/[dep].md. Falls back to specs if wiki missing.
+
+### Pillar 2: Node Splitting
+
+**Command: /forgeplan:split [node-id]**
+- Prerequisites: node built/reviewed/revised, no active_node, no sweep_state
+- Architect-assisted (split mode = code analysis, NOT discovery)
+- Analysis: directory groupings → import clusters → domain boundaries
+- AC assignment via @forgeplan-spec markers
+- depends_on/connects_to redistribution by tracing imports
+- shared_dependencies inherited per child (filtered to models used)
+- Orphan files identified and presented to user
+- Pre-validate before executing (run validate-manifest on hypothetical)
+- Execute atomically (single manifest write, tmp+rename)
+- Mandatory /forgeplan:integrate after split
+- Tier upgrade check (2→3 = SMALL→MEDIUM, 5→6 = MEDIUM→LARGE)
+- Children start as "built" → route through review
+
+### Pillar 3: State Management Hardening
+
+**Shared atomicWriteJson utility (scripts/lib/atomic-write.js, ~15 lines)**
+- Extract existing pattern. All 3 scripts switch to shared import.
+- No file locking (hooks are serial, no concurrency)
+
+**SessionEnd hook (scripts/session-end.js, ~60 lines)**
+- Writes session summary to wiki/sessions/
+- Diffs current state vs last summary
+- Ctrl+C fallback: session-start reads wiki node pages
+
+**Parallel fix: worktrees handle isolation, no temp state needed**
+
+### Pillar 4: Guide Enhancement
+
+- Reads wiki for: recurring findings, split recommendations (>15 findings or >20 files), pattern propagation
+- Concrete: string match on category + file count thresholds
+
+### Pre-Tool-Use Updates
+- Whitelist .forgeplan/wiki/ for all active statuses
+- Whitelist compile-wiki.js and session-end.js in Bash safe patterns
+
+### File Inventory: 5 new + ~20 modified
+
+### Build Order: 13 steps (see design doc)
+
+### 5-Team Review Key Findings (incorporated into v2):
+- Red: PreToolUse must whitelist wiki/, builder must WRITE markers not just read
+- Blue: Split needs orphan file handling, wiki empty during first node build (accepted)
+- Orange: pre-tool-use.js missing from modified files, state-schema needs wiki_last_compiled
+- Rainbow: Simplify update-state.js (no locking), cut "infer patterns" fallback
+- White: SessionEnd verified as real hook, compile-wiki.js needs exact marker regex specified
+
+## Cross-References (Knowledge Graph)
+
+Wiki entries link to each other creating a web of knowledge. Example:
+
+Pattern auth-middleware [src/auth/middleware.ts:12] -> Enforces Rule always-validate-token -> Based on Decision D3-httponly-cookies
+
+When a pattern changes, agents trace impact: "This pattern enforces Rule X from Decision D3. If I change it, does the rule still hold?"
+
+## Evidence Tracking (WHY + History)
 
 Every rule/pattern/decision tracks:
-- WHY it exists (the finding or requirement that created it)
+- WHY it exists (the finding, requirement, or choice that created it)
 - EVIDENCE of value (passes since adoption, violations found/prevented)
 - HISTORY (when added, last verified, violation count)
 
-### Rules: 5-Layer Resilience + Self-Correction
+Agents use evidence to prioritize: 0 violations across 5 passes = well-established. 2 violations in 3 passes = needs attention.
 
-Sources: @forgeplan-rule markers + spec constraints.
+## Annotation Enforcement
 
-Layer 1: Spec constraints -> rules.md at spec time (before code!)
-Layer 2: Code markers -> rules.md at build time
-Layer 3: Verified timestamps (stale tagged [STALE])
-Layer 4: Agent self-validation (read cited line before reporting)
-Layer 5: Source fallback (always available)
+Stop hook marker verification: verifies every file has @forgeplan-node and every AC has @forgeplan-spec. Missing markers are bounce-worthy.
 
-Self-correction: rules.md REGENERATED from scratch every compile-wiki.js run.
-- Stale rule -> vanishes. Missing rule -> auto-appears. Wrong rule -> Red Team finds, fix agent removes marker, recompile drops.
-- Builder self-repair: sees [STALE], re-adds marker if valid.
+Sweep contract-drift: flags nodes with 0 @forgeplan-pattern and 0 @forgeplan-rule markers.
 
-### Wiki Structure
+## Pre-Tool-Use Updates
 
-.forgeplan/wiki/
-  nodes/[node-id].md (per-node: summary, files, patterns, rules, findings, decisions)
-  patterns.md (cross-cutting patterns with cross-refs)
-  rules.md (deterministic rules with WHY + evidence)
-  decisions.md (decisions with rationale + linked rules/patterns)
-  index.md (quick reference)
-  archived/ (pages for removed/split nodes, history preserved)
-  sessions/[date].md (session summaries from SessionEnd)
+Whitelist .forgeplan/wiki/ for all active statuses. Whitelist compile-wiki.js and session-end.js in Bash safe patterns.
 
-### Wiki Lifecycle
+## File Inventory: 5 new files + ~20 modified files
 
-Discovery: index.md + skeleton pages + dirs
-Spec: ACs/interfaces/constraints on node pages. rules.md from spec constraints.
-Build: PostToolUse file entries + marker extraction (<20ms, tool_input only)
-Review: findings -> Past Findings section
-Sweep: full recompile + between-pass recompile after fixes
-Revise: impact -> decisions.md, interface changes on node pages
+New: commands/split.md (~100), scripts/compile-wiki.js (~300), scripts/lib/atomic-write.js (~15), scripts/session-end.js (~60)
 
-### compile-wiki.js (~300 lines)
+Modified: architect.md, builder.md, all 16 sweep agents, post-tool-use.js, pre-tool-use.js, session-start.js, stop-hook.js, sweep.md, discover.md, spec.md, review.md, guide.md, help.md, hooks.json, state-schema.json, CLAUDE.md, plugin.json
 
-Runs at: sweep Phase 1.5, between passes, SessionStart if stale.
-1. Read specs -> ACs, interfaces, constraints
-2. Read source -> extract ALL markers
-3. Read previous wiki -> preserve Past Findings + evidence
-4. Read sweep/review reports -> update finding history
-5. Build cross-references + evidence
-6. REGENERATE from scratch (self-correction)
-7. Reconcile vs manifest (missing nodes -> archived)
-8. Atomic writes
+## Build Order (13 steps)
 
-### Token Savings
-
-Builder adjacent nodes: ~50KB source -> ~5KB wiki (~90%)
-Sweep agent: ~100KB -> ~40KB wiki+drillins (~60%)
-Second session: ~100KB -> ~15KB wiki (~85%)
-
----
-
-## Pillar 2: Node Splitting
-
-Command: /forgeplan:split [node-id]
-Prerequisites: built/reviewed/revised, no active_node, no sweep_state
-
-Flow:
-1. Read manifest + spec + files
-2. Architect split mode (code analysis, NOT discovery): directory groups, import clusters, domain boundaries
-3. AC assignment via @forgeplan-spec markers. depends_on/connects_to redistribution. shared_dependencies filtered per child. Orphan files identified.
-4. Present proposal with orphan handling. Confirm/adjust.
-5. Pre-validate (validate-manifest on hypothetical)
-6. Execute atomically (single manifest write). Create child specs. Re-register files. Archive parent. Update wiki.
-7. Mandatory /forgeplan:integrate
-8. Tier upgrade check (2->3 SMALL->MEDIUM, 5->6 MEDIUM->LARGE)
-Children start as built -> review verifies against narrower specs.
-
----
-
-## Pillar 3: State Hardening
-
-Shared atomicWriteJson (scripts/lib/atomic-write.js, ~15 lines). No locking.
-SessionEnd hook (scripts/session-end.js, ~60 lines). Diffs state vs last summary.
-Parallel fix: worktrees handle isolation, no temp state.
-
----
-
-## Pillar 4: Guide Enhancement
-
-Reads wiki for: recurring findings (category match), split recommendations (>15 findings or >20 files), pattern propagation (LLM judgment from wiki).
-
----
-
-## Pre-Tool-Use: whitelist .forgeplan/wiki/ + compile-wiki.js + session-end.js
-## Annotation: Stop hook enforces node+spec markers. Sweep flags 0-marker nodes.
-## Massive changes: reconcile vs manifest, archive removed nodes, preserve history.
-
-## Files: 5 new + ~20 modified. Build order: 13 steps.
+1. scripts/lib/atomic-write.js (no deps)
+2. Wiki structure + compile-wiki.js (standalone)
+3. pre-tool-use.js whitelist (unblocks wiki writes)
+4. PostToolUse wiki integration (depends 2, 3)
+5. Builder marker writing + wiki reading (depends 2)
+6. Discover/spec wiki init + rules from constraints (depends 2)
+7. Review wiki writes (depends 2)
+8. Sweep Phase 1.5 + between-pass recompile (depends 2)
+9. Node splitting command (depends 2, 3)
+10. SessionEnd hook + session-end.js (depends 1)
+11. Session-start wiki reading (depends 10)
+12. Guide enhancement (depends 2, 9)
+13. Integration testing + team review
