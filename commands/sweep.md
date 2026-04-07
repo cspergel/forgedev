@@ -73,6 +73,8 @@ Run tier-selected sweep agents (3-16) in parallel across the entire codebase: 12
    }
    ```
 6. Set `active_node` to `null`
+7. **Compile wiki** (Sprint 9, MEDIUM/LARGE only, skip for SMALL):
+   Run `node "${CLAUDE_PLUGIN_ROOT}/scripts/compile-wiki.js"` to build/refresh the knowledge base before dispatching agents. This generates wiki node pages, rules.md, and decisions.md from current specs, source, and sweep reports.
 
 ### Phase 2: Dispatch sweep agents (progressive reduction)
 
@@ -119,6 +121,9 @@ Agent definition files (read these, use as system prompts):
 
 **Progressive agent reduction:**
 1. On **pass 1**: dispatch the **tier-selected agents** from above (SMALL=3-5 domain, MEDIUM=7-9 domain+team, LARGE=up to 16 domain+team). Skip `frontend-ux` if no frontend nodes regardless of tier.
+   - **Sprint 9 (MEDIUM/LARGE):** Pass 1 agents receive ALL source files (existing behavior) PLUS wiki node pages (decisions + past findings) if wiki exists. Do NOT send `wiki/rules.md` to sweep agents (trust boundary). Exception: `sweep-adversarial` (Red Team) receives `wiki/rules.md` specifically to AUDIT it for dangerous rules.
+   - **Sprint 9 Pass 2+ optimization (MEDIUM/LARGE):** Agents receive wiki node pages (NOT rules.md) + source files modified since last pass (from `sweep_state.modified_files_by_pass`) + source files referenced by any PENDING finding for the agent's category. Agents still have Read/Grep tools for on-demand source inspection. Exception: `sweep-adversarial` ALWAYS receives full source + rules.md on every pass.
+   - **Sprint 9 Convergence rule:** Do NOT retire an agent if its category still has pending findings in `sweep_state.findings.pending`. Only count a clean pass when agent returns CLEAN AND zero pending findings in its category.
 2. After merging results, update `sweep_state.agent_convergence` for each agent. **Keys are agent names** (matching the `.md` filename without extension), NOT category names:
    ```json
    "agent_convergence": {
@@ -389,8 +394,10 @@ node "${CLAUDE_PLUGIN_ROOT}/scripts/cross-model-bridge.js" ".forgeplan/sweeps/sw
 1. Update `sweep_state.current_phase` to `"finalizing"`
 2. Write final summary to the sweep report
 3. Clean up any remaining worktrees: `node "${CLAUDE_PLUGIN_ROOT}/scripts/worktree-manager.js" cleanup`
-4. Clear `sweep_state` to null
-4. Present results to user:
+4. **Compile wiki** (Sprint 9, MEDIUM/LARGE only, skip for SMALL):
+   Run `node "${CLAUDE_PLUGIN_ROOT}/scripts/compile-wiki.js"` to update the knowledge base with findings from this sweep. This refreshes wiki pages for the next session.
+5. Clear `sweep_state` to null
+6. Present results to user:
    ```
    === Sweep Complete ===
    Passes: [N]

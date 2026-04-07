@@ -11,6 +11,31 @@ Detect and recover from interrupted builds, reviews, revisions, review-fix cycle
 
 ## Process
 
+**Step 0: Check for interrupted split (Sprint 9)**
+
+Before any other recovery, check for `.forgeplan/.split-in-progress.json`. If it exists, a previous `/forgeplan:split` was interrupted — the manifest and state may be inconsistent. This takes priority over all other recovery.
+
+1. Read `.forgeplan/.split-in-progress.json`
+2. Display: parent node, child nodes, started timestamp, completed steps, remaining steps
+3. Offer two options:
+
+**Resume:**
+- Write the breadcrumb's `planned_changes.manifest_yaml` to a temp file (`.forgeplan/.manifest-split-check.yaml`)
+- Run `node "${CLAUDE_PLUGIN_ROOT}/scripts/validate-manifest.js" .forgeplan/.manifest-split-check.yaml` to re-validate
+- Delete temp file after validation
+- If valid: replay only steps NOT in `completed_steps` (idempotency: check if artifact already exists before writing)
+- If invalid: offer rollback instead
+
+**Rollback:**
+- Restore from `before_images`: write back original `manifest.yaml`, `state.json`, and parent spec
+- Delete any child specs that were created during the interrupted split
+- Remove `.forgeplan/.split-in-progress.json`
+- Report: "Split rolled back. Project state restored to before the split attempt."
+
+After resolving the split (resume or rollback), continue to the normal recovery checks below.
+
+---
+
 1. **Clean up peripheral artifacts first:**
    - Check for stale worktrees: run `node "${CLAUDE_PLUGIN_ROOT}/scripts/worktree-manager.js" list`. If any exist, run `node "${CLAUDE_PLUGIN_ROOT}/scripts/worktree-manager.js" cleanup` and report: "Cleaned up [N] stale worktrees from a crashed parallel fix."
    - Check for orphan PIDs: if `.forgeplan/.verify-pids` exists, **delete the file** (do NOT attempt to kill PIDs — they may have been reused by unrelated processes after a hard crash). If a stale server is holding a port, verify-runnable or runtime-verify will detect EADDRINUSE and report it with actionable guidance. Report: "Cleaned up stale .verify-pids file."

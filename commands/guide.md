@@ -250,6 +250,34 @@ ForgePlan tracks the dependency graph and knows which nodes are affected.
   → /forgeplan:affected [model]   See which nodes a model change affects
 ```
 
+## Wiki-Informed Recommendations (Sprint 9 -- MEDIUM/LARGE only)
+
+After checking standard state conditions, if wiki exists and tier is not SMALL, check these additional triggers:
+
+| Signal | Threshold | Recommendation |
+|--------|-----------|----------------|
+| Recurring findings in same category | >3 findings, same category, across 2+ passes | "Persistent [category] issues. Consider adding a spec constraint or refactoring the pattern." |
+| High file count in node | >20 files in single node's file_scope | "Node [id] has [N] files. Consider `/forgeplan:split [id]` for finer governance." |
+| High finding density | >15 findings per node in single sweep pass | "High finding density on [id] suggests more decomposition needed. Current tier: [tier]." |
+| Stale wiki | wiki_last_compiled older than last state change | "Knowledge base is stale. Will refresh on next sweep, or run compile-wiki.js manually." |
+
+### Sweep complete, wiki available (MEDIUM/LARGE only)
+
+Check: sweep completed AND wiki pages exist AND tier !== "SMALL"
+
+```
+Knowledge base has been compiled from your sweep results.
+
+  Review your project's knowledge:
+  -> Read .forgeplan/wiki/decisions.md      Architectural decisions with context
+  -> Read .forgeplan/wiki/rules.md          Inferred conventions from specs and code
+
+  Next actions:
+  -> /forgeplan:revise [node]     Make improvements based on patterns
+  -> /forgeplan:deep-build        Run another sweep cycle
+  -> /forgeplan:split [node]      Decompose a node if findings suggest it
+```
+
 ## Cross-model prompt
 
 If cross-model review is not configured (no `.forgeplan/config.yaml` or `review.mode: native`), and the user is at the "all reviewed" stage or later, add:

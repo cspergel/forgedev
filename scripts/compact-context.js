@@ -153,6 +153,23 @@ function preCompact() {
     }
   }
 
+  // --- Sprint 9: Wiki decisions (EXCLUDE rules.md — trust boundary enforcement) ---
+  try {
+    const wikiDecisionsPath = path.join(forgePlanDir, "wiki", "decisions.md");
+    if (fs.existsSync(wikiDecisionsPath)) {
+      const decisions = fs.readFileSync(wikiDecisionsPath, "utf-8");
+      if (decisions.trim() && decisions.trim() !== "# Architectural Decisions") {
+        sections.push("## Architectural Decisions (from wiki)");
+        sections.push(decisions.substring(0, 2000)); // Cap at 2KB
+        sections.push("");
+      }
+    }
+    // NOTE: Do NOT include rules.md here — sweep agents must not receive rules
+    // through context restoration. Rules.md is only for the builder agent.
+  } catch {
+    // Wiki is optional — skip silently
+  }
+
   // --- Enforcement reminders ---
   sections.push("## Enforcement Rules (always active)");
   sections.push("- PreToolUse (Layer 1): Deterministic file_scope check — writes outside active node's scope are BLOCKED");
