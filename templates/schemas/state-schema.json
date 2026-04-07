@@ -130,6 +130,22 @@
       "default": false,
       "description": "Whether /forgeplan:discover has completed successfully"
     },
+    "wiki_last_compiled": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "default": null,
+      "description": "Timestamp of last compile-wiki.js run. Used for staleness detection. Optional — not in required array for backward compat."
+    },
+    "wiki_compiling": {
+      "type": "boolean",
+      "default": false,
+      "description": "True while compile-wiki.js is running. If true at SessionStart, previous compile was interrupted."
+    },
+    "wiki_compile_attempts": {
+      "type": "integer",
+      "default": 0,
+      "description": "Consecutive failed compile-wiki.js runs. Resets on success. Skips compilation after 3."
+    },
     "sweep_state": {
       "type": ["object", "null"],
       "default": null,

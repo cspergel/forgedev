@@ -15,15 +15,7 @@
 const fs = require("fs");
 const path = require("path");
 
-/**
- * Atomic JSON write — writes to a temp file first, then renames.
- * Prevents concurrent read-modify-write from producing corrupt state.json.
- */
-function atomicWriteJson(filePath, data) {
-  const tmp = filePath + ".tmp";
-  fs.writeFileSync(tmp, JSON.stringify(data, null, 2), "utf-8");
-  fs.renameSync(tmp, filePath);
-}
+const { atomicWriteJson } = require("./lib/atomic-write");
 
 let inputData = "";
 process.stdin.setEncoding("utf-8");

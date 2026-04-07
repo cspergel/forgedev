@@ -132,6 +132,7 @@ function evaluate(input) {
       // Sweep analysis mode: .forgeplan/ management files writable, source files blocked
       if (
         relPath.startsWith(".forgeplan/sweeps/") ||
+        relPath.startsWith(".forgeplan/wiki/") ||    // Sprint 9: wiki updates during sweep analysis
         relPath.startsWith(".forgeplan/specs/") ||
         relPath === ".forgeplan/manifest.yaml" ||
         relPath === ".forgeplan/deep-build-report.md" ||
@@ -172,6 +173,31 @@ function evaluate(input) {
   if (activeStatus === "review-fixing") {
     // Treat review-fixing identically to building for write enforcement
     // (same file_scope check, shared model guard, .forgeplan/ boundary)
+  }
+
+  // Sprint 9: Path traversal defense-in-depth
+  // path.relative() at line 75-77 already resolves traversal (e.g., ".forgeplan/wiki/../../state.json"
+  // becomes "state.json"). This guard catches any residual ".." segments within the project.
+  if (relPath.includes("..")) {
+    return { block: true, message: `Path traversal detected: ${relPath}` };
+  }
+
+  // Sprint 9: Wiki writes — scoped by operation type
+  if (relPath.startsWith(".forgeplan/wiki/")) {
+    if (activeStatus === "sweeping") {
+      return { block: false }; // Sweep is cross-cutting, needs full wiki access
+    }
+    if (activeStatus === "building" || activeStatus === "review-fixing") {
+      // At this point, active_node is guaranteed non-null (the !state.active_node branch returned at line 149)
+      const activeNodeId = state.active_node.node;
+      if (activeNodeId && relPath === `.forgeplan/wiki/nodes/${activeNodeId}.md`) {
+        return { block: false }; // Only the active node's wiki page
+      }
+      return { block: true, message: `Wiki write restricted: can only write to wiki/nodes/${activeNodeId}.md during ${activeStatus}` };
+    }
+    // For any other status (reviewing, revising), wiki writes fall through to
+    // the general .forgeplan/ guard below which will block them. This is correct —
+    // wiki writes only happen during building, review-fixing, and sweeping.
   }
 
   // Building (and review-fixing, sweeping): only specific .forgeplan/ paths allowed per builder contract
@@ -461,6 +487,7 @@ function evaluateBash(toolInput, cwd) {
     /^\s*node\s+[^\s]*runtime-verify\.js/,        // Phase B runtime verification
     /^\s*node\s+[^\s]*worktree-manager\.js/,     // our own worktree manager
     /^\s*node\s+[^\s]*compact-context\.js/,      // our own compaction context script
+    /^\s*node\s+[^\s]*compile-wiki\.js/,         // Sprint 9: wiki knowledge compilation
     /^\s*git\s+worktree\s+(add|remove|list|prune)\b/, // worktree: only safe subcommands
     /^\s*deno\s+(cache|--version|test|task\s+(dev|build|test|start))\b/, // Deno: safe subcommands only (no eval, no run)
     /^\s*bun\s+(install|--version|test|run\s+(dev|build|test|start))\b/, // Bun: safe subcommands only (no -e, no eval)

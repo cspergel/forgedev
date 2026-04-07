@@ -21,11 +21,7 @@
 const fs = require("fs");
 const path = require("path");
 
-function atomicWriteJson(filePath, data) {
-  const tmp = filePath + ".tmp";
-  fs.writeFileSync(tmp, JSON.stringify(data, null, 2), "utf-8");
-  fs.renameSync(tmp, filePath);
-}
+const { atomicWriteJson } = require("./lib/atomic-write");
 
 function main() {
   const cwd = process.cwd();

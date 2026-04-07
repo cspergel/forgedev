@@ -67,3 +67,4 @@ nodes:
   #     - frontend-login
   #   files: []                     # Auto-populated by PostToolUse hook during build
   #   spec: "specs/auth.yaml"       # Pointer to detailed spec file
+  #   split_from: ""                # (Sprint 9) Parent node ID if created by /forgeplan:split. Optional.
