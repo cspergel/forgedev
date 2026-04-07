@@ -14,6 +14,7 @@
 
 const fs = require("fs");
 const path = require("path");
+const yaml = require("js-yaml");
 
 const { atomicWriteJson } = require("./lib/atomic-write");
 
@@ -273,5 +274,69 @@ function processHook(input) {
     process.stderr.write(
       `ForgePlan PostToolUse: Could not log to conversation: ${err.message}\n`
     );
+  }
+
+  // --- Sprint 9: Wiki appending (decision markers) ---
+  // NOTE: `manifest` from line 95 is block-scoped inside a try block and not in scope here.
+  // Re-read the manifest for tier checking. This is a cheap operation (file is small, OS-cached).
+  try {
+    const manifestPath = path.join(forgePlanDir, "manifest.yaml");
+    if (!fs.existsSync(manifestPath)) return; // No manifest = no wiki
+    const wikiManifest = yaml.load(fs.readFileSync(manifestPath, "utf-8"));
+    const tier = wikiManifest && wikiManifest.project && wikiManifest.project.complexity_tier;
+    if (tier && tier !== "SMALL" && state.active_node && state.active_node.node) {
+      const wikiNodeId = state.active_node.node;
+      // Defense-in-depth: validate nodeId format before using in file path
+      if (!/^[a-zA-Z0-9][a-zA-Z0-9_-]*$/.test(wikiNodeId)) return;
+      // Get content to scan: Write = full content, Edit = new_string only (partial — acceptable)
+      const content = toolName === "Write" ? (toolInput.content || "") : (toolInput.new_string || "");
+      const ext = path.extname(relPath || "").toLowerCase();
+      const binaryExts = [".png",".jpg",".gif",".woff",".eot",".ico",".pdf",".zip",".ttf"];
+      // Skip large files (>50KB) and binary files
+      if (content.length <= 50000 && !binaryExts.includes(ext)) {
+        // Import DECISION_REGEX from wiki-builder to avoid duplication
+        // If wiki-builder is unavailable (not yet built), use inline fallback
+        let DECISION_RE;
+        try {
+          DECISION_RE = require("./lib/wiki-builder").DECISION_REGEX;
+        } catch (_) {
+          DECISION_RE = /@forgeplan-decision:\s*(D-\S+-\d+-\S+)\s*--\s*([^\n]+)/g;
+        }
+        const matches = [];
+        let m;
+        const re = new RegExp(DECISION_RE.source, DECISION_RE.flags);
+        while ((m = re.exec(content)) !== null) {
+          matches.push({ id: m[1], description: m[2].trim() });
+        }
+        if (matches.length > 0) {
+          const wikiDir = path.join(forgePlanDir, "wiki");
+          const nodesDir = path.join(wikiDir, "nodes");
+          // Create skeleton if missing (handles first build, tier upgrade, manual deletion)
+          if (!fs.existsSync(nodesDir)) {
+            fs.mkdirSync(nodesDir, { recursive: true });
+            // Create minimal skeleton files
+            if (!fs.existsSync(path.join(wikiDir, "index.md"))) {
+              fs.writeFileSync(path.join(wikiDir, "index.md"), "# Wiki\n", "utf-8");
+            }
+            if (!fs.existsSync(path.join(wikiDir, "decisions.md"))) {
+              fs.writeFileSync(path.join(wikiDir, "decisions.md"), "# Architectural Decisions\n", "utf-8");
+            }
+            if (!fs.existsSync(path.join(wikiDir, "rules.md"))) {
+              fs.writeFileSync(path.join(wikiDir, "rules.md"), "# Rules & Patterns\n", "utf-8");
+            }
+          }
+          // Append decision markers to node wiki page
+          const wikiPagePath = path.join(nodesDir, wikiNodeId + ".md");
+          let appendText = "";
+          for (const match of matches) {
+            appendText += `- **${match.id}**: ${match.description} [${relPath}]\n`;
+          }
+          fs.appendFileSync(wikiPagePath, appendText, "utf-8");
+        }
+      }
+    }
+  } catch (wikiErr) {
+    // Wiki appending is best-effort — never block the build
+    // Silent catch: wiki will be rebuilt by compile-wiki.js later
   }
 }

@@ -128,6 +128,38 @@ function main() {
         }
       }
 
+      // Sprint 9: Detect interrupted split
+      const splitBreadcrumb = path.join(forgePlanDir, ".split-in-progress.json");
+      if (fs.existsSync(splitBreadcrumb)) {
+        try {
+          const raw = fs.readFileSync(splitBreadcrumb, "utf-8");
+          // Size guard: skip if breadcrumb is corrupted/huge (>5MB)
+          if (raw.length > 5 * 1024 * 1024) {
+            warnings.push(
+              "WARNING: .split-in-progress.json is too large (>5MB). May be corrupted.\n" +
+              "   Delete it manually or run /forgeplan:recover to investigate."
+            );
+          } else {
+            const breadcrumb = JSON.parse(raw);
+            const remaining = ["specs", "manifest", "state", "wiki"].filter(
+              s => !(breadcrumb.completed_steps || []).includes(s)
+            );
+            warnings.push(
+              `WARNING: Split of "${breadcrumb.parent_node_id}" into [${(breadcrumb.child_nodes || []).join(", ")}] was interrupted.\n` +
+              `   Started: ${breadcrumb.started_at || "unknown"}\n` +
+              `   Completed: ${(breadcrumb.completed_steps || []).join(", ") || "none"}\n` +
+              `   Remaining: ${remaining.join(", ")}\n` +
+              `   Run /forgeplan:recover to resume or rollback.`
+            );
+          }
+        } catch (err) {
+          warnings.push(
+            "WARNING: .split-in-progress.json exists but cannot be read. May be corrupted.\n" +
+            "   Run /forgeplan:recover or delete the file manually."
+          );
+        }
+      }
+
       // Check for pending blocked decisions from a previous sweep
       if (state.sweep_state && state.sweep_state.blocked_decisions && state.sweep_state.blocked_decisions.length > 0) {
         const count = state.sweep_state.blocked_decisions.length;
@@ -292,6 +324,25 @@ function buildAmbientStatus(forgePlanDir, manifestPath, statePath, state) {
     lines.push(sweepProgress);
   }
 
+  // Sprint 9: Wiki status (MEDIUM/LARGE only)
+  const wikiTier = manifest && manifest.project && manifest.project.complexity_tier;
+  if (wikiTier && wikiTier !== "SMALL") {
+    const wikiStatus = isWikiStale(state, forgePlanDir);
+    if (wikiStatus === "failed") {
+      lines.push("  Wiki: compilation failed 3 times. Run 'node scripts/compile-wiki.js --verbose' to diagnose.");
+    } else if (wikiStatus === "not-initialized") {
+      lines.push("  Wiki: not yet initialized. Will be created during first sweep.");
+    } else if (wikiStatus === "deleted") {
+      lines.push("  Wiki: deleted \u2014 will rebuild on next sweep.");
+    } else if (wikiStatus === "interrupted") {
+      lines.push("  Wiki: compilation was interrupted \u2014 will retry on next sweep.");
+    } else if (wikiStatus === "stale") {
+      lines.push(`  Wiki: stale (last compiled: ${state.wiki_last_compiled}). Will refresh on next sweep.`);
+    } else {
+      lines.push(`  Wiki: up to date (compiled: ${state.wiki_last_compiled}).`);
+    }
+  }
+
   // Next command suggestion
   if (suggestion) {
     lines.push(`Next: ${suggestion}`);
@@ -300,6 +351,24 @@ function buildAmbientStatus(forgePlanDir, manifestPath, statePath, state) {
   lines.push("-----------------");
 
   return lines.join("\n") + "\n";
+}
+
+/**
+ * Check wiki staleness. Returns a status string or false if fresh.
+ * Takes state object as parameter to avoid re-reading state.json.
+ * Sprint 9.
+ */
+function isWikiStale(state, forgePlanDir) {
+  if (!state.wiki_last_compiled) return "not-initialized"; // Never compiled
+  if (!fs.existsSync(path.join(forgePlanDir, "wiki", "index.md"))) return "deleted"; // Wiki dir deleted
+  if (state.wiki_compiling) {
+    if ((state.wiki_compile_attempts || 0) >= 3) return "failed"; // Exhausted retries
+    return "interrupted"; // Previous compile crashed
+  }
+  const lastCompiled = new Date(state.wiki_last_compiled);
+  const lastStateUpdate = new Date(state.last_updated);
+  if (lastStateUpdate > lastCompiled) return "stale";
+  return false; // Wiki is fresh
 }
 
 /**
