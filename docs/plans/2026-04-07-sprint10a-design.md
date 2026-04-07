@@ -392,9 +392,11 @@ When a project is imported via document or (Sprint 10B) via repo ingestion, comp
    - `sweep-rainbow.md` → `sweep-structuralist.md`
    - `sweep-white.md` → `sweep-skeptic.md`
 1b. **Update** `commands/sweep.md` with new agent names. Verify sweep still works with renamed agents.
-1c. **Delete** old agents AFTER verifying sweep works:
-   - 12 domain agents: sweep-auth-security.md, sweep-type-consistency.md, sweep-error-handling.md, sweep-database.md, sweep-api-contracts.md, sweep-imports.md, sweep-code-quality.md, sweep-test-quality.md, sweep-config-environment.md, sweep-frontend-ux.md, sweep-documentation.md, sweep-cross-node-integration.md
-   - 4 Sprint 9 team agents: sweep-adversarial.md, sweep-user-flows.md, sweep-contract-drift.md, sweep-holistic.md
+1c. **Archive** old agents AFTER verifying sweep works (do NOT delete — preserve history):
+   - Move to `agents/archived/` directory:
+     - 12 domain agents: sweep-auth-security.md, sweep-type-consistency.md, sweep-error-handling.md, sweep-database.md, sweep-api-contracts.md, sweep-imports.md, sweep-code-quality.md, sweep-test-quality.md, sweep-config-environment.md, sweep-frontend-ux.md, sweep-documentation.md, sweep-cross-node-integration.md
+     - 4 Sprint 9 team agents: sweep-adversarial.md, sweep-user-flows.md, sweep-contract-drift.md, sweep-holistic.md
+   - Add `agents/archived/` to `.gitignore` so archived agents don't clutter the repo
    - Never leave the project with zero functioning sweep agents.
 2. Create `agents/interviewer.md`
 3. Create `agents/translator.md` (with defined output schema — see Translator Output Schema below)
