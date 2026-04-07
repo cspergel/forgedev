@@ -16,7 +16,7 @@
 | Review panels | 1 universal panel with stage-specific prompts | Same 5 agents adapt per stage. Less maintenance, same coverage |
 | Agent naming | Adversary, Contractualist, Pathfinder, Structuralist, Skeptic | Named by LENS. Professional, self-documenting, production-grade |
 | Loop behavior | Always loop until clean, every tier | Scale agent COUNT by tier. Tokens are investment, not cost |
-| SMALL shortcut | Collapse Stages 2+3 into single sanity check | SMALL should complete in one session. 4 full stages is too much ceremony |
+| SMALL shortcut | SMALL skips Stage 1 entirely for greenfield. Stage 2 = 1-pass design+plan review with 3 agents. | SMALL should complete in one session. The description IS the design — no Interviewer/Researcher/Translator needed. |
 | Stage 3 home | Planner is a mode of the Architect, not a separate agent | Architect designs, Architect plans. Same agent, different output. Reduces agent count |
 | Dispatch mechanism | Dispatching command includes "You are reviewing a [DESIGN/PLAN/CODE] document" in the Agent tool prompt | Each review agent file has all 3 lenses. The dispatching command (discover, greenfield, build) tells the agent which lens to use via the prompt context, not a flag. Standard Claude Code Agent tool pattern — no special mechanism needed. |
 | Max review passes | 5 per stage (circuit breaker) | Prevents infinite loops. Unresolved CRITICALs HALT pipeline (require user acknowledgment). Unresolved IMPORTANTs become warnings and proceed. |
@@ -86,7 +86,7 @@ Three agents, sequential:
 
 **Loop:** Architect fixes → Panel re-reviews → until zero CRITICAL/IMPORTANT (max 5 passes). If CRITICALs remain after 5 passes, pipeline HALTS and requires user acknowledgment. IMPORTANTs become warnings and proceed.
 
-**SMALL shortcut:** Design + plan reviewed in ONE pass by 3 agents (Structuralist, Skeptic, Adversary). No separate plan review stage.
+**SMALL shortcut:** SMALL skips Stage 1 entirely (no Interviewer/Researcher/Translator — the user's description IS the design). Architect produces design + plan directly. Reviewed in ONE pass by 3 agents (Structuralist, Skeptic, Adversary). No separate plan review. This keeps SMALL as fast as the current greenfield pipeline.
 
 **MEDIUM:** 4 agents (add Contractualist), design and plan reviewed separately
 

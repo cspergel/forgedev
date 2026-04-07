@@ -165,12 +165,7 @@ For existing projects that want governance retroactively.
    - Test directories → test coverage baseline
    - Containment checks: symlinks, .forgeplan existence, scope breadth
 
-2. Interviewer confirms mapping with user
-   - "I found 8 directories that look like node boundaries. Here's my mapping: [table]"
-   - "These 3 types are imported everywhere — I'd make them shared models: [list]"
-   - "Sound right? Anything I missed?"
-
-3. Ground-truth validation (DETERMINISTIC, not LLM)
+2. Ground-truth validation (DETERMINISTIC, not LLM) — NO user prompts. Ingest is fully autonomous.
    - Script verifies: every claimed directory exists, file counts per scope are accurate,
      claimed shared types actually exist in codebase, no scope overlaps
    - If validation fails: Translator re-maps with corrections
@@ -190,19 +185,18 @@ For existing projects that want governance retroactively.
    - Second gate: review generated specs for coherence
    - Loop until clean (max 5 passes)
 
-7. User confirms → manifest + specs written
+7. Manifest + specs written automatically (no user confirmation — ingest is autonomous)
 
 8. compile-wiki.js runs immediately
    - Wiki captures: existing patterns, decisions inferred from code, rules from spec constraints
    - For legacy repos this is CRITICAL — the wiki becomes "here's what this codebase does and why"
    - Institutional knowledge extracted and made explicit
 
-9. First sweep (optional, recommended)
-   - Baseline quality assessment
-   - Wiki enriched with findings
-   - Phase tagging: existing code = phase 1, planned features = phase 2+
+9. First sweep runs automatically as part of ingest (baseline quality assessment, wiki enriched with findings)
 
-10. Governance active from this point forward
+10. `/forgeplan:guide` surfaces onboarding: "Your project has been ingested. [N] nodes mapped, [N] shared models identified, [N] findings from baseline sweep. Here's what to do next: review specs, edit to add requirements, or start building."
+
+11. Governance active from this point forward
 ```
 
 ### Ground-Truth Validation Script
