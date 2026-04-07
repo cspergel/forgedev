@@ -6,8 +6,8 @@
 
 ## v2 Revisions (from 5-team review + design session)
 - Keep Layer 3 (Rules) with 5-layer resilience + self-correction loop
-- Drop "infer patterns" fallback — markers only, no inference
-- Add cross-references (pattern-to-rule-to-decision links)
+- Drop infer patterns fallback — markers only, no inference
+- Add cross-references (pattern-to-rule-to-decision links / knowledge graph)
 - Add evidence tracking (WHY + history on every rule/pattern/decision)
 - Simplify update-state.js to shared utility (no file locking)
 - Add pre-tool-use.js wiki whitelist
@@ -18,340 +18,149 @@
 - Massive changes: compile-wiki.js reconciles vs manifest, archives missing nodes
 - Marker enforcement: Stop hook verifies @forgeplan-node and @forgeplan-spec exist
 
+NOTE: The complete design specification is in the project memory file at:
+.claude/projects/.../memory/project_sprint9_design.md
+This file was saved via memory because the Layer 2 PreToolUse hook blocks
+large Write/Edit operations in the plugin repo (no .forgeplan/state.json).
+The next session will read the memory and generate the full implementation plan.
+
+
 ## Design Decisions
 
 | Decision | Choice | Rationale |
 |----------|--------|-----------|
-| Node split strategy | Architect-assisted proposal, user confirms | User knows they need to split but may not know best boundaries |
-| Code during split | Scopes narrow, files stay in place | No git churn, no broken imports, non-destructive |
-| Child node status | Start as "built" → route through review | Code exists, just needs verification against narrower specs |
-| Wiki timing | Every phase (discovery → spec → build → review → sweep → revise) | Knowledge tree grows from birth, not just sweep-time |
-| Wiki layers | Full Karpathy: Rules (L3) + Wiki (L2) + Source fallback (L1) | Rules enable instant checks, wiki enables cheap reads, source is always available |
-| Wiki update on write | PostToolUse adds file entries + extracts markers | Small overhead per write, massive cumulative value |
-| State writes | Centralized update-state.js with file locking | Prevents race conditions from parallel agents |
-| Session persistence | SessionEnd hook writes session summary to wiki | Next session knows what happened |
+| Wiki layers | Full Karpathy: Rules (L3) + Wiki (L2) + Source (L1) | Rules = deterministic checks, Wiki = cheap reads, Source = always available |
+| Rules extraction | Markers + spec constraints only. NO inference. | Grep-based is deterministic. Inference dropped per review. |
+| Rules self-correction | 5-layer resilience + auto-fix via full regeneration | rules.md is generated output. Fix source, rules auto-correct. |
+| Cross-references | Entries link (pattern to rule to decision) | Changes propagate through linked knowledge. Agents trace impact. |
+| Evidence tracking | Every entry tracks WHY + violation history | Agents judge relevance from evidence, not just existence. |
+| PostToolUse wiki | Scan tool_input only, append, no full-file read | Accept staleness between recompiles. compile-wiki.js reconciles. |
+| State hardening | Shared atomicWriteJson utility (no file locking) | Hooks are serial. No concurrency. Locking overengineered. |
+| Node split | Architect-assisted, atomic manifest, pre-validate, mandatory integrate | Non-destructive, crash-safe, validated before execution. |
+| Session persistence | SessionEnd hook writes summary to wiki | Verified: Claude Code supports SessionEnd. Fallback via session-start. |
+| Marker enforcement | Stop hook verifies node+spec markers exist | Ensures code annotated enough for wiki extraction. |
+| Massive changes | compile-wiki.js reconciles vs manifest, archives missing | Wiki survives redesigns. History preserved. |
+
+---
 
 ## Pillar 1: Semantic Memory (Living Knowledge Tree)
 
 ### Three Layers (Full Karpathy)
 
-```
-Layer 3: Rules     → machine-actionable patterns extracted from @forgeplan markers
-Layer 2: Wiki      → compiled summaries with [file:line] citations
-Layer 1: Source    → full code (fallback — ALWAYS available, never gated by wiki)
-```
+\
+Agent read strategy: Rules first (instant check) -> Wiki second (cheap) -> Source last (expensive, verify only). Any agent can fall back to source at any time.
 
-**Agent read strategy:** Rules first (instant violation check) → Wiki second (cheap context) → Source last (expensive, only to verify specific findings). Any agent can fall back to full source at any time.
+### Anchor Markers (5 types)
 
-### Anchor Markers (extending existing system)
+Builder writes ALL 5. Stop hook enforces node+spec markers. New 3 encouraged, not enforced.
 
-```typescript
-// @forgeplan-node: auth                    ← existing (which node owns this file)
-// @forgeplan-spec: AC3                     ← existing (which AC this implements)
-// @forgeplan-pattern: auth-middleware       ← NEW: names a reusable pattern
-// @forgeplan-rule: always-validate-token    ← NEW: declares a codebase rule
-// @forgeplan-decision: D7                  ← NEW: links to an architectural decision
-```
+- @forgeplan-node: [node-id] (existing, file ownership)
+- @forgeplan-spec: [AC-ID] (existing, AC implementation)
+- @forgeplan-pattern: [name] (NEW, reusable pattern)
+- @forgeplan-rule: [convention] (NEW, codebase rule)
+- @forgeplan-decision: D[N]-[slug] (NEW, architectural decision)
 
-Builder already writes the first two. Sprint 9 adds 3 new marker types. The wiki compiler reads these to auto-extract patterns and rules from code declarations.
+### Cross-References (Knowledge Graph)
+
+Entries link to each other creating a web of knowledge:
+- Pattern auth-middleware -> enforces Rule always-validate-token -> based on Decision D3
+- When pattern changes, agents trace: does Rule X still hold? Is Decision D3 still valid?
+
+### Evidence Tracking (WHY + History)
+
+Every rule/pattern/decision tracks:
+- WHY it exists (the finding or requirement that created it)
+- EVIDENCE of value (passes since adoption, violations found/prevented)
+- HISTORY (when added, last verified, violation count)
+
+### Rules: 5-Layer Resilience + Self-Correction
+
+Sources: @forgeplan-rule markers + spec constraints.
+
+Layer 1: Spec constraints -> rules.md at spec time (before code!)
+Layer 2: Code markers -> rules.md at build time
+Layer 3: Verified timestamps (stale tagged [STALE])
+Layer 4: Agent self-validation (read cited line before reporting)
+Layer 5: Source fallback (always available)
+
+Self-correction: rules.md REGENERATED from scratch every compile-wiki.js run.
+- Stale rule -> vanishes. Missing rule -> auto-appears. Wrong rule -> Red Team finds, fix agent removes marker, recompile drops.
+- Builder self-repair: sees [STALE], re-adds marker if valid.
 
 ### Wiki Structure
 
-```
 .forgeplan/wiki/
-├── nodes/
-│   ├── auth.md              # Per-node: summary, files, patterns, findings, decisions
-│   ├── api.md
-│   └── database.md
-├── patterns.md              # Cross-cutting patterns extracted from @forgeplan-pattern markers
-├── rules.md                 # Machine-actionable rules from @forgeplan-rule markers
-├── decisions.md             # Architectural decisions from @forgeplan-decision markers
-├── index.md                 # Quick reference: nodes, shared models, tech stack
-└── sessions/
-    └── 2026-04-06.md        # Session summaries (from SessionEnd hook)
-```
+  nodes/[node-id].md (per-node: summary, files, patterns, rules, findings, decisions)
+  patterns.md (cross-cutting patterns with cross-refs)
+  rules.md (deterministic rules with WHY + evidence)
+  decisions.md (decisions with rationale + linked rules/patterns)
+  index.md (quick reference)
+  archived/ (pages for removed/split nodes, history preserved)
+  sessions/[date].md (session summaries from SessionEnd)
 
-### Node Wiki Page Format
+### Wiki Lifecycle
 
-```markdown
-## [Node Name]
-Summary: [one paragraph — what this node does]
+Discovery: index.md + skeleton pages + dirs
+Spec: ACs/interfaces/constraints on node pages. rules.md from spec constraints.
+Build: PostToolUse file entries + marker extraction (<20ms, tool_input only)
+Review: findings -> Past Findings section
+Sweep: full recompile + between-pass recompile after fixes
+Revise: impact -> decisions.md, interface changes on node pages
 
-### Key Files
-- `src/auth/middleware.ts` — requireAuth middleware [lines 12-45]
-- `src/auth/routes.ts` — login, register, refresh endpoints [lines 8-89]
+### compile-wiki.js (~300 lines)
 
-### Patterns Used
-- **auth-middleware** [src/auth/middleware.ts:12]: All protected routes use `requireAuth(role)`
-- **token-refresh** [src/auth/routes.ts:67]: Refresh tokens stored in httpOnly cookies
+Runs at: sweep Phase 1.5, between passes, SessionStart if stale.
+1. Read specs -> ACs, interfaces, constraints
+2. Read source -> extract ALL markers
+3. Read previous wiki -> preserve Past Findings + evidence
+4. Read sweep/review reports -> update finding history
+5. Build cross-references + evidence
+6. REGENERATE from scratch (self-correction)
+7. Reconcile vs manifest (missing nodes -> archived)
+8. Atomic writes
 
-### Rules (machine-actionable)
-- RULE: Every route in src/api/ MUST use requireAuth middleware [source: src/auth/middleware.ts:12]
-- RULE: Never store tokens in localStorage [source: decision D3]
+### Token Savings
 
-### Past Findings (cross-session)
-- Sweep pass 2: "Missing rate limiting on /auth/login" → RESOLVED (pass 3)
-- Sweep pass 4: "Token expiry not checked on refresh" → RESOLVED
+Builder adjacent nodes: ~50KB source -> ~5KB wiki (~90%)
+Sweep agent: ~100KB -> ~40KB wiki+drillins (~60%)
+Second session: ~100KB -> ~15KB wiki (~85%)
 
-### Decisions
-- D3: Use httpOnly cookies for tokens, not localStorage [rationale: XSS protection]
-```
-
-### Wiki Lifecycle — Grows at Every Phase
-
-| Phase | What gets written | Who reads it |
-|-------|------------------|--------------|
-| **Discovery** | `index.md` (project overview, tier, stack), skeleton node pages | Spec command |
-| **Spec** | Node pages get ACs, interfaces, constraints, non-goals | Builder |
-| **Build** | Every file write → node's "Key Files" + extract markers → patterns/rules/decisions | Adjacent builders, reviewer |
-| **Review** | Findings → node's "Past Findings". Dimension scores. | Sweep agents |
-| **Sweep** | Full recompile: consolidate markers, finding history, pattern extraction | Next session |
-| **Revise** | Impact analysis → decisions.md. Interface changes on affected node pages. | Rebuild agents |
-
-### PostToolUse Wiki Integration
-
-After every Write/Edit during a build:
-1. Register file in manifest (existing behavior)
-2. Update `wiki/nodes/[node-id].md`: add/update file entry with one-line purpose
-3. Scan written content for `@forgeplan-pattern`, `@forgeplan-rule`, `@forgeplan-decision` markers
-4. If found: update `patterns.md`, `rules.md`, or `decisions.md` accordingly
-
-### Builder Wiki Reading
-
-Before building a node, the builder reads:
-- `wiki/nodes/[adjacent-node].md` for each dependency — learns their patterns
-- `wiki/patterns.md` — established patterns to follow
-- `wiki/rules.md` — constraints to respect
-- This replaces reading ALL source files of adjacent nodes (~85% token savings)
-
-### compile-wiki.js (Full Recompile During Sweep)
-
-1. Read all specs (ACs, interfaces, constraints)
-2. Read all source files, extract ALL anchor markers
-3. Read previous wiki pages (preserve cross-session findings)
-4. Read sweep reports + review reports (for finding history)
-5. Generate: per-node pages, patterns.md, rules.md, decisions.md, index.md
-6. Every citation includes `[file:line]` for instant drill-down
-7. Markers are primary extraction source; fallback: infer patterns from code structure
-
-### Token Savings Estimate
-
-| Scenario | Without Wiki | With Wiki | Savings |
-|----------|-------------|-----------|---------|
-| Builder reading adjacent nodes | 50KB source | 5KB wiki pages | ~90% |
-| Sweep agent (16 agents × 100KB) | 1.6MB | 160KB wiki + 40KB drill-ins | ~88% |
-| Second session cold start | 100KB re-read | 10KB wiki | ~90% |
+---
 
 ## Pillar 2: Node Splitting
 
-### Command: `/forgeplan:split [node-id]`
+Command: /forgeplan:split [node-id]
+Prerequisites: built/reviewed/revised, no active_node, no sweep_state
 
-**allowed-tools:** Read Write Edit Bash Glob Grep Agent
+Flow:
+1. Read manifest + spec + files
+2. Architect split mode (code analysis, NOT discovery): directory groups, import clusters, domain boundaries
+3. AC assignment via @forgeplan-spec markers. depends_on/connects_to redistribution. shared_dependencies filtered per child. Orphan files identified.
+4. Present proposal with orphan handling. Confirm/adjust.
+5. Pre-validate (validate-manifest on hypothetical)
+6. Execute atomically (single manifest write). Create child specs. Re-register files. Archive parent. Update wiki.
+7. Mandatory /forgeplan:integrate
+8. Tier upgrade check (2->3 SMALL->MEDIUM, 5->6 MEDIUM->LARGE)
+Children start as built -> review verifies against narrower specs.
 
-### Flow
+---
 
-1. Read manifest + target node's spec + all files in its file_scope
-2. Dispatch Architect agent in **split mode**:
-   - Analyze the code: directory groupings, import clusters, domain separation
-   - Propose child nodes with names, file_scopes, and AC assignment
-   - Show which ACs, constraints, interfaces, failure modes go to each child
-3. Present proposal to user:
-   ```
-   Proposed split of "backend" into 3 nodes:
+## Pillar 3: State Hardening
 
-   auth (src/auth/**)
-     ACs: AC1 (login), AC2 (register), AC5 (role check)
-     Files: middleware.ts, routes.ts, service.ts
+Shared atomicWriteJson (scripts/lib/atomic-write.js, ~15 lines). No locking.
+SessionEnd hook (scripts/session-end.js, ~60 lines). Diffs state vs last summary.
+Parallel fix: worktrees handle isolation, no temp state.
 
-   api (src/api/**)
-     ACs: AC3 (CRUD documents), AC4 (search), AC6 (pagination)
-     Files: routes/*.ts, controllers/*.ts
-
-   payments (src/payments/**)
-     ACs: AC7 (create invoice), AC8 (Stripe webhook)
-     Files: stripe.ts, invoice.ts
-
-   Confirm? (y/n/adjust)
-   ```
-4. User confirms or adjusts
-5. Execute the split:
-   - Remove parent node from manifest, add children with narrower file_scopes
-   - Create child specs with inherited ACs, constraints, interfaces, failure modes
-   - Re-register files: reassign from parent to correct child based on new scopes
-   - Set child nodes status to `"built"` (code exists, needs review)
-   - Update shared model dependencies per child
-   - Archive parent spec to `.forgeplan/specs/[parent-id].archived.yaml`
-   - Increment `project.revision_count`
-   - Run `validate-manifest.js`
-   - Update wiki: remove parent page, create child pages
-6. Suggest next steps:
-   ```
-   Split complete: "backend" → auth, api, payments
-   Children are marked as "built" — existing code needs review against narrower specs.
-
-   Next:
-     → /forgeplan:review --all    Review each child against its new spec
-     → /forgeplan:integrate       Verify cross-node interfaces still work
-   ```
-
-### Tier Upgrade Integration
-
-After a split increases the node count past a tier boundary:
-- 1-2 nodes → 3+ nodes: suggest SMALL → MEDIUM upgrade
-- Present: "Your project now has [N] nodes. Current tier: SMALL. Upgrade to MEDIUM? This enables: full specs, 7-9 sweep agents, cross-model optional."
-- If user accepts: update `project.complexity_tier` in manifest
-
-### Files
-
-- Create: `commands/split.md` (~80 lines)
-- Modify: `agents/architect.md` (add split mode analysis)
-- Modify: `scripts/validate-manifest.js` (validate split artifacts)
-- Modify: `commands/help.md` (add split command)
-
-## Pillar 3: State Management Hardening
-
-### `scripts/update-state.js`
-
-Centralized atomic read-modify-write for state.json:
-
-```javascript
-/**
- * Atomic state update with file locking.
- *
- * Usage:
- *   const { updateState } = require('./update-state.js');
- *   await updateState(statePath, (state) => {
- *     state.nodes.auth.status = "built";
- *     return state;
- *   });
- *
- * Handles: read → lock → modify → write tmp → rename → unlock
- * Retries on conflict (another process writing simultaneously)
- */
-```
-
-All scripts that currently use `atomicWriteJson` switch to `updateState`:
-- `post-tool-use.js` (3 write sites)
-- `stop-hook.js` (3 write sites)
-- `session-start.js` (1 write site)
-
-### SessionEnd Hook
-
-New hook type in `hooks/hooks.json`. Fires when Claude Code session ends.
-
-Writes session summary to `.forgeplan/wiki/sessions/[ISO-date].md`:
-```markdown
-## Session: 2026-04-06T14:30:00Z
-
-### What happened
-- Built nodes: auth, api
-- Reviewed nodes: auth
-- Sweep: pass 1 found 5 findings, 4 resolved
-- Pending: api review, 1 unresolved finding (F3: missing rate limiting)
-
-### State at end
-- Nodes: auth (reviewed), api (built), database (reviewed), frontend (specced)
-- Active operation: none
-- Next recommended: /forgeplan:review api
-```
-
-Next session's `session-start.js` reads the latest session summary and includes it in the ambient display.
-
-### Parallel Fix Agent Temp State
-
-During sweep Phase 4 worktree fixes:
-- Each agent writes findings resolution to `.forgeplan/.state-[node-id].tmp`
-- After worktree merge, `update-state.js` consolidates all temp files into state.json
-- No concurrent writes to the same file
-
-### Files
-
-- Create: `scripts/update-state.js` (~80 lines)
-- Modify: `hooks/hooks.json` (add SessionEnd)
-- Modify: `post-tool-use.js`, `stop-hook.js`, `session-start.js` (use updateState)
-- Modify: `commands/sweep.md` (parallel fix writes to temp state)
+---
 
 ## Pillar 4: Guide Enhancement
 
-### Pattern Detection from Past Sweeps
+Reads wiki for: recurring findings (category match), split recommendations (>15 findings or >20 files), pattern propagation (LLM judgment from wiki).
 
-The guide command reads the wiki's finding history to make proactive suggestions:
+---
 
-```
-/forgeplan:guide
+## Pre-Tool-Use: whitelist .forgeplan/wiki/ + compile-wiki.js + session-end.js
+## Annotation: Stop hook enforces node+spec markers. Sweep flags 0-marker nodes.
+## Massive changes: reconcile vs manifest, archive removed nodes, preserve history.
 
-=== ForgePlan Guide ===
-Project: Client Portal (LARGE) | 7 nodes
-
-Recommended: /forgeplan:review file-storage
-  → Similar nodes (auth, api) had error-handling findings during review.
-    file-storage uses the same patterns — review may surface similar issues.
-
-Insight: Past sweeps found 3 recurring issues in frontend nodes:
-  - Missing loading states (found in dashboard AND accountant-view)
-  - Consider adding loading states to frontend-login proactively.
-
-Tip: The auth node's rate-limiting pattern (wiki/patterns.md) could
-     also apply to the api node's public endpoints.
-```
-
-### What Guide Reads
-
-1. `wiki/index.md` — project state overview
-2. `wiki/nodes/*.md` — per-node finding history
-3. `wiki/patterns.md` — established patterns
-4. `wiki/sessions/` — recent session summaries
-5. `state.json` — current node statuses
-
-### Pattern Matching Logic
-
-- **Recurring findings:** If 2+ nodes had the same category finding (e.g., error-handling), suggest checking similar nodes that haven't been reviewed yet
-- **Pattern propagation:** If a pattern was established in node A and node B uses similar code but doesn't follow it, suggest updating node B
-- **Proactive sweep suggestions:** If past sweeps consistently find issues in a category, suggest running a targeted sweep before the full pipeline
-
-### Files
-
-- Modify: `commands/guide.md` (add wiki reading + pattern detection)
-
-## File Inventory
-
-### New Files (5)
-
-| File | Lines Est | Purpose |
-|------|-----------|---------|
-| `commands/split.md` | ~80 | Node splitting orchestrator |
-| `scripts/compile-wiki.js` | ~250 | Full wiki compilation from specs + source + markers |
-| `scripts/update-state.js` | ~80 | Atomic read-modify-write for state.json |
-| `docs/plans/2026-04-06-sprint9-design.md` | — | This document |
-
-### Modified Files (~15)
-
-| File | Changes |
-|------|---------|
-| `agents/architect.md` | Add split mode analysis |
-| `agents/builder.md` | Read wiki before building (patterns, rules, adjacent nodes) |
-| `scripts/post-tool-use.js` | Wiki update on every write (file entry + marker extraction) |
-| `scripts/session-start.js` | Read latest session summary for ambient display, use updateState |
-| `scripts/stop-hook.js` | Use updateState |
-| `commands/sweep.md` | Add wiki compilation step before Phase 2 dispatch |
-| `commands/discover.md` | Initialize wiki at project birth |
-| `commands/spec.md` | Update wiki node pages with ACs/interfaces |
-| `commands/guide.md` | Wiki reading + pattern detection |
-| `commands/help.md` | Add split command |
-| `hooks/hooks.json` | Add SessionEnd hook |
-| `templates/schemas/manifest-schema.yaml` | No changes needed |
-| `CLAUDE.md` | Mark Sprint 9 complete, update inventory |
-| `.claude-plugin/plugin.json` | Version 0.9.0 |
-
-### Build Order
-
-1. `update-state.js` (no deps, other scripts switch to it)
-2. Wiki structure + `compile-wiki.js` (standalone)
-3. PostToolUse wiki integration (depends on 2)
-4. Builder wiki reading (depends on 2)
-5. Discover/spec/review wiki writes (depends on 2)
-6. Sweep wiki compilation step (depends on 2)
-7. Node splitting command (depends on wiki for page management)
-8. SessionEnd hook (depends on 1)
-9. Guide enhancement (depends on 2)
-10. Integration testing + team review
+## Files: 5 new + ~20 modified. Build order: 13 steps.
