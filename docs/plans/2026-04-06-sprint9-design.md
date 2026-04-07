@@ -1,8 +1,22 @@
-# Sprint 9 Design: Semantic Memory + State Hardening + Node Splitting + Guide Enhancement
+# Sprint 9 Design v2: Living Knowledge Tree + Node Splitting + State Hardening + Guide Enhancement
 
 **Date:** 2026-04-06
-**Status:** Approved
-**Goal:** Living knowledge tree reduces token usage across all phases. Node splitting enables tier upgrades. State hardening prevents corruption. Guide gets smarter from past sweeps.
+**Status:** Approved (revised after 5-team design review + wiki deep-design session)
+**Goal:** Self-correcting knowledge tree with cross-references and evidence tracking reduces token usage and improves build quality. Node splitting enables tier upgrades. State hardening prevents corruption. Guide gets smarter from accumulated knowledge.
+
+## v2 Revisions (from 5-team review + design session)
+- Keep Layer 3 (Rules) with 5-layer resilience + self-correction loop
+- Drop "infer patterns" fallback — markers only, no inference
+- Add cross-references (pattern-to-rule-to-decision links)
+- Add evidence tracking (WHY + history on every rule/pattern/decision)
+- Simplify update-state.js to shared utility (no file locking)
+- Add pre-tool-use.js wiki whitelist
+- Builder writes 3 new marker types + Stop hook enforces existing markers
+- Node split: atomic manifest write, pre-validate, mandatory integrate
+- Wiki recompiles between sweep passes (not just at start)
+- Rules populated from spec constraints at spec time (useful before first build)
+- Massive changes: compile-wiki.js reconciles vs manifest, archives missing nodes
+- Marker enforcement: Stop hook verifies @forgeplan-node and @forgeplan-spec exist
 
 ## Design Decisions
 
