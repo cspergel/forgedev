@@ -99,7 +99,7 @@
           },
           "spec_type": {
             "type": "string",
-            "enum": ["full", "descriptive", "interface-only"],
+            "enum": ["prescriptive", "descriptive", "interface-only"],
             "description": "Cached spec type for quick access without reading spec YAML"
           },
           "revision_history": {

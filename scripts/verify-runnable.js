@@ -322,7 +322,7 @@ async function main() {
   if (testCommand) {
     // Validate test_command against known safe runners to prevent arbitrary shell execution
     if (!/^(npm|npx|node|deno|bun|pnpm|yarn)\s/.test(testCommand) && testCommand !== "npm test") {
-      results.push({ phase: "tests", status: "fail", error: `Untrusted test_command in manifest: "${testCommand}". Must start with npm, npx, node, deno, bun, pnpm, or yarn.`, classification: "code" });
+      steps.push({ name: "test", status: "fail", output: `Untrusted test_command in manifest: "${testCommand}". Must start with npm, npx, node, deno, bun, pnpm, or yarn.`, errorType: "code" });
       testCmd = null;
     } else {
       testCmd = testCommand;

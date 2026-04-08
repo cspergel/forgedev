@@ -19,6 +19,11 @@
 
 const fs = require("fs");
 const path = require("path");
+const {
+  escapeRegex, normalizeType, extractFunctionNames, extractTypeNames,
+  extractContractFunctionSignatures, extractExportedFunctionSignatures,
+  findCanonicalExportFile,
+} = require(path.join(__dirname, "lib", "contract-helpers"));
 
 const cwd = process.cwd();
 const forgePlanDir = path.join(cwd, ".forgeplan");
@@ -78,28 +83,15 @@ function main() {
       }
 
       // Now verify the current-phase node's IMPLEMENTATION matches what it declares
-      // Find the canonical export file (index.ts or main entry)
-      const nodeFiles = node.files || [];
-      const fileScope = node.file_scope || "";
-      const scopeDir = fileScope.replace(/\*+$/, "");
-      const indexCandidates = [
-        path.join(cwd, scopeDir, "index.ts"),
-        path.join(cwd, scopeDir, "index.js"),
-        path.join(cwd, scopeDir, "index.tsx"),
-      ];
-
-      let exportFile = null;
+      const exportFile = findCanonicalExportFile(cwd, node);
       let exportContent = null;
-      for (const candidate of indexCandidates) {
-        if (fs.existsSync(candidate)) {
-          try {
-            const stat = fs.statSync(candidate);
-            if (stat.size > 1024 * 1024) continue; // skip huge files
-            exportFile = candidate;
-            exportContent = fs.readFileSync(candidate, "utf-8");
-            break;
-          } catch {}
-        }
+      if (exportFile) {
+        try {
+          const stat = fs.statSync(exportFile);
+          if (stat.size <= 1024 * 1024) {
+            exportContent = fs.readFileSync(exportFile, "utf-8");
+          }
+        } catch {}
       }
 
       if (!exportFile) {
@@ -235,81 +227,7 @@ function main() {
   process.exit(failures > 0 || warned > 0 ? 1 : 0);
 }
 
-/** Extract function names from a contract string like "validateToken(token: string): AuthResult" */
-function extractFunctionNames(contract) {
-  const names = [];
-  // Match: functionName( or functionName:
-  const regex = /\b([a-zA-Z_$][a-zA-Z0-9_$]*)\s*\(/g;
-  let match;
-  while ((match = regex.exec(contract)) !== null) {
-    const name = match[1];
-    // Filter out common type keywords
-    if (!["if", "for", "while", "switch", "catch", "function", "return", "new", "typeof", "instanceof"].includes(name)) {
-      names.push(name);
-    }
-  }
-  return [...new Set(names)];
-}
-
-/** Extract type/interface names from contract like ": AuthResult" or "returns User" */
-function extractTypeNames(contract) {
-  const names = [];
-  // Match: ": TypeName" or "-> TypeName" or "returns TypeName"
-  const regex = /(?::\s*|->?\s*|returns?\s+)([A-Z][a-zA-Z0-9_]*)/g;
-  let match;
-  while ((match = regex.exec(contract)) !== null) {
-    names.push(match[1]);
-  }
-  return [...new Set(names)];
-}
-
-function extractContractFunctionSignatures(contract) {
-  const signatures = new Map();
-  const regex = /\b([a-zA-Z_$][a-zA-Z0-9_$]*)\s*\(([^)]*)\)\s*(?::\s*([A-Za-z_$][A-Za-z0-9_<>,.[\]|? ]*))?/g;
-  let match;
-  while ((match = regex.exec(contract)) !== null) {
-    signatures.set(match[1], {
-      paramCount: countParams(match[2]),
-      returnType: match[3] ? match[3].trim() : null,
-    });
-  }
-  return signatures;
-}
-
-function extractExportedFunctionSignatures(source) {
-  const signatures = new Map();
-  const patterns = [
-    /export\s+(?:async\s+)?function\s+([a-zA-Z_$][a-zA-Z0-9_$]*)\s*\(([^)]*)\)\s*(?::\s*([A-Za-z_$][A-Za-z0-9_<>,.[\]|? ]*))?/g,
-    /export\s+(?:const|let|var)\s+([a-zA-Z_$][a-zA-Z0-9_$]*)\s*=\s*(?:async\s*)?\(([^)]*)\)\s*(?::\s*([A-Za-z_$][A-Za-z0-9_<>,.[\]|? ]*))?\s*=>/g,
-  ];
-  for (const regex of patterns) {
-    let match;
-    while ((match = regex.exec(source)) !== null) {
-      signatures.set(match[1], {
-        paramCount: countParams(match[2]),
-        returnType: match[3] ? match[3].trim() : null,
-      });
-    }
-  }
-  return signatures;
-}
-
-function countParams(paramList) {
-  const trimmed = (paramList || "").trim();
-  if (!trimmed) return 0;
-  return trimmed
-    .split(",")
-    .map((part) => part.trim())
-    .filter(Boolean).length;
-}
-
-function normalizeType(typeName) {
-  return (typeName || "").replace(/\s+/g, "");
-}
-
-function escapeRegex(s) {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
+// Shared helpers imported from lib/contract-helpers.js — no local duplicates
 
 if (require.main === module) {
   main();
