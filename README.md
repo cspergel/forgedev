@@ -244,7 +244,7 @@ The `.forgeplan/` directory IS the product. It's portable — any tool that read
 | Slash commands | 21 | User-facing operations (greenfield, discover, research, spec, build, review, sweep, deep-build, split, + 12 more) |
 | Core agents | 5 | Architect (decomposition), Builder (code gen), Reviewer (spec-diff audit), Interviewer (discovery conversation), Translator (document → architecture) |
 | Research agent | 1 | Consolidated Researcher (packages + licenses + patterns + reference projects + API docs) |
-| Sweep agents | 5 | Adversary, Contractualist, Pathfinder, Structuralist, Skeptic (all opus, consolidated from 16) |
+| Sweep agents | 5 | Adversary, Contractualist, Pathfinder, Structuralist, Skeptic (all opus) |
 | Review agents | 5 | Adversary, Contractualist, Pathfinder, Structuralist, Skeptic (pre-build document/spec review — same 5 stances, different prompts) |
 | Hook types | 6 | SessionStart, PreCompact, PostCompact, PreToolUse, PostToolUse, Stop |
 | Scripts | 20+ | Enforcement, validation, verification (Phase A + B), wiki compilation, cross-model bridging, worktree management, state utilities |
