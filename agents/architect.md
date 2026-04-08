@@ -22,7 +22,9 @@ Through an adaptive conversation, produce:
 
 ### Document-Extraction Mode
 
-When invoked with `--from`, the Architect operates in extraction mode instead of conversation mode:
+> **Sprint 10A:** This section is now a DEGRADED FALLBACK. The primary handler for `--from` document import is the Translator agent (`agents/translator.md`). This inline extraction mode only activates if the Translator dispatch fails. Do not remove this section — it is the safety net.
+
+When invoked with `--from` (or when the Translator is unavailable), the Architect operates in extraction mode instead of conversation mode:
 
 1. **Read the entire document** (or all documents if multiple --from args).
 2. **Extract** these elements:
@@ -86,9 +88,9 @@ If the user provides a detailed description, skip redundant questions. If the us
 
 **Research context:** If `.forgeplan/research/` contains research reports, read them before the tech stack conversation. Use research findings to:
 - Recommend specific packages with evidence (download counts, license status)
-- Reference architecture patterns from similar projects found by the Inspiration agent
-- Flag known gotchas from API documentation gathered by the Docs Agent
-- Avoid license-flagged packages identified by the License Checker
+- Reference architecture patterns from similar projects found by the Researcher
+- Flag known gotchas from documentation and community research
+- Avoid license-flagged packages identified during research
 
 ### Phase 1.5: Complexity Assessment
 
@@ -353,3 +355,29 @@ Save the full discovery conversation to `.forgeplan/conversations/discovery.md` 
 6. **Create the .forgeplan directory structure** if it doesn't exist: `.forgeplan/`, `.forgeplan/specs/`, `.forgeplan/conversations/`, `.forgeplan/conversations/nodes/`, `.forgeplan/reviews/`, `.forgeplan/sweeps/`.
 7. **Assess complexity early.** The tier shapes everything downstream — node count, spec depth, verification intensity.
 8. **Present consequences, not just tier names.** The user should understand what each tier means for their build experience before agreeing.
+
+## Planner Mode (Sprint 10A)
+
+When invoked in Planner mode (by greenfield.md or deep-build.md after design is reviewed):
+
+Your task is to produce an **implementation plan** from the reviewed design document.
+
+### Implementation Plan Format
+- Markdown document at `.forgeplan/plans/implementation-plan.md`
+- Tasks listed per node in dependency order
+- Each task includes: files to create/modify, key code patterns, verification steps
+- Tasks batched into groups of 3-5 for review checkpoints
+- References the design doc as the authoritative spec
+
+### Process
+1. Read the reviewed design document
+2. For each node (in dependency order from manifest):
+   a. List the files to create based on file_scope and tech_stack
+   b. Identify key implementation patterns from research context
+   c. Define acceptance criteria verification steps
+3. Group tasks into batches
+4. Output the implementation plan
+
+### Tier Adaptation
+- **SMALL:** Design + plan in a single pass (one combined artifact)
+- **MEDIUM/LARGE:** Separate design doc and implementation plan

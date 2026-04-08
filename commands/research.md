@@ -40,20 +40,19 @@ Dispatch research agents to gather best practices, packages, and documentation f
    mkdir -p .forgeplan/research
    ```
 
-4. **Dispatch 2 research agents in parallel** (single message, 2 Agent tool calls):
+4. **Dispatch the Researcher agent:**
 
-   For each agent, provide:
-   - The agent's system prompt (read from its `.md` file in `${CLAUDE_PLUGIN_ROOT}/agents/`)
+   Provide:
+   - The agent's system prompt (read from `${CLAUDE_PLUGIN_ROOT}/agents/researcher.md`)
    - The research topic
    - The project context (tech_stack, description)
 
-   Agent to dispatch:
    - **Researcher** (`researcher.md`): consolidated research agent — handles package search, license checking, reference implementations, best practices, architecture patterns, API documentation extraction, and prior art in one pass. (Sprint 10A: absorbs former license-checker, inspiration, and docs-agent.)
 
-5. **Merge results** into a single report:
+5. **Format the report:**
    - Start with a **Summary** section: key recommendations, flagged packages, reference count
-   - Then include each agent's full output under its own heading
-   - If any agent failed or returned empty results, note: "Agent [name] returned no results — [reason or 'could not access web']"
+   - Then include the full research output
+   - If the agent failed or returned empty results, note: "Researcher returned no results — [reason or 'could not access web']"
 
 6. **Write the report:**
    - Save to `.forgeplan/research/[topic-slug]-[ISO-date].md`

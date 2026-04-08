@@ -74,7 +74,51 @@ You haven't started a project yet. Here's how to begin:
     See all available commands
 ```
 
-### All nodes pending (just discovered)
+## Pipeline Stage Guidance (Sprint 10A)
+
+Check for design pipeline artifacts BEFORE generic state checks — these are more specific:
+
+### Design exists but not reviewed
+Check: `.forgeplan/manifest.yaml` exists AND `.forgeplan/reviews/design-review-pass-1.md` does NOT exist AND all nodes are `pending`
+```
+Your design is ready for review. The universal review panel (Adversary,
+Skeptic, Structuralist, Contractualist, Pathfinder) will check architecture,
+interfaces, feasibility, user journeys, and security.
+
+  → /forgeplan:greenfield       Runs the full pipeline (includes review)
+  → Run design review manually  Dispatch review agents against the manifest
+```
+
+### Design reviewed but no implementation plan
+Check: `.forgeplan/reviews/design-review-pass-*.md` exists AND `.forgeplan/plans/implementation-plan.md` does NOT exist
+```
+Design is reviewed and clean. Next: the Architect generates an implementation
+plan (Planner mode) that breaks the design into buildable tasks.
+
+  → /forgeplan:greenfield       Generates plan automatically (next step)
+```
+
+### Plan exists but not reviewed
+Check: `.forgeplan/plans/implementation-plan.md` exists AND `.forgeplan/reviews/plan-review-pass-1.md` does NOT exist
+```
+Implementation plan is ready for review by the same panel (plan lens).
+The review checks task ordering, dependency satisfaction, and feasibility.
+
+  → /forgeplan:greenfield       Reviews plan automatically (next step)
+```
+
+### Plan reviewed and clean
+Check: `.forgeplan/reviews/plan-review-pass-*.md` exists AND plan review has zero CRITICALs
+```
+Design and plan are both reviewed and clean. Ready to build!
+
+  → /forgeplan:build [node]     Build nodes manually
+  → /forgeplan:deep-build       Full autonomous pipeline
+  → /forgeplan:greenfield       Continues to build phase
+```
+
+### All nodes pending (just discovered, no pipeline artifacts)
+Check: all nodes `pending` AND no design-review-pass files exist
 ```
 Architecture defined — time to write specs.
 
@@ -153,11 +197,10 @@ code evidence. The reviewer does NOT trust the builder's claims.
     → /forgeplan:next             See the recommended review order
 
   Option B: Sweep the whole codebase at once
-    → /forgeplan:sweep            3-5 consolidated team agents (tier-aware) run in
-                                   parallel: Red (adversarial), Orange (contract),
-                                   Blue (experience), Rainbow (architect), White
-                                   (compliance). All opus. Findings are fixed
-                                   automatically with node-scoped enforcement.
+    → /forgeplan:sweep            3-5 consolidated agents (tier-aware) run in
+                                   parallel: Adversary, Contractualist, Pathfinder,
+                                   Structuralist, Skeptic. All opus. Findings are
+                                   fixed automatically with node-scoped enforcement.
     → /forgeplan:sweep --cross-check   Same + a different AI model (Codex/GPT/
                                         Gemini) independently verifies the code.
                                         Alternates until both models agree.
@@ -196,12 +239,12 @@ You're at the verification stage. Here's the natural progression:
 
   Step 2: Sweep for cross-cutting issues
     → /forgeplan:sweep
-    3-5 consolidated team agents (tier-aware), all opus:
-      - Red (adversarial)  — security, errors, config, database — tries to BREAK the code
-      - Orange (contract)  — types, API contracts, imports, cross-node boundaries
-      - Blue (experience)  — user flows, frontend UX, test quality (MEDIUM+)
-      - Rainbow (architect) — code quality, docs, architecture, simplicity (LARGE only)
-      - White (compliance) — spec tracing, fresh eyes, gap finding
+    3-5 consolidated agents (tier-aware), all opus:
+      - Adversary        — security, errors, config, database — tries to BREAK the code
+      - Contractualist   — types, API contracts, imports, cross-node boundaries
+      - Pathfinder       — user flows, frontend UX, test quality (MEDIUM+)
+      - Structuralist    — code quality, docs, architecture, simplicity (LARGE only)
+      - Skeptic          — spec tracing, fresh eyes, gap finding
 
     Agents that find nothing are progressively dropped from later passes.
     Only agents with findings re-run until everything converges.

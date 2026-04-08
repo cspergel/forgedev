@@ -43,6 +43,40 @@ This will:
 
 If discover fails or the user rejects the architecture, halt greenfield. The user can modify and re-run.
 
+### Step 1.5: Design Review (Sprint 10A)
+
+After discover produces the manifest and skeleton specs, dispatch the universal review panel to review the design.
+
+**Read the manifest to determine the tier, then dispatch review agents accordingly:**
+
+| Tier | Agents | Max Passes |
+|------|--------|------------|
+| SMALL | review-adversary, review-skeptic, review-structuralist | 3 |
+| MEDIUM | + review-contractualist | 5 |
+| LARGE | + review-pathfinder | 5 |
+
+**Dispatch steps per pass:**
+1. Dispatch N agents in parallel (via Agent tool). Each agent receives the prompt context: "You are reviewing a DESIGN document. Read the manifest at `.forgeplan/manifest.yaml` and skeleton specs in `.forgeplan/specs/`. Apply your design lens."
+2. Collect all agent outputs
+3. Merge findings, deduplicate by location (same file+section = same finding), sort by severity (CRITICAL first)
+4. Route CROSS:[AgentName] tags for next pass
+5. If zero CRITICAL/IMPORTANT findings: proceed to Step 2
+6. If findings remain: Architect fixes the manifest/specs → re-dispatch agents (loop back to step 1)
+
+**Agent response validation:** For each agent response, check for CRITICAL/IMPORTANT/MINOR findings or explicit "clean/no findings." If neither: mark agent as failed, re-dispatch on next pass. A pass with only failed responses is NOT a clean pass.
+
+**Circuit breaker:**
+- CRITICALs after max passes → HALT the greenfield pipeline. Surface: "Design review found [N] unresolved CRITICALs after [passes] passes. Please review and resolve, then re-run `/forgeplan:greenfield` to resume from Step 1.5." Exit the command.
+- IMPORTANTs after max passes → become warnings, proceed. Log warnings to the design review file.
+
+**SMALL shortcut:** For SMALL greenfield (no --from), the Architect produces design + plan in a single pass during discover (written to `.forgeplan/plans/implementation-plan.md`). Step 1.5 reviews the combined design+plan with prompt context: "You are reviewing a DESIGN+PLAN document for a SMALL project."
+- If zero CRITICAL/IMPORTANT: skip Step 3.5 entirely (plan already reviewed), proceed to Step 2 then Step 4
+- If findings: Architect fixes → re-dispatch (max 3 passes). After convergence (zero CRITICAL/IMPORTANT), skip Step 3.5, proceed to Step 2 then Step 4.
+
+**Severity vocabulary:** Review agents output CRITICAL/IMPORTANT/MINOR. These are stored as-is in review pass files (NOT in sweep_state). The sweep pipeline uses HIGH/MEDIUM/LOW mapping separately.
+
+**Store review results:** Save each pass to `.forgeplan/reviews/design-review-pass-N.md`.
+
 ### Step 2: Research
 
 Read `.forgeplan/manifest.yaml` to identify research topics from the tech stack and integrations:
@@ -73,6 +107,37 @@ Generate full specs for all nodes:
 This reads research findings from `.forgeplan/research/` and generates complete specs with acceptance criteria, test fields, interfaces, constraints, and failure modes — all without user interaction.
 
 If spec generation fails for a node, halt with error and preserve state. The user can fix and re-run `/forgeplan:greenfield` to resume.
+
+### Step 3.5: Plan Generation + Plan Review (Sprint 10A)
+
+**Skip for SMALL** if Step 1.5 already reviewed the combined design+plan with zero findings.
+
+**For MEDIUM/LARGE:**
+
+**3.5a: Generate Implementation Plan**
+Dispatch the Architect in Planner mode:
+- Prompt context: "You are in Planner mode. Read the reviewed design (manifest + specs). Produce an implementation plan at `.forgeplan/plans/implementation-plan.md`."
+- The Architect reads the manifest, specs, and research findings, then outputs the plan.
+
+**3.5b: Review the Plan**
+Dispatch the review panel with plan lens:
+
+| Tier | Agents | Max Passes |
+|------|--------|------------|
+| MEDIUM | review-adversary, review-skeptic, review-structuralist, review-contractualist | 5 |
+| LARGE | + review-pathfinder | 5 |
+
+**Dispatch steps per pass:**
+1. Dispatch N agents in parallel. Each receives: "You are reviewing an IMPLEMENTATION PLAN. Read `.forgeplan/plans/implementation-plan.md` and cross-reference with the manifest and specs. Apply your plan lens."
+2. Collect outputs, merge, deduplicate, sort by severity
+3. If zero CRITICAL/IMPORTANT: proceed to Step 4
+4. If findings remain: Architect updates the plan → re-dispatch (loop)
+
+**Agent response validation:** Same as Step 1.5 — validate each agent response for findings or clean signal.
+
+**Circuit breaker:** Same as Step 1.5 — CRITICALs after max passes HALT the pipeline (user must fix and re-run), IMPORTANTs become warnings.
+
+**Store review results:** Save each pass to `.forgeplan/reviews/plan-review-pass-N.md`.
 
 ### Step 4: Deep-build (full pipeline)
 

@@ -71,6 +71,13 @@ function preCompact() {
         }
       }
 
+      // Sprint 10A: North Star — project goals
+      if (project.description) {
+        sections.push("## Project Goals (North Star)");
+        sections.push(`- **Goal:** ${project.description}`);
+        sections.push("");
+      }
+
       sections.push("");
     } catch {
       sections.push("## Manifest: Could not read (may be corrupted)");

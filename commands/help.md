@@ -9,7 +9,7 @@ user-invocable: true
 
 | Command | What it does |
 |---------|-------------|
-| `/forgeplan:discover [description\|template:name]` | **Start here.** Describe your project or pick a template (client-portal, saas-starter, internal-dashboard). Creates your architecture. |
+| `/forgeplan:discover [description\|template:name\|--from doc.md]` | **Start here.** Describe your project, pick a template, or import an existing document (`--from`). The Translator maps documents to ForgePlan methodology, the Interviewer resolves ambiguities, then the Architect creates your architecture. |
 | `/forgeplan:spec [node\|--all]` | Generate detailed specs for each node — acceptance criteria, constraints, interfaces. The spec is the contract your build follows. |
 
 ## Building
@@ -24,10 +24,10 @@ user-invocable: true
 
 | Command | What it does |
 |---------|-------------|
-| `/forgeplan:sweep [--cross-check]` | Sweep your codebase for cross-cutting issues — 3-5 consolidated team agents (tier-aware, all opus): Red (adversarial), Orange (contract), Blue (experience), Rainbow (architect), White (compliance). Progressive convergence drops clean agents. Add `--cross-check` for cross-model verification. |
+| `/forgeplan:sweep [--cross-check]` | Sweep your codebase for cross-cutting issues — 3-5 consolidated agents (tier-aware, all opus): Adversary (security), Contractualist (contracts), Pathfinder (UX), Structuralist (architecture), Skeptic (compliance). Progressive convergence drops clean agents. Add `--cross-check` for cross-model verification. |
 | `/forgeplan:deep-build` | Full autonomous pipeline: build all → verify-runnable → review → sweep → certify (tier-aware). Describe what you want, walk away. |
-| `/forgeplan:greenfield [description]` | Full pipeline from idea to certified app: describe → discover → research → spec → build → verify → review → sweep → certify. One confirmation, then walk away. |
-| `/forgeplan:research [topic]` | Search npm, GitHub, and docs for packages, licenses, reference implementations, and best practices. 2 agents in parallel: researcher (packages + licenses + patterns) and docs agent (API documentation). |
+| `/forgeplan:greenfield [description\|--from doc.md]` | Full pipeline from idea to certified app: discover → design review → research → spec → plan review → build → code review → sweep → certify. Universal review panel (Adversary, Structuralist, Skeptic, Contractualist, Pathfinder) checks design, plan, and code. One confirmation, then walk away. |
+| `/forgeplan:research [topic]` | Search npm, GitHub, and docs for packages, licenses, reference implementations, and best practices. Consolidated Researcher agent: packages, licenses, patterns, architecture, API documentation. |
 
 ## Evolving Your Project
 

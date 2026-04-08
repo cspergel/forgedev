@@ -9,7 +9,7 @@ allowed-tools: Read Write Edit Bash Glob Grep Agent
 
 **THIS COMMAND IS AUTONOMOUS WITH ONE EXCEPTION. Execute all phases (1→7) without stopping, pausing, or asking "shall I continue?". Fix ALL findings automatically. Do not present intermediate results and wait. The ONE exception: Category C blocked decisions (architectural choices) require user input — present them all at once, get answers, then continue automatically. Aside from that, run straight through to the final report.**
 
-Run tier-selected sweep agents (3-5) in parallel across the entire codebase: 5 consolidated team agents (Red/Orange/Blue/Rainbow/White), all opus. Progressive reduction: agents that return CLEAN twice converge and are retired. Cross-cutting agents re-run whenever any other agent has findings. See Phase 2 for the full dispatch precedence rules.
+Run tier-selected sweep agents (3-5) in parallel across the entire codebase: 5 consolidated agents (Adversary/Contractualist/Pathfinder/Structuralist/Skeptic), all opus. Progressive reduction: agents that return CLEAN twice converge and are retired. Cross-cutting agents re-run whenever any other agent has findings. See Phase 2 for the full dispatch precedence rules.
 
 ## Prerequisites
 
@@ -93,18 +93,18 @@ Run tier-selected sweep agents (3-5) in parallel across the entire codebase: 5 c
 **On the first pass, dispatch agents per the tier rules above. On subsequent passes, follow the precedence rules in "Progressive agent reduction" below.**
 
 Agent definition files (read these, use as system prompts):
-- `agents/sweep-adversary.md` (Red — adversarial: security, errors, config, database)
-- `agents/sweep-contractualist.md` (Orange — contract: types, APIs, imports, cross-node)
-- `agents/sweep-pathfinder.md` (Blue — experience: user flows, frontend UX, test quality)
-- `agents/sweep-structuralist.md` (Rainbow — architect: code quality, docs, architecture, simplicity)
-- `agents/sweep-skeptic.md` (White — compliance: spec tracing, fresh eyes, gap finding)
+- `agents/sweep-adversary.md` (adversarial: security, errors, config, database)
+- `agents/sweep-contractualist.md` (contract: types, APIs, imports, cross-node)
+- `agents/sweep-pathfinder.md` (experience: user flows, frontend UX, test quality)
+- `agents/sweep-structuralist.md` (architect: code quality, docs, architecture, simplicity)
+- `agents/sweep-skeptic.md` (compliance: spec tracing, fresh eyes, gap finding)
 
 **Progressive agent reduction:**
 1. On **pass 1**: dispatch the **tier-selected agents** from above (SMALL=3, MEDIUM=4, LARGE=5).
-   - **Sprint 9 (MEDIUM/LARGE):** Pass 1 agents receive ALL source files (existing behavior) PLUS wiki node pages (decisions + past findings) if wiki exists. Do NOT send `wiki/rules.md` to sweep agents (trust boundary). Exception: `sweep-adversary` (Red Team) receives `wiki/rules.md` specifically to AUDIT it for dangerous rules.
+   - **Sprint 9 (MEDIUM/LARGE):** Pass 1 agents receive ALL source files (existing behavior) PLUS wiki node pages (decisions + past findings) if wiki exists. Do NOT send `wiki/rules.md` to sweep agents (trust boundary). Exception: `sweep-adversary` receives `wiki/rules.md` specifically to AUDIT it for dangerous rules.
    - **Sprint 9 Pass 2+ optimization (MEDIUM/LARGE):** Agents receive wiki node pages (NOT rules.md) + source files modified since last pass (from `sweep_state.modified_files_by_pass`) + source files referenced by any PENDING finding for the agent's categories. Agents still have Read/Grep tools for on-demand source inspection. Exception: `sweep-adversary` ALWAYS receives full source + rules.md on every pass.
    - **Sprint 9 Convergence rule:** Do NOT retire an agent if its categories still have pending findings in `sweep_state.findings.pending`. Only count a clean pass when agent returns CLEAN AND zero pending findings in its categories.
-   - **White agent pass 2+ context:** On pass 2 and beyond, `sweep-skeptic` additionally receives the previous pass's finding lists from all other agents. This enables its cross-agent gap-finding capability. On pass 1, White runs without this context (spec compliance + fresh eyes only).
+   - **Skeptic pass 2+ context:** On pass 2 and beyond, `sweep-skeptic` additionally receives the previous pass's finding lists from all other agents. This enables its cross-agent gap-finding capability. On pass 1, Skeptic runs without this context (spec compliance + fresh eyes only).
 2. After merging results, update `sweep_state.agent_convergence` for each agent. **Keys are agent names** (matching the `.md` filename without extension), NOT category names:
    ```json
    "agent_convergence": {

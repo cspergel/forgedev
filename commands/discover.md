@@ -2,7 +2,7 @@
 description: Start architecture discovery — guided conversation that produces a validated manifest with nodes, shared models, and dependency graph. This is the entry point for every new ForgePlan project.
 user-invocable: true
 argument-hint: "[project description or 'template:client-portal']"
-allowed-tools: Read Write Edit Bash Glob Grep
+allowed-tools: Read Write Edit Bash Glob Grep Agent
 agent: architect
 ---
 
@@ -23,6 +23,7 @@ git init
 ```
 .forgeplan/
 ├── specs/
+├── plans/
 ├── conversations/
 │   └── nodes/
 ├── reviews/
@@ -73,17 +74,29 @@ If the user's argument contains `--from`, they are importing an external documen
 /forgeplan:discover --from "requirements.pdf"
 ```
 
-Process:
-1. Read the specified file using the Read tool. For PDFs over 20 pages, read in chunks (pages parameter).
-2. Switch to the Architect agent's **document-extraction mode** (see architect.md).
-3. The Architect extracts architecture from the document, asks targeted clarifying questions for ambiguities, then generates the manifest.
-4. After manifest generation, continue with the normal scaffolding and completion steps.
+### Document Import via Translator (Sprint 10A)
+
+When `--from` is provided, route through the Translator agent instead of directly to the Architect:
+
+1. Read the specified file(s) using the Read tool. For PDFs over 20 pages, read in chunks (pages parameter). Multiple documents: support `--from doc1.md --from doc2.txt` — read all and pass combined content.
+2. **Dispatch the Translator agent** (read `agents/translator.md`) with the document content. The Translator outputs a structured JSON mapping with proposed nodes, shared models, tier assessment, and ambiguities.
+3. **Validate Translator output:** After receiving the response, check: (a) it parses as valid JSON (strip markdown fences if present), (b) it contains `project_name` (string), `proposed_nodes` (non-empty array), `shared_models` (array), `tier_assessment` (one of SMALL/MEDIUM/LARGE), and `ambiguities` (array). If validation fails: fall back to Architect inline extraction with warning: "Translator returned invalid output, using inline extraction."
+4. **If Translator dispatch fails** (timeout, error, empty output): fall back to Architect inline extraction (see architect.md Document-Extraction Mode) with warning: "Translator unavailable, using inline extraction." Note: when using the Architect fallback, ambiguity resolution is handled inline by the Architect — skip the Interviewer dispatch step.
+5. **If `ambiguities` array is non-empty AND tier is not SMALL:** dispatch the Interviewer agent (read `agents/interviewer.md`) to resolve them one at a time. For autonomous mode: Interviewer resolves by choosing defaults and logging assumptions.
+6. **Dispatch Researcher** (read `agents/researcher.md`) for design-level research and ecosystem context. Skip for SMALL tier unless explicitly requested.
+7. **Pass the Translator mapping + research context + resolved ambiguities to the Architect.** The Architect generates manifest + skeleton specs from the mapping (existing behavior, new structured input format).
+8. After manifest generation, continue with the normal scaffolding and completion steps.
 
 If the file doesn't exist or can't be read, report a clear error: "Could not read [path]. Check the file exists and try again."
 
-**Chat exports** (ChatGPT, Gemini, Slack, etc.): treat as plain text with best-effort extraction. Chat formats change too often to parse structurally — just read the raw text and let the Architect extract what it can. Do not attempt to parse conversation structure, timestamps, or speaker labels.
+**Chat exports** (ChatGPT, Gemini, Slack, etc.): treat as plain text with best-effort extraction. The Translator handles format detection — no special preprocessing needed.
 
-Multiple documents: support `--from doc1.md --from doc2.txt`. Read all documents, pass all content to the Architect for combined extraction.
+### SMALL Tier Exception for --from
+
+For SMALL projects with `--from`:
+- Translator DOES run (exception to the normal SMALL Stage 1 skip)
+- Interviewer only runs if the Translator flags ambiguities
+- Researcher is skipped unless explicitly requested
 
 ## Autonomous Discovery Mode
 
