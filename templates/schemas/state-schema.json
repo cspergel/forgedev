@@ -278,6 +278,12 @@
         }
       },
       "required": ["operation", "started_at", "current_phase", "pass_number", "current_model", "consecutive_clean_passes", "max_passes", "findings"]
+    },
+    "build_phase_started_at": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "default": null,
+      "description": "When the current build_phase was entered. Used for staleness warning (>7 days without advancement). Set when build_phase changes."
     }
   },
   "required": ["session_id", "last_updated", "active_node", "nodes", "stop_hook_active", "discovery_complete"]

@@ -25,6 +25,7 @@ project:
     dev_port: null                  # Default dev server port (e.g., 3000, 5173). null = auto-detect.
     mock_mode: false                # If true, builder adds MOCK_MODE support for external services
     infrastructure: ""              # Optional: external service dependencies (e.g., "docker", "redis", "none")
+  build_phase: 1                    # (Sprint 10B) Currently active build phase. Commands operate on this phase.
   created_at: ""                    # ISO 8601 timestamp
   revision_count: 0                 # Incremented on every manifest write
 
@@ -67,4 +68,5 @@ nodes:
   #     - frontend-login
   #   files: []                     # Auto-populated by PostToolUse hook during build
   #   spec: "specs/auth.yaml"       # Pointer to detailed spec file
+  #   phase: 1                      # (Sprint 10B) Which build phase this node belongs to. Optional, defaults to 1.
   #   split_from: ""                # (Sprint 9) Parent node ID if created by /forgeplan:split. Optional.

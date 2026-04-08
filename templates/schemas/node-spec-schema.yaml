@@ -9,6 +9,10 @@
 node: ""                              # Node ID (must match manifest key)
 name: ""                              # Human-readable name
 
+# --- Spec Metadata (Sprint 10B) ---
+# spec_type: "prescriptive"          # "prescriptive" (default, user-written) or "descriptive" (auto-generated from code via /forgeplan:ingest)
+# generated_from: null                # "repo-ingestion" | "document-import" | null
+
 # --- Description ---
 description: >
   # What this node does, its responsibility, its role in the system.

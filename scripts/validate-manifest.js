@@ -103,6 +103,13 @@ function validateManifest(manifest) {
       errors.push(`Node "${nodeId}": node ID must be alphanumeric with hyphens/underscores, starting with a letter or digit.`);
     }
 
+    // Sprint 10B: phase field validation (optional, defaults to 1)
+    if (node.phase !== undefined && node.phase !== null) {
+      if (typeof node.phase !== "number" || !Number.isInteger(node.phase) || node.phase < 1) {
+        errors.push(`Node "${nodeId}": phase must be a positive integer if present.`);
+      }
+    }
+
     // Sprint 9: split_from validation (check explicitly — empty string "" is falsy and would skip silently)
     if (node.split_from !== undefined && node.split_from !== null) {
       if (node.split_from === "") {
@@ -134,6 +141,30 @@ function validateManifest(manifest) {
           errors.push(
             `Nodes "${siblings[i].id}" and "${siblings[j].id}" (both split from "${parent}") have overlapping file_scopes: "${siblings[i].file_scope}" and "${siblings[j].file_scope}".`
           );
+        }
+      }
+    }
+  }
+
+  // Sprint 10B: build_phase validation
+  const buildPhase = manifest.project && manifest.project.build_phase;
+  if (buildPhase !== undefined && buildPhase !== null) {
+    if (typeof buildPhase !== "number" || !Number.isInteger(buildPhase) || buildPhase < 1) {
+      errors.push(`project.build_phase must be a positive integer if present.`);
+    } else {
+      // Verify build_phase doesn't exceed max node phase
+      const maxPhase = Math.max(...nodeIds.map(id => (manifest.nodes[id].phase || 1)));
+      if (buildPhase > maxPhase) {
+        errors.push(`project.build_phase (${buildPhase}) exceeds the highest node phase (${maxPhase}).`);
+      }
+      // Verify all nodes in phases <= build_phase have spec files
+      for (const nid of nodeIds) {
+        const nodePhase = manifest.nodes[nid].phase || 1;
+        if (nodePhase <= buildPhase) {
+          const specPath = path.join(path.dirname(manifestPath), "specs", nid + ".yaml");
+          if (!fs.existsSync(specPath)) {
+            warnings.push(`Node "${nid}" is in phase ${nodePhase} (<= build_phase ${buildPhase}) but has no spec file at ${specPath}.`);
+          }
         }
       }
     }

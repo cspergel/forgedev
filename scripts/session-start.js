@@ -343,6 +343,30 @@ function buildAmbientStatus(forgePlanDir, manifestPath, statePath, state) {
     }
   }
 
+  // Sprint 10B: Phase awareness
+  const buildPhase = manifest && manifest.project && manifest.project.build_phase;
+  if (buildPhase && buildPhase > 0) {
+    const maxPhase = Math.max(...Object.values(manifest.nodes || {}).map(n => n.phase || 1));
+    if (maxPhase > 1) {
+      const currentPhaseNodes = Object.entries(manifest.nodes || {})
+        .filter(([_, n]) => (n.phase || 1) <= buildPhase)
+        .map(([id]) => id);
+      const futurePhaseNodes = Object.entries(manifest.nodes || {})
+        .filter(([_, n]) => (n.phase || 1) > buildPhase)
+        .map(([id]) => id);
+      lines.push(`  Phase: ${buildPhase} of ${maxPhase} (${currentPhaseNodes.length} active | ${futurePhaseNodes.length} pending)`);
+
+      // Staleness warning: >7 days without advancement
+      if (state.build_phase_started_at) {
+        const started = new Date(state.build_phase_started_at);
+        const daysSince = (Date.now() - started.getTime()) / (1000 * 60 * 60 * 24);
+        if (daysSince > 7) {
+          lines.push(`  WARNING: Phase ${buildPhase} has been active for ${Math.floor(daysSince)} days.`);
+        }
+      }
+    }
+  }
+
   // Next command suggestion
   if (suggestion) {
     lines.push(`Next: ${suggestion}`);
