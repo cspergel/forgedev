@@ -287,6 +287,8 @@ ForgePlan tracks the dependency graph and knows which nodes are affected.
 
 ## Phase Guidance (Sprint 10B)
 
+Calculate `max_phase` as the highest `phase` value across all nodes in the manifest (default 1 if not set).
+
 If project has multiple phases (max_phase > 1):
   If all current-phase nodes are reviewed and sweep-clean:
     → "All phase [N] nodes are sweep-clean! Run /forgeplan:deep-build to advance to phase [N+1]."

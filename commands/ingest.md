@@ -89,5 +89,7 @@ Your specs are auto-generated (descriptive). To add actual requirements:
   → /forgeplan:review [node]  Review a node against its spec
   → /forgeplan:status         See the full project state
 
+  → /forgeplan:guide            Get guidance anytime
+
 All future changes go through the ForgePlan pipeline.
 ```

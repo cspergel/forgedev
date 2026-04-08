@@ -33,12 +33,13 @@ user-invocable: true
 
 | Command | What it does |
 |---------|-------------|
-| `/forgeplan:ingest [--force]` | Already have code? Scans your codebase, maps it to ForgePlan nodes, generates descriptive specs, and runs a baseline sweep. All future changes go through the pipeline. |
+| `/forgeplan:ingest [--force] [--confirm-auto]` | Already have code? Scans your codebase, maps it to ForgePlan nodes, generates descriptive specs, and runs a baseline sweep. `--confirm-auto` skips the confirmation gate (for autonomous pipelines). |
 
 ## Evolving Your Project
 
 | Command | What it does |
 |---------|-------------|
+| `/forgeplan:split [node]` | Need finer governance? Decomposes a node into smaller nodes while preserving code and state. |
 | `/forgeplan:revise [node\|--model name]` | Need to change something? Finds every affected node and walks you through updating them. |
 | `/forgeplan:integrate` | Do all the pieces fit? Verifies cross-node interfaces and shared model consistency. |
 | `/forgeplan:recover` | Something went wrong? Detects stuck builds and offers resume, reset, or skip options. |
