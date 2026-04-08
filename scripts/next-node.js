@@ -114,7 +114,8 @@ function main() {
     const buildPhases = ["build-all"];
     if (!buildPhases.includes(ss.current_phase)) {
       // Compute completed count inline (the main `completed` var is defined later in the file)
-      const completedStatuses_ = ["built", "reviewed", "revised"];
+      // "revised" means "spec changed, needs rebuild" — NOT complete
+      const completedStatuses_ = ["built", "reviewed"];
       const completedCount = nodeIds.filter((id) => {
         const ns = nodeStates[id];
         return ns && completedStatuses_.includes(ns.status);
@@ -149,8 +150,10 @@ function main() {
         if (!nodeIds.includes(affected) || needsRebuild.includes(affected) || stuck.includes(affected)) continue;
         const affectedState = nodeStates[affected];
         if (!affectedState) continue;
-        // Only flag completed nodes (built, reviewed, revised) that haven't been
-        // rebuilt AFTER this revision (compare timestamps if available)
+        // Flag nodes whose code exists but is stale due to this revision.
+        // "built"/"reviewed" = had code, now stale from cascade.
+        // "revised" = already marked for rebuild (from its own revision), but
+        // also affected by this cascade — still needs rebuild.
         if (["built", "reviewed", "revised"].includes(affectedState.status)) {
           // If we have timestamps, only flag if the revision is newer than the last build
           const lastBuildTime = affectedState.last_build_completed || "";
@@ -176,10 +179,11 @@ function main() {
   // --- State summary for context-aware suggestions ---
   // Two levels of "done":
   // - depSatisfiedStatuses: a dependency is satisfied once built (downstream can start building)
-  // - fullyCompleteStatuses: a node is truly done only when reviewed/revised (for "all complete" check)
-  // This prevents deep-build from advancing to sweep/certify with unreviewed nodes.
-  const depSatisfiedStatuses = ["built", "reviewed", "revised"];
-  const fullyCompleteStatuses = ["reviewed", "revised"];
+  // - fullyCompleteStatuses: a node is truly done only when reviewed (for "all complete" check)
+  // NOTE: "revised" means "spec changed, code is stale, needs rebuild" — it is NOT complete.
+  // The correct progression is: revised → building → built → reviewing → reviewed.
+  const depSatisfiedStatuses = ["built", "reviewed"];
+  const fullyCompleteStatuses = ["reviewed"];
   const allStatuses = {};
   for (const id of nodeIds) {
     const status = nodeStates[id]?.status || "pending";
@@ -267,7 +271,7 @@ function main() {
       if (reviewed < nodeIds.length) {
         suggestions.push({ command: "/forgeplan:review --all", description: "Review all built nodes for spec compliance" });
       }
-      suggestions.push({ command: "/forgeplan:sweep", description: "Run cross-cutting sweep (3-12 agents, tier-aware) to catch issues across nodes" });
+      suggestions.push({ command: "/forgeplan:sweep", description: "Run cross-cutting sweep (3-5 consolidated agents, tier-aware) to catch issues across nodes" });
       suggestions.push({ command: "/forgeplan:deep-build", description: "Full autonomous pipeline: build → verify → review → sweep → certify" });
       suggestions.push({ command: "/forgeplan:integrate", description: "Verify all cross-node interfaces work together" });
       suggestions.push({ command: "/forgeplan:measure", description: "Check code quality (broken references, duplicate types, stubs)" });
@@ -322,10 +326,29 @@ function main() {
   const node = manifest.nodes[recommended.id];
   const deps = node.depends_on || [];
 
-  const nextAction =
-    recommended.status === "specced"
-      ? `/forgeplan:build ${recommended.id}`
-      : `/forgeplan:spec ${recommended.id}`;
+  let nextAction = `/forgeplan:spec ${recommended.id}`;
+  if (recommended.status === "specced") {
+    try {
+      const specPath = path.join(projectDir, ".forgeplan", "specs", `${recommended.id}.yaml`);
+      if (fs.existsSync(specPath)) {
+        const specContent = fs.readFileSync(specPath, "utf-8");
+        if (specContent.includes('spec_type: "interface-only"') || specContent.includes("spec_type: interface-only")) {
+          nextAction = `/forgeplan:spec ${recommended.id} (promote interface-only spec to full)`;
+        } else {
+          nextAction = `/forgeplan:build ${recommended.id}`;
+        }
+      } else {
+        nextAction = `/forgeplan:build ${recommended.id}`;
+      }
+    } catch (_) {
+      nextAction = `/forgeplan:build ${recommended.id}`;
+    }
+  } else if (recommended.status === "revised") {
+    // "revised" = spec changed, code is stale → rebuild
+    nextAction = `/forgeplan:build ${recommended.id}`;
+  } else if (recommended.status === "built") {
+    nextAction = `/forgeplan:review ${recommended.id}`;
+  }
 
   const result = {
     type: "recommendation",

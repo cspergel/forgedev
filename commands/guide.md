@@ -81,7 +81,9 @@ You haven't started a project yet. Here's how to begin:
 
 ## Pipeline Stage Guidance (Sprint 10A)
 
-Check for design pipeline artifacts BEFORE generic state checks — these are more specific:
+If any node spec is `spec_type: "descriptive"`, SKIP the design/plan artifact checks below and go straight to post-ingest guidance. Re-ingested projects may still have old artifact files on disk, and descriptive specs are the authoritative onboarding signal.
+
+Otherwise, check for design pipeline artifacts BEFORE generic state checks — these are more specific:
 
 ### Design exists but not reviewed
 Check: `.forgeplan/manifest.yaml` exists AND `.forgeplan/reviews/design-review-pass-1.md` does NOT exist AND all nodes are `pending`
@@ -186,6 +188,17 @@ first. /forgeplan:next knows the graph and picks the right one.
   → /forgeplan:build [node]   Build a specific node
   → /forgeplan:review [node]  Review a built node before continuing
   → /forgeplan:status         See the full picture
+```
+
+## Post-Ingest Guidance (Sprint 10B)
+
+If `spec_type` is `"descriptive"` on any node (check spec files for `spec_type: "descriptive"`):
+```
+Some specs are auto-generated (descriptive). Refine those specs before treating the
+project as fully governed:
+  → /forgeplan:spec [node]    Replace description-only/generated behavior with actual requirements
+  → /forgeplan:review [node]  Re-review a node after tightening its spec
+  → /forgeplan:status         See which nodes still carry descriptive specs
 ```
 
 ### All nodes built (not yet reviewed)
@@ -299,15 +312,6 @@ If project has multiple phases (max_phase > 1):
     → "All phase [N] nodes are sweep-clean! Run /forgeplan:deep-build to advance to phase [N+1]."
   If some current-phase nodes are not yet built:
     → "Phase [N]: [built] of [total] nodes built. Next: /forgeplan:build [next-node] or /forgeplan:deep-build."
-
-## Post-Ingest Guidance (Sprint 10B)
-
-If `spec_type` is `"descriptive"` on any node (check spec files for `spec_type: "descriptive"`):
-```
-Some specs are auto-generated (descriptive). To add your actual requirements:
-  → /forgeplan:spec [node]    Edit a node's spec to add requirements, constraints, non-goals
-  → /forgeplan:review [node]  Review a node against its (updated) spec
-```
 
 ## Wiki-Informed Recommendations (Sprint 9 -- MEDIUM/LARGE only)
 

@@ -248,13 +248,14 @@ function buildAmbientStatus(forgePlanDir, manifestPath, statePath, state) {
     total: nodeIds.length,
     pending: 0,
     specced: 0,
-    built: 0,       // includes "built" and "revised"
-    reviewed: 0,    // includes "reviewed"
+    built: 0,       // "built" only — awaiting review
+    revised: 0,     // "revised" = spec changed, code is stale, needs rebuild
+    reviewed: 0,    // "reviewed" — truly complete
     inProgress: 0,  // building, reviewing, review-fixing, revising, sweeping
   };
 
   const inProgressStatuses = ["building", "reviewing", "review-fixing", "revising", "sweeping"];
-  const builtStatuses = ["built", "revised"];
+  const builtStatuses = ["built"];
 
   for (const id of nodeIds) {
     const ns = nodeStates[id];
@@ -264,6 +265,8 @@ function buildAmbientStatus(forgePlanDir, manifestPath, statePath, state) {
       counts.pending++;
     } else if (status === "specced") {
       counts.specced++;
+    } else if (status === "revised") {
+      counts.revised++;
     } else if (builtStatuses.includes(status)) {
       counts.built++;
     } else if (status === "reviewed") {
@@ -295,6 +298,9 @@ function buildAmbientStatus(forgePlanDir, manifestPath, statePath, state) {
   const reviewedCount = counts.reviewed;
   const builtOrReviewed = counts.built + counts.reviewed;
   let summaryLine = `${projectName} -- ${counts.total} nodes (${builtOrReviewed} built, ${reviewedCount} reviewed)`;
+  if (counts.revised > 0) {
+    summaryLine += `, ${counts.revised} revised (needs rebuild)`;
+  }
   if (tier) {
     summaryLine += ` | Tier: ${tier}`;
   }
@@ -403,7 +409,7 @@ function isWikiStale(state, forgePlanDir) {
  * Includes specific node names in suggestions where possible.
  */
 function determineSuggestion(counts, state, nodeIds, nodeStates, manifest) {
-  const { total, pending, specced, built, reviewed, inProgress } = counts;
+  const { total, pending, specced, built, revised, reviewed, inProgress } = counts;
 
   // If there's an active sweep that completed, suggest status/measure
   if (state && state.sweep_state) {
@@ -415,7 +421,8 @@ function determineSuggestion(counts, state, nodeIds, nodeStates, manifest) {
   }
 
   // Helper: find first node in a given status
-  const builtStatuses = ["built", "revised"];
+  // "revised" is NOT built — it means "spec changed, needs rebuild"
+  const builtStatuses = ["built"];
   function firstNodeInStatus(targetStatuses) {
     for (const id of nodeIds) {
       const ns = nodeStates[id];
@@ -435,7 +442,8 @@ function determineSuggestion(counts, state, nodeIds, nodeStates, manifest) {
     for (const nodeId of nodeIds) {
       const ns = nodeStates[nodeId];
       if (!ns) continue;
-      const isTerminal = ns.status === "reviewed" || ns.status === "revised";
+      // Only skip nodes that are truly complete (reviewed). "revised" needs rebuild, not terminal.
+      const isTerminal = ns.status === "reviewed";
       if (isTerminal) continue;
       const nodePhase = (manifest.nodes[nodeId] && manifest.nodes[nodeId].phase) || 1;
       if (nodePhase > ingestBuildPhase) continue;
@@ -455,7 +463,8 @@ function determineSuggestion(counts, state, nodeIds, nodeStates, manifest) {
           const nodePhase = (manifest.nodes[nodeId] && manifest.nodes[nodeId].phase) || 1;
           if (nodePhase > ingestBuildPhase) continue;
           const ns = nodeStates[nodeId];
-          const isTerminal = ns && (ns.status === "reviewed" || ns.status === "revised");
+          // Only skip nodes that are truly complete (reviewed). "revised" needs rebuild, not terminal.
+          const isTerminal = ns && ns.status === "reviewed";
           if (isTerminal) continue;
           // Skip if state already has spec_type (already checked above)
           if (ns && ns.spec_type) continue;
@@ -476,9 +485,10 @@ function determineSuggestion(counts, state, nodeIds, nodeStates, manifest) {
   const maxPhase = manifest ? Math.max(1, ...nodeIds.map(id => (manifest.nodes[id].phase || 1))) : 1;
   if (maxPhase > 1) {
     const currentPhaseNodes = nodeIds.filter(id => (manifest.nodes[id].phase || 1) <= buildPhase);
+    // Only "reviewed" counts as complete. "revised" means spec changed, needs rebuild.
     const currentPhaseComplete = currentPhaseNodes.filter(id => {
       const ns = nodeStates[id];
-      return ns && (ns.status === "built" || ns.status === "reviewed" || ns.status === "revised");
+      return ns && ns.status === "reviewed";
     }).length;
     if (currentPhaseComplete === currentPhaseNodes.length && currentPhaseNodes.length > 0 && buildPhase < maxPhase) {
       return `/forgeplan:deep-build (advance to phase ${buildPhase + 1})`;
@@ -511,12 +521,18 @@ function determineSuggestion(counts, state, nodeIds, nodeStates, manifest) {
     }
   }
 
+  // Any revised nodes — they need rebuild before anything else progresses
+  if (revised > 0) {
+    const node = firstNodeInStatus(["revised"]);
+    if (node) return `/forgeplan:build ${node} (spec changed, needs rebuild)`;
+  }
+
   // All reviewed — suggest sweep or integrate
   if (reviewed === total) {
     return "/forgeplan:sweep --cross-check or /forgeplan:integrate";
   }
 
-  // All built (including revised) or mix of built+reviewed — suggest review for a specific node
+  // All built or mix of built+reviewed — suggest review for a specific node
   if ((built + reviewed) === total && total > 0) {
     const node = firstNodeInStatus(builtStatuses);
     if (node) return `/forgeplan:review ${node}`;
@@ -525,9 +541,11 @@ function determineSuggestion(counts, state, nodeIds, nodeStates, manifest) {
 
   // Some built, some not — suggest the specific next action
   if ((built + reviewed) > 0 && (built + reviewed) < total) {
-    // Suggest reviewing an unreviewed built node, or building a specced node
+    // Suggest reviewing an unreviewed built node, or building a specced/revised node
     const builtNode = firstNodeInStatus(builtStatuses);
     if (builtNode) return `/forgeplan:review ${builtNode}`;
+    const revisedNode = firstNodeInStatus(["revised"]);
+    if (revisedNode) return `/forgeplan:build ${revisedNode} (spec changed, needs rebuild)`;
     const speccedNode = firstNodeInStatus(["specced"]);
     if (speccedNode) return `/forgeplan:build ${speccedNode}`;
     const pendingNode = firstNodeInStatus(["pending"]);

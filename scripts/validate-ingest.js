@@ -6,6 +6,7 @@
 "use strict";
 const fs = require("fs");
 const path = require("path");
+const { minimatch } = require(path.join(__dirname, "..", "node_modules", "minimatch"));
 
 const inputPath = process.argv[2];
 if (!inputPath || !fs.existsSync(inputPath)) {
@@ -54,6 +55,45 @@ const resolveScopeDir = (fileScope) => {
   const scopeDir = fileScope.replace(/\*\*.*$/, "").replace(/\/+$/, "");
   return { scopeDir, absDir: path.resolve(cwd, scopeDir) };
 };
+
+function generateCrossPaths(globA, globB) {
+  const paths = [];
+  const segsA = globA.split("/").filter((s) => !s.includes("*"));
+  const segsB = globB.split("/").filter((s) => !s.includes("*"));
+  const expandWith = (glob, literals) => {
+    const results = [];
+    for (const lit of literals) {
+      let expanded = glob.replace(/\*\*/g, lit).replace(/\*/g, lit);
+      results.push(expanded, expanded + "/file.ts");
+      expanded = glob.replace(/\*\*/g, lit + "/sub").replace(/\*/g, lit);
+      results.push(expanded);
+    }
+    return results;
+  };
+  paths.push(...expandWith(globA, segsB));
+  paths.push(...expandWith(globB, segsA));
+  return paths;
+}
+
+function generateTestPaths(glob) {
+  const norm = glob.replace(/\\/g, "/");
+  const paths = [];
+  const withDepth = norm.replace(/\*\*/g, "sub/deep");
+  const concrete = withDepth.replace(/\*/g, "example");
+  paths.push(concrete, concrete + "/file.ts");
+  const base = norm.replace(/\*\*.*$/, "").replace(/\*.*$/, "").replace(/\/$/, "");
+  if (base) {
+    paths.push(base + "/file.ts", base + "/sub/file.ts");
+  }
+  return paths;
+}
+
+function scopesOverlap(scopeA, scopeB) {
+  const a = scopeA.replace(/\\/g, "/");
+  const b = scopeB.replace(/\\/g, "/");
+  const allPaths = [...generateTestPaths(a), ...generateTestPaths(b), ...generateCrossPaths(a, b)];
+  return allPaths.some((testPath) => minimatch(testPath, a) && minimatch(testPath, b));
+}
 
 // Check 0 (C2 fix): Validate all scopes are within project root FIRST
 for (const node of (mapping.proposed_nodes || [])) {
@@ -222,6 +262,7 @@ if (hasExistingContent && !forceFlag) {
 
 // Check 4: No scope covers >60% of total source files
 // I4 fix: exclude .forgeplan/ from counts
+// Finding 3 fix: count files matching the ACTUAL glob, not all files in the base directory
 const countFilesIn = (dir, visited = new Set()) => {
   let count = 0;
   try {
@@ -238,28 +279,65 @@ const countFilesIn = (dir, visited = new Set()) => {
   return count;
 };
 
+// Count files that actually match a glob pattern within a directory
+const countFilesMatchingGlob = (dir, globPattern, visited = new Set()) => {
+  let count = 0;
+  try {
+    const resolved = normPath(fs.realpathSync(dir));
+    if (visited.has(resolved)) return 0;
+    visited.add(resolved);
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      if (EXCLUDE_DIRS.includes(entry.name)) continue;
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        count += countFilesMatchingGlob(full, globPattern, visited);
+      } else {
+        // Test the file's relative path against the glob
+        const relPath = path.relative(cwd, full).replace(/\\/g, "/");
+        if (minimatch(relPath, globPattern)) count++;
+      }
+    }
+  } catch (_) {}
+  return count;
+};
+
 const totalFiles = countFilesIn(cwd);
 
 for (const node of (mapping.proposed_nodes || [])) {
   const { absDir } = resolveScopeDir(node.file_scope);
-  const nodeFiles = fs.existsSync(absDir) ? countFilesIn(absDir) : 0;
+  const globPattern = node.file_scope.replace(/\\/g, "/");
+  // Count files matching the actual glob, not all files in the base directory
+  const nodeFiles = fs.existsSync(absDir) ? countFilesMatchingGlob(absDir, globPattern) : 0;
   const pct = totalFiles > 0 ? Math.round(nodeFiles / totalFiles * 100) : 0;
   checks.push({
     name: "scope_breadth",
     node: node.id,
     status: pct > 60 ? "FAIL" : "PASS",
-    details: `${nodeFiles}/${totalFiles} files (${pct}%)`,
+    details: `${nodeFiles}/${totalFiles} files (${pct}%) matching ${node.file_scope}`,
   });
 }
 
-// Check 5: Claimed shared types exist and are imported by 3+ files
+// Check 5: Claimed shared types exist and are imported/referenced by 2+ files
 // C4 fix: use import-specific pattern, exclude definition file from count
+// Supports JS/TS, Prisma, Drizzle, JSON Schema, YAML, Python dataclass/Pydantic
 for (const model of (mapping.shared_models || [])) {
   let definitionFile = null;
+  let definitionSource = null; // tracks which pattern matched (js, prisma, json-schema, etc.)
   let importCount = 0;
   const escaped = model.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+  // JS/TS patterns
   const typePattern = new RegExp(`\\b(type|interface|class)\\s+${escaped}\\b`);
   const importPattern = new RegExp(`(?:import|require).*\\b${escaped}\\b`);
+
+  // Prisma pattern: model ModelName { ... }
+  const prismaPattern = new RegExp(`^\\s*model\\s+${escaped}\\s*\\{`, "m");
+  // Drizzle pattern: export const modelName = pgTable/mysqlTable/sqliteTable(...)
+  const drizzlePattern = new RegExp(`\\b${escaped}\\b.*(?:pgTable|mysqlTable|sqliteTable|createTable)\\s*\\(`);
+  // Python dataclass/Pydantic pattern: class ModelName(BaseModel): or @dataclass class ModelName:
+  const pythonPattern = new RegExp(`(?:class\\s+${escaped}\\s*\\(|@dataclass[\\s\\S]*?class\\s+${escaped}\\b)`);
+
   const walkVisited = new Set();
   const walk = (dir) => {
     try {
@@ -270,40 +348,116 @@ for (const model of (mapping.shared_models || [])) {
         if (EXCLUDE_DIRS.includes(entry.name)) continue;
         const full = path.join(dir, entry.name);
         if (entry.isDirectory()) { walk(full); continue; }
-        if (!entry.name.match(/\.[jt]sx?$/)) continue;
-        try {
-          const stat = fs.statSync(full);
-          if (stat.size > 1024 * 1024) continue; // skip files >1MB
-          const content = fs.readFileSync(full, "utf-8");
-          if (typePattern.test(content)) definitionFile = full;
-          if (importPattern.test(content) && full !== definitionFile) importCount++;
-        } catch (_) {}
+
+        // JS/TS files
+        if (entry.name.match(/\.[jt]sx?$/)) {
+          try {
+            const stat = fs.statSync(full);
+            if (stat.size > 1024 * 1024) continue; // skip files >1MB
+            const content = fs.readFileSync(full, "utf-8");
+            if (typePattern.test(content)) { definitionFile = full; definitionSource = "js/ts"; }
+            if (drizzlePattern.test(content)) { definitionFile = full; definitionSource = "drizzle"; }
+            if (importPattern.test(content) && full !== definitionFile) importCount++;
+          } catch (_) {}
+          continue;
+        }
+
+        // Prisma schema files
+        if (entry.name === "schema.prisma" || entry.name.endsWith(".prisma")) {
+          try {
+            const stat = fs.statSync(full);
+            if (stat.size > 1024 * 1024) continue;
+            const content = fs.readFileSync(full, "utf-8");
+            if (prismaPattern.test(content)) { definitionFile = full; definitionSource = "prisma"; }
+          } catch (_) {}
+          continue;
+        }
+
+        // JSON Schema files
+        if (entry.name.endsWith(".schema.json") || entry.name.endsWith(".schema.yaml") || entry.name.endsWith(".schema.yml")) {
+          try {
+            const stat = fs.statSync(full);
+            if (stat.size > 1024 * 1024) continue;
+            const content = fs.readFileSync(full, "utf-8");
+            // Check title or $id field for the model name
+            const jsonSchemaPattern = new RegExp(`(?:"title"|"\\$id"|title:|\\$id:)\\s*:?\\s*"?${escaped}"?`, "i");
+            if (jsonSchemaPattern.test(content)) { definitionFile = full; definitionSource = "json-schema"; }
+          } catch (_) {}
+          continue;
+        }
+
+        // YAML/JSON config-defined models
+        if ((entry.name.endsWith(".yaml") || entry.name.endsWith(".yml") || entry.name.endsWith(".json")) && !entry.name.startsWith(".")) {
+          try {
+            const stat = fs.statSync(full);
+            if (stat.size > 1024 * 1024) continue;
+            const content = fs.readFileSync(full, "utf-8");
+            // Look for model name as a top-level key or in a models/entities section
+            const yamlModelPattern = new RegExp(`(?:^|\\n)\\s*(?:${escaped}|models:\\s*\\n[\\s\\S]*?${escaped})\\s*:`, "m");
+            if (yamlModelPattern.test(content)) { definitionFile = full; definitionSource = "yaml/json-config"; }
+          } catch (_) {}
+          continue;
+        }
+
+        // Python files
+        if (entry.name.endsWith(".py")) {
+          try {
+            const stat = fs.statSync(full);
+            if (stat.size > 1024 * 1024) continue;
+            const content = fs.readFileSync(full, "utf-8");
+            if (pythonPattern.test(content)) { definitionFile = full; definitionSource = "python"; }
+            // Python import pattern
+            const pyImportPattern = new RegExp(`(?:from\\s+\\S+\\s+import.*\\b${escaped}\\b|import.*\\b${escaped}\\b)`);
+            if (pyImportPattern.test(content) && full !== definitionFile) importCount++;
+          } catch (_) {}
+          continue;
+        }
       }
     } catch (_) {}
   };
   walk(cwd);
-  checks.push({
-    name: "shared_type_exists",
-    node: model.name,
-    status: definitionFile ? "PASS" : "FAIL",
-    details: definitionFile ? `Type/interface ${model.name} found` : `Type/interface ${model.name} not found in codebase`,
-  });
-  checks.push({
-    name: "shared_type_usage",
-    node: model.name,
-    status: importCount >= 3 ? "PASS" : "FAIL",
-    details: `${model.name} imported in ${importCount} files (need 3+)`,
-  });
+
+  // If no definition found via any pattern, WARN instead of FAIL.
+  // The user can still define shared models manually during spec refinement.
+  if (definitionFile) {
+    checks.push({
+      name: "shared_type_exists",
+      node: model.name,
+      status: "PASS",
+      details: `${model.name} found in ${definitionSource} (${definitionFile})`,
+    });
+  } else {
+    checks.push({
+      name: "shared_type_exists",
+      node: model.name,
+      status: "WARN",
+      details: `${model.name} not found as JS/TS type, Prisma model, Drizzle table, JSON Schema, YAML config, or Python class. Define it manually in the manifest shared_models section.`,
+    });
+  }
+
+  // Usage check: also WARN instead of FAIL when definition was non-JS (import counting may not apply)
+  if (definitionSource && !["js/ts", "drizzle"].includes(definitionSource)) {
+    checks.push({
+      name: "shared_type_usage",
+      node: model.name,
+      status: importCount >= 2 ? "PASS" : "WARN",
+      details: `${model.name} defined in ${definitionSource} — JS/TS import count (${importCount}) may not reflect actual usage. Verify manually.`,
+    });
+  } else {
+    checks.push({
+      name: "shared_type_usage",
+      node: model.name,
+      status: importCount >= 2 ? "PASS" : (definitionFile ? "FAIL" : "WARN"),
+      details: `${model.name} imported in ${importCount} files (need 2+)${!definitionFile ? " — no definition found, define manually" : ""}`,
+    });
+  }
 }
 
 // Check 6: No scope overlaps between proposed nodes
 const nodes = mapping.proposed_nodes || [];
 for (let i = 0; i < nodes.length; i++) {
   for (let j = i + 1; j < nodes.length; j++) {
-    // Normalize: strip **, ensure trailing /
-    const a = nodes[i].file_scope.replace(/\*\*$/, "").replace(/\/?$/, "/");
-    const b = nodes[j].file_scope.replace(/\*\*$/, "").replace(/\/?$/, "/");
-    if (a.startsWith(b) || b.startsWith(a)) {
+    if (scopesOverlap(nodes[i].file_scope, nodes[j].file_scope)) {
       checks.push({
         name: "no_scope_overlap",
         node: `${nodes[i].id} vs ${nodes[j].id}`,
@@ -316,10 +470,12 @@ for (let i = 0; i < nodes.length; i++) {
 
 // Summary
 const failed = checks.filter(c => c.status === "FAIL");
+const warned = checks.filter(c => c.status === "WARN");
 const result = {
-  status: failed.length === 0 ? "PASS" : "FAIL",
+  status: failed.length === 0 ? (warned.length === 0 ? "PASS" : "PASS_WITH_WARNINGS") : "FAIL",
   total_checks: checks.length,
   passed: checks.filter(c => c.status === "PASS").length,
+  warnings: warned.length,
   failed: failed.length,
   checks,
 };

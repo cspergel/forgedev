@@ -15,7 +15,7 @@ agent: builder
 If the argument is `--all`, build all eligible nodes sequentially in dependency order:
 
 1. Run `node "${CLAUDE_PLUGIN_ROOT}/scripts/topo-sort.js"` to get the build order
-2. Read `.forgeplan/state.json` and manifest to find nodes with status `"specced"`, `"built"`, `"reviewed"`, or `"revised"` whose dependencies are all satisfied AND `(node.phase || 1) <= (manifest.project.build_phase || 1)`. Skip future-phase nodes with log: "Skipping [node-id] — phase [N] (current build_phase: [M])."
+2. Read `.forgeplan/state.json` and manifest to find nodes with status `"specced"` or `"revised"` whose dependencies are all satisfied AND `(node.phase || 1) <= (manifest.project.build_phase || 1)`. Skip nodes already `"built"` or `"reviewed"` — they should move to review/integration, not be rebuilt by default. Skip future-phase nodes with log: "Skipping [node-id] — phase [N] (current build_phase: [M])."
 3. For each eligible node in dependency order:
    - Run the single-node build flow below
    - After each build completes and the Stop hook verifies ACs, move to the next node

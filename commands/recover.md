@@ -173,7 +173,10 @@ Choose [1/2/3]:
   - If `runtime-verify`: re-run `node "${CLAUDE_PLUGIN_ROOT}/scripts/runtime-verify.js" --tier [TIER]` (Phase B gate was interrupted)
   - If `cross-check`: re-run cross-model verification
   - If `cross-fix`: re-fix all cross-model findings (restart fix loop)
-  - If `integrate`: re-run integration
+  - If `integrate`:
+    - If `sweep_state.phase_advancement` is null: re-run integration
+    - If `sweep_state.phase_advancement.checkpoint === "pre_increment"`: re-run cross-phase integration before any manifest changes
+    - If `checkpoint === "post_increment"` or `"promoting_specs"`: do NOT increment `build_phase` again. Resume promoted-spec generation using `phase_advancement.promoted_nodes` and the backups in `phase_advancement.backup_dir`
   - If `finalizing`: just finalize
   - If `halted`: read `sweep_state.halted_from_phase` to determine where to resume. Set `current_phase` back to `halted_from_phase`, clear `halted_from_phase` to null, then resume from that phase (using the same routing above). If `halted_from_phase` is null (shouldn't happen but defensive), default to `"claude-sweep"`.
 - Findings already in `resolved` stay resolved
@@ -185,10 +188,16 @@ Choose [1/2/3]:
   - If `operation === "deep-building"` and interrupted phase was `"build-all"`: restart from `"build-all"`
   - If interrupted phase was `"verify-runnable"`: restart from `"verify-runnable"` (don't skip the Phase A gate)
   - If interrupted phase was `"runtime-verify"`: restart from `"runtime-verify"` (don't skip the Phase B gate)
+  - If interrupted phase was `"integrate"`: restart from `"integrate"` (don't skip the integration / phase-advancement gate). If `sweep_state.phase_advancement.checkpoint` is `"post_increment"` or `"promoting_specs"`, restart from spec promotion without incrementing `build_phase` a second time.
   - Otherwise: restart from `"claude-sweep"`
 - If `active_node` was set (mid-fix), clear it and set `nodes.[node].status` back to the pre-sweep status
 
 **Abort behavior:**
+- If `sweep_state.phase_advancement` exists (MUST check BEFORE nullifying sweep_state):
+  - Restore `project.build_phase` in manifest from `phase_advancement.from_build_phase`
+  - Restore backed-up promoted specs and manifest from `phase_advancement.backup_dir`
+  - Delete `.forgeplan/phase-advance-backup/`
+  - Restore `build_phase_started_at` in state.json from the backup, or clear it to `null` if no backup value exists (prevents stale timestamp from the aborted phase)
 - Set `sweep_state` to `null` in state.json
 - If `active_node` was set (mid-fix):
   - Clear `active_node` to `null`

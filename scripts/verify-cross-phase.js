@@ -127,12 +127,15 @@ function main() {
         continue;
       }
 
+      const exportedSignatures = extractExportedFunctionSignatures(exportContent);
+
       // Extract expected exports from the interface contract
       // Contracts are typically prose like "validateToken(token: string): AuthResult"
-      // We regex for function/type names and check they appear as exports
+      // We regex for function/type names and, when possible, compare signatures.
       const contract = iface.contract || "";
       const functionNames = extractFunctionNames(contract);
       const typeNames = extractTypeNames(contract);
+      const contractSignatures = extractContractFunctionSignatures(contract);
 
       for (const fn of functionNames) {
         const exportPattern = new RegExp(
@@ -148,6 +151,30 @@ function main() {
           });
           failures++;
         } else {
+          const expectedSignature = contractSignatures.get(fn);
+          const actualSignature = exportedSignatures.get(fn);
+          if (expectedSignature && actualSignature) {
+            const arityMismatch = expectedSignature.paramCount !== null &&
+              actualSignature.paramCount !== null &&
+              expectedSignature.paramCount !== actualSignature.paramCount;
+            const returnMismatch = expectedSignature.returnType &&
+              actualSignature.returnType &&
+              normalizeType(expectedSignature.returnType) !== normalizeType(actualSignature.returnType);
+
+            if (arityMismatch || returnMismatch) {
+              const mismatchParts = [];
+              if (arityMismatch) mismatchParts.push(`expected ${expectedSignature.paramCount} params, found ${actualSignature.paramCount}`);
+              if (returnMismatch) mismatchParts.push(`expected return ${expectedSignature.returnType}, found ${actualSignature.returnType}`);
+              checks.push({
+                source: nodeId, target: targetId,
+                status: "FAIL",
+                detail: `Export "${fn}" exists in ${path.relative(cwd, exportFile)} but its signature does not match the contract (${mismatchParts.join("; ")})`,
+              });
+              failures++;
+              continue;
+            }
+          }
+
           checks.push({
             source: nodeId, target: targetId,
             status: "PASS",
@@ -182,9 +209,9 @@ function main() {
         const hasAnyExport = /\bexport\b/.test(exportContent);
         checks.push({
           source: nodeId, target: targetId,
-          status: hasAnyExport ? "PASS" : "WARN",
+          status: "WARN",
           detail: hasAnyExport
-            ? `${path.relative(cwd, exportFile)} has exports (contract too vague for specific checks)`
+            ? `${path.relative(cwd, exportFile)} has exports, but the contract is too vague for deterministic verification`
             : `${path.relative(cwd, exportFile)} has NO exports — cross-phase consumers will fail`,
         });
         if (!hasAnyExport) failures++;
@@ -197,7 +224,7 @@ function main() {
   const warned = checks.filter(c => c.status === "WARN").length;
 
   console.log(JSON.stringify({
-    status: failures > 0 ? "fail" : "pass",
+    status: failures > 0 ? "fail" : warned > 0 ? "warn" : "pass",
     total: checks.length,
     passed,
     failed,
@@ -205,7 +232,7 @@ function main() {
     checks,
   }, null, 2));
 
-  process.exit(failures > 0 ? 1 : 0);
+  process.exit(failures > 0 || warned > 0 ? 1 : 0);
 }
 
 /** Extract function names from a contract string like "validateToken(token: string): AuthResult" */
@@ -234,6 +261,50 @@ function extractTypeNames(contract) {
     names.push(match[1]);
   }
   return [...new Set(names)];
+}
+
+function extractContractFunctionSignatures(contract) {
+  const signatures = new Map();
+  const regex = /\b([a-zA-Z_$][a-zA-Z0-9_$]*)\s*\(([^)]*)\)\s*(?::\s*([A-Za-z_$][A-Za-z0-9_<>,.[\]|? ]*))?/g;
+  let match;
+  while ((match = regex.exec(contract)) !== null) {
+    signatures.set(match[1], {
+      paramCount: countParams(match[2]),
+      returnType: match[3] ? match[3].trim() : null,
+    });
+  }
+  return signatures;
+}
+
+function extractExportedFunctionSignatures(source) {
+  const signatures = new Map();
+  const patterns = [
+    /export\s+(?:async\s+)?function\s+([a-zA-Z_$][a-zA-Z0-9_$]*)\s*\(([^)]*)\)\s*(?::\s*([A-Za-z_$][A-Za-z0-9_<>,.[\]|? ]*))?/g,
+    /export\s+(?:const|let|var)\s+([a-zA-Z_$][a-zA-Z0-9_$]*)\s*=\s*(?:async\s*)?\(([^)]*)\)\s*(?::\s*([A-Za-z_$][A-Za-z0-9_<>,.[\]|? ]*))?\s*=>/g,
+  ];
+  for (const regex of patterns) {
+    let match;
+    while ((match = regex.exec(source)) !== null) {
+      signatures.set(match[1], {
+        paramCount: countParams(match[2]),
+        returnType: match[3] ? match[3].trim() : null,
+      });
+    }
+  }
+  return signatures;
+}
+
+function countParams(paramList) {
+  const trimmed = (paramList || "").trim();
+  if (!trimmed) return 0;
+  return trimmed
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean).length;
+}
+
+function normalizeType(typeName) {
+  return (typeName || "").replace(/\s+/g, "");
 }
 
 function escapeRegex(s) {

@@ -29,19 +29,20 @@ Translator outputs structured JSON mapping.
 **Validate output:** Same validation as discover.md's Translator path — parse JSON, check required fields (project_name, proposed_nodes, shared_models, tier_assessment, ambiguities). Strip markdown fences if present. Fall back to error message if invalid after 3 retries: "Repo structure too unusual for automatic ingestion. Run /forgeplan:discover manually."
 
 ### Step 1.5: Force-Ingest Confirmation (--force only)
-If `--force` was passed AND `.forgeplan/` already contains project artifacts (manifest.yaml, state.json, specs/), present an explicit overwrite warning before proceeding:
+If `--force` was passed AND `.forgeplan/` already contains ANY ForgePlan content beyond `.ingest-mapping.json`, present an explicit overwrite warning before proceeding:
 ```
 ⚠ Re-ingesting will OVERWRITE existing ForgePlan artifacts:
   - .forgeplan/manifest.yaml (your current architecture)
   - .forgeplan/specs/*.yaml (all node specs)
   - .forgeplan/state.json (build/review state)
   - .forgeplan/wiki/ (knowledge base)
+  - Any other existing `.forgeplan/` governance files except preserved sweeps/conversations
 
   Existing sweep reports and conversation logs will be preserved.
 
   This cannot be undone. Continue? (y/n)
 ```
-If the user declines, halt. If `--confirm-auto` is also passed, skip this confirmation (for autonomous pipelines).
+If the user declines, halt. **`--confirm-auto` does NOT skip this destructive overwrite confirmation.** It only skips the later mapping-acceptance gate.
 
 ### Step 2: Ground-Truth Validation
 Write Translator output to `.forgeplan/.ingest-mapping.json`
@@ -80,7 +81,7 @@ Loop until clean (max 5 passes).
 ### Step 7: Write Manifest + Specs + State
 Write `.forgeplan/manifest.yaml`, `.forgeplan/state.json`, `.forgeplan/specs/*.yaml`
 Initialize state with all nodes in "built" status. For each node, also set `nodes.[node-id].spec_type` to `"descriptive"` in state.json — this caches the spec_type so session-start.js doesn't need to read spec YAML files on every session start.
-Create `.forgeplan/` directory structure (specs/, plans/, conversations/, reviews/, sweeps/) using `mkdir -p` (safe — does not overwrite existing directories or their contents). **When `--force` is set:** only overwrite manifest.yaml, state.json, specs/*.yaml, and wiki/. Preserve existing sweeps/, conversations/, reviews/, and plans/ directories and their contents.
+Create `.forgeplan/` directory structure (specs/, plans/, conversations/, reviews/, sweeps/) using `mkdir -p` (safe — does not overwrite existing directories or their contents). **When `--force` is set:** overwrite manifest.yaml, state.json, specs/*.yaml, wiki/, reviews/, and plans/ so stale governance artifacts cannot steer the newly ingested project incorrectly. Preserve existing sweeps/ and conversations/ directories and their contents.
 
 ### Step 7.5: Validate Generated Specs
 For each generated spec, run validation:
@@ -98,8 +99,6 @@ If tier is SMALL: skip wiki compilation.
 ### Step 9: Baseline Sweep (Read-Only)
 Run `/forgeplan:sweep --baseline` for baseline quality assessment.
 **CRITICAL: Do NOT auto-fix findings during baseline sweep.** This is an INFORMATIONAL pass only — the sweep agents report findings but no fix agents are dispatched. On an existing repo, auto-fixing would rewrite user code during onboarding.
-
-If `/forgeplan:sweep` does not support `--baseline`, instruct the sweep to SKIP Phase 4 (fix cycle) and Phase 5-7 (convergence). Run only Phases 1-3 (dispatch agents, collect findings, deduplicate) and Phase 8 (final report). Store findings in `.forgeplan/sweeps/baseline-report.md` for the user to review.
 
 ### Step 10: Guide Onboarding
 Output via /forgeplan:guide:

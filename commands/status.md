@@ -19,17 +19,17 @@ Parse the JSON output and present to the user in this format:
 
 ```
 === ForgePlan Status: [Project Name] ===
-Tier: [SMALL|MEDIUM|LARGE] | Nodes: [completed]/[total] | Shared Models: [count] | Phase: [build_phase]/[max_phase]
+Tier: [SMALL|MEDIUM|LARGE] | Reviewed: [completed]/[total] | Built Awaiting Review: [builtAwaitingReview] | Revised (needs rebuild): [revisedNeedsRebuild] | Shared Models: [count] | Phase: [build_phase]/[max_phase]
 
-[●] database          — Database Layer              [reviewed]
-[●] auth              — Authentication Service      [built]
-[◐] api               — API Layer                   [building]
-[◔] file-storage      — File Storage Service        [specced]
-[○] frontend-login    — Login & Registration Page   [pending]
-[○] frontend-dashboard — Client Dashboard           [pending]
-[○] frontend-accountant-view — Accountant View      [pending]
+[*] database          — Database Layer              [reviewed]
+[~] auth              — Authentication Service      [revised — needs rebuild]
+[>] api               — API Layer                   [built]
+[.] file-storage      — File Storage Service        [building]
+[-] frontend-login    — Login & Registration Page   [specced]
+[ ] frontend-dashboard — Client Dashboard           [pending]
+[ ] frontend-accountant-view — Accountant View      [pending]
 
-Legend: [●] complete  [◐] in progress  [◔] specced  [○] not started
+Legend: [*] reviewed  [~] revised (spec changed, needs rebuild)  [>] built awaiting review  [.] in progress  [-] specced  [ ] not started
 
 === Dependency Graph ===
 database ──→ auth, file-storage
@@ -59,9 +59,10 @@ Run /forgeplan:sweep to review and resolve them.
 Based on project state, suggest relevant next actions:
 
 - **All nodes pending:** `/forgeplan:spec --all` then `/forgeplan:build --all` for the current phase
+- **Any nodes revised:** `/forgeplan:build [node-id]` — spec changed, code is stale, rebuild first
 - **Some nodes built, some pending:** `/forgeplan:next` to see what to build next
 - **All nodes built but not reviewed:** `/forgeplan:review --all`
-- **All nodes reviewed:** `/forgeplan:integrate` then `/forgeplan:measure`
+- **All nodes reviewed:** `/forgeplan:sweep --cross-check or /forgeplan:integrate`
 - **Current phase complete:** `/forgeplan:deep-build` to advance to the next phase
 - **Project complete:** Suggest common changes:
   - `/forgeplan:revise --model [ModelName]` to add/change a shared model field (cascades to all affected nodes)

@@ -183,6 +183,19 @@
           "default": null,
           "description": "When current_phase is 'halted', this records the phase before halting so recovery knows where to resume from"
         },
+        "phase_advancement": {
+          "type": ["object", "null"],
+          "default": null,
+          "description": "Checkpoint data for deep-build phase advancement. Used to resume or abort safely if the run crashes after cross-phase integration but before promoted spec generation completes.",
+          "properties": {
+            "from_build_phase": { "type": "integer", "minimum": 1 },
+            "to_build_phase": { "type": "integer", "minimum": 1 },
+            "checkpoint": { "type": "string", "enum": ["pre_increment", "post_increment", "promoting_specs"] },
+            "promoted_nodes": { "type": "array", "items": { "type": "string" }, "default": [] },
+            "backup_dir": { "type": "string" }
+          },
+          "required": ["from_build_phase", "checkpoint", "backup_dir"]
+        },
         "consecutive_clean_passes": {
           "type": "integer",
           "minimum": 0,

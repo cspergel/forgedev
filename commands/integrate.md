@@ -21,7 +21,14 @@ Verify all cross-node interfaces are correctly implemented.
 node "${CLAUDE_PLUGIN_ROOT}/scripts/integrate-check.js"
 ```
 
-2. Parse the JSON output and present results to the user.
+2. For every same-phase interface where both nodes are already built, perform implementation-aware verification before presenting a final PASS:
+   - Read the actual implementation files on both sides
+   - Verify the source really exports what the spec promises
+   - Verify the target imports/uses the interface correctly
+   - Verify shared model usage matches the contract
+   A same-phase interface is only a final PASS once both the deterministic spec check and this implementation check pass.
+
+3. Parse the combined results and present them to the user.
 
 ## Cross-Phase Integration Mode (Sprint 10B)
 
@@ -45,11 +52,12 @@ This is distinct from the standard same-phase integration check — it specifica
 
 ## Same-Phase Deeper Analysis
 
-For any same-phase FAIL or WARN results from `integrate-check.js`, perform deeper LLM-assisted analysis:
+For every same-phase built interface pair, perform deeper implementation-aware analysis. This is mandatory for FAIL/WARN results and confirms PASS results:
    - Read the actual implementation files for both sides of the interface
    - Verify the source node exports what its spec promises
    - Verify the target node imports and uses it correctly
    - Check shared model types match between nodes
+   - Downgrade any spec-only PASS to FAIL/WARN if implementation evidence does not match the contract
 
 ## Output Formatting
 

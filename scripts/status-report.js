@@ -56,10 +56,14 @@ function main() {
   const nodeStates = state.nodes || {};
 
   // Build node status list
-  const completedStatuses = ["built", "reviewed", "revised"];
+  // "reviewed" = truly complete. "revised" = spec changed, code stale, needs rebuild.
+  const completedStatuses = ["reviewed"];
+  const builtStatuses = ["built"];
   const inProgressStatuses = ["building", "reviewing", "review-fixing", "revising", "sweeping"];
   const nodes = [];
   let completed = 0;
+  let builtAwaitingReview = 0;
+  let revisedNeedsRebuild = 0;
   let inProgress = 0;
 
   for (const id of nodeIds) {
@@ -67,11 +71,14 @@ function main() {
     const sNode = nodeStates[id] || {};
     const status = sNode.status || "pending";
     const filesCount = (mNode.files || []).length;
+    if (builtStatuses.includes(status)) builtAwaitingReview++;
 
-    let icon = "○"; // not started
-    if (completedStatuses.includes(status)) { icon = "●"; completed++; }
-    else if (inProgressStatuses.includes(status)) { icon = "◐"; inProgress++; }
-    else if (status === "specced") { icon = "◔"; }
+    let icon = "[ ]"; // not started
+    if (completedStatuses.includes(status)) { icon = "[*]"; completed++; }
+    else if (status === "revised") { icon = "[~]"; revisedNeedsRebuild++; }
+    else if (builtStatuses.includes(status)) { icon = "[>]"; }
+    else if (inProgressStatuses.includes(status)) { icon = "[.]"; inProgress++; }
+    else if (status === "specced") { icon = "[-]"; }
 
     nodes.push({
       id,
@@ -118,8 +125,10 @@ function main() {
     summary: {
       total: nodeIds.length,
       completed,
+      builtAwaitingReview,
+      revisedNeedsRebuild,
       inProgress,
-      pending: nodeIds.length - completed - inProgress,
+      pending: nodeIds.length - completed - builtAwaitingReview - revisedNeedsRebuild - inProgress,
     },
     nodes,
     dependencyGraph: graphLines,

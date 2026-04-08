@@ -33,7 +33,7 @@ user-invocable: true
 
 | Command | What it does |
 |---------|-------------|
-| `/forgeplan:ingest [--force] [--confirm-auto]` | Already have code? Scans your codebase, maps it to ForgePlan nodes, generates descriptive specs, and runs a baseline sweep. `--confirm-auto` skips the confirmation gate (for autonomous pipelines). |
+| `/forgeplan:ingest [--force] [--confirm-auto]` | Already have code? Scans your codebase and maps it to ForgePlan nodes with auto-generated descriptive specs. These specs capture what exists but still need refinement (`/forgeplan:spec [node]`) before the project is fully governed. Runs a baseline sweep. `--confirm-auto` skips the mapping-acceptance gate only; it does NOT bypass the destructive `--force` overwrite warning. |
 
 ## Evolving Your Project
 

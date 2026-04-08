@@ -130,6 +130,19 @@ function validateSpec(spec, manifest) {
     }
   }
 
+  if (isInterfaceOnly) {
+    const forbiddenArrayFields = ["inputs", "outputs", "acceptance_criteria", "constraints", "non_goals", "failure_modes"];
+    for (const field of forbiddenArrayFields) {
+      if (Array.isArray(spec[field]) && spec[field].length > 0) {
+        errors.push(`${field} must be omitted or empty for interface-only specs`);
+      }
+    }
+
+    if (spec.data_models && typeof spec.data_models === "object" && !Array.isArray(spec.data_models) && Object.keys(spec.data_models).length > 0) {
+      errors.push("data_models must be omitted or empty for interface-only specs");
+    }
+  }
+
   // Validate inputs entry shapes
   if (Array.isArray(spec.inputs)) {
     for (let i = 0; i < spec.inputs.length; i++) {
