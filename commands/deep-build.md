@@ -273,6 +273,23 @@ git tag forgeplan-sweep-pass-[N]
 
 This makes "abort to pre-sweep state" trivially safe via git reset.
 
+## Phase Advancement (Sprint 10B)
+
+After Phase 8 certification completes:
+
+1. Check if all `build_phase` nodes are certified (reviewed + sweep clean)
+2. If yes AND max_phase > build_phase, prompt:
+   ```
+   All phase [N] nodes are certified. Advance to phase [N+1]?
+   This will: run cross-phase integration, increment build_phase, promote next-phase specs.
+   [Y to advance / N to stay on current phase]
+   ```
+   For autonomous deep-build (--autonomous): auto-advance without prompt unless cross-phase review finds CRITICALs.
+3. Run /forgeplan:integrate (MANDATORY — cross-phase review)
+4. If integrate passes: increment `build_phase` in manifest, set `build_phase_started_at` in state
+5. Run /forgeplan:spec for promoted nodes (interface-only → full specs)
+6. Start new build cycle for promoted nodes (loop back to Phase 2)
+
 ## Error Handling
 
 - If any phase fails fatally, write current state and halt

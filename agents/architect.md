@@ -216,6 +216,27 @@ Confirm? [Y/n/modify]
 - Orphan files (not cleanly assignable): present to user with import analysis
 - split_from field added to each child node in manifest
 
+### Phase 2.5: Phase Assignment (Sprint 10B)
+
+After decomposing nodes, assign each node a `phase` based on dependency analysis:
+
+1. Nodes with NO dependencies on other nodes → Phase 1 (build first)
+2. Nodes that depend ONLY on Phase 1 nodes → Phase 2
+3. Nodes that depend on Phase 2 nodes → Phase 3
+4. Continue until all nodes are assigned
+
+Present phase assignments to the user:
+```
+I propose [N] build phases:
+  Phase 1: database, auth (no external dependencies)
+  Phase 2: api, file-storage (depend on Phase 1)
+  Phase 3: frontend-dashboard, frontend-login (depend on Phase 2)
+This means you can build Phase 1 first, verify it works, then Phase 2, etc.
+Adjust? [Y to accept / modify]
+```
+
+For SMALL projects (1-2 nodes): all nodes are Phase 1. No phase prompt needed.
+
 ### Phase 3: Shared Model Identification
 
 As you decompose nodes, identify shared models:

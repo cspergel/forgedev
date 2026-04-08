@@ -176,3 +176,21 @@ When the build is complete:
 4. Present a summary of what was built and any assumptions made
 
 **Note:** Setting agent_status to DONE does NOT mean the build is complete. The Stop hook independently verifies acceptance criteria before allowing the status transition to "built." Your self-assessment is input to the verification, not a substitute for it.
+
+## Fail-Closed Stubs for Security Dependencies (Sprint 10B)
+
+When importing from a future-phase node that provides authentication, authorization, or security services: implement a **FAIL-CLOSED** stub.
+
+**WRONG (fail-open — allows everything):**
+```typescript
+export function validateToken(token: string) { return { valid: true, user: mockUser }; }
+```
+
+**RIGHT (fail-closed — denies everything):**
+```typescript
+export function validateToken(token: string): never {
+  throw new Error("Auth not implemented — Phase 2 required. This stub intentionally denies all access.");
+}
+```
+
+A fail-closed stub DENIES access by default. The only safe stub for security is one that fails. When the next phase is built, the real implementation replaces the stub.

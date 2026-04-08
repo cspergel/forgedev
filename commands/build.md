@@ -22,6 +22,12 @@ If the argument is `--all`, build all eligible nodes sequentially in dependency 
    - If any node fails (Stop hook bounces 3 times), stop the batch and report progress
 4. After all nodes are built, suggest running `/forgeplan:review` on each or `/forgeplan:integrate` for full verification
 
+## Phase Gate (Sprint 10B)
+
+Before building, verify `node.phase <= project.build_phase` (read from manifest). If the node is in a future phase, stop:
+"Node [id] is phase [N] but current build_phase is [M]. Complete current phase first."
+This is also enforced by pre-tool-use.js Layer 1, but checking here gives a better error message.
+
 ## Single Node Mode
 
 Build the specified node following its spec with layered enforcement:

@@ -11,6 +11,13 @@ allowed-tools: Read Write Edit Bash Glob Grep Agent
 
 Run tier-selected sweep agents (3-5) in parallel across the entire codebase: 5 consolidated agents (Adversary/Contractualist/Pathfinder/Structuralist/Skeptic), all opus. Progressive reduction: agents that return CLEAN twice converge and are retired. Cross-cutting agents re-run whenever any other agent has findings. See Phase 2 for the full dispatch precedence rules.
 
+## Phase-Aware Sweep (Sprint 10B)
+
+- Only sweep nodes where `phase <= build_phase`
+- Do NOT flag missing implementations for future-phase nodes
+- DO flag broken interface contracts against future-phase nodes (they have interface-only specs)
+- After all current-phase nodes are certified, surface: "All phase [N] nodes certified. Consider advancing to phase [N+1] via /forgeplan:deep-build."
+
 ## Prerequisites
 
 - `.forgeplan/manifest.yaml` exists

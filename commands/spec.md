@@ -117,3 +117,12 @@ If any gate fails, fix it before writing the spec file.
 Write the spec to `.forgeplan/specs/[node-id].yaml` and confirm with the user.
 
 Suggest next: `/forgeplan:build [node-id]` to build this node, or `/forgeplan:next` to see the recommended order.
+
+## Phase-Aware Spec Depth (Sprint 10B)
+
+Read `build_phase` from manifest. For each node:
+- **phase == build_phase:** Generate full spec (ACs, constraints, tests, interfaces, non-goals)
+- **phase == build_phase + 1:** Generate interface-only spec (interfaces section only — what it provides, what it consumes. No ACs, no test fields, no constraints yet.)
+- **phase > build_phase + 1:** Skip — no spec generated. Node exists in manifest as a stub entry only.
+
+When `--all` is passed, apply this logic to all nodes. When a specific node is named, generate full spec regardless of phase (user override).
