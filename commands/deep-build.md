@@ -277,7 +277,8 @@ This makes "abort to pre-sweep state" trivially safe via git reset.
 
 After Phase 8 certification completes:
 
-1. Check if all `build_phase` nodes are certified (reviewed + sweep clean)
+0. If `build_phase >= max_phase` (all phases complete): skip Phase Advancement entirely — the Phase 8 report is the final output. Maximum phase advancement cycles: max_phase (safety bound).
+1. Check if all `build_phase` nodes are reviewed and sweep-clean
 2. If yes AND max_phase > build_phase, prompt:
    ```
    All phase [N] nodes are certified. Advance to phase [N+1]?
@@ -285,9 +286,9 @@ After Phase 8 certification completes:
    [Y to advance / N to stay on current phase]
    ```
    For autonomous deep-build (--autonomous): auto-advance without prompt unless cross-phase review finds CRITICALs.
-3. Run /forgeplan:integrate (MANDATORY — cross-phase review)
+3. Run /forgeplan:integrate with cross-phase lens (MANDATORY — this is distinct from the Phase 4 same-phase integration check. Cross-phase integration verifies that built interfaces match what newly-promoted nodes expect.)
 4. If integrate passes: increment `build_phase` in manifest, set `build_phase_started_at` in state
-5. Run /forgeplan:spec for promoted nodes (interface-only → full specs)
+5. Run /forgeplan:spec for promoted nodes — detect interface-only specs (specs with `interfaces` section but no `acceptance_criteria` section) and re-run spec generation to promote to full specs
 6. Start new build cycle for promoted nodes (loop back to Phase 2)
 
 ## Error Handling

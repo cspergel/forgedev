@@ -16,7 +16,7 @@ Run tier-selected sweep agents (3-5) in parallel across the entire codebase: 5 c
 - Only sweep nodes where `phase <= build_phase`
 - Do NOT flag missing implementations for future-phase nodes
 - DO flag broken interface contracts against future-phase nodes (they have interface-only specs)
-- After all current-phase nodes are certified, surface: "All phase [N] nodes certified. Consider advancing to phase [N+1] via /forgeplan:deep-build."
+- After all current-phase nodes are reviewed and sweep-clean, surface: "All phase [N] nodes are sweep-clean. Consider advancing to phase [N+1] via /forgeplan:deep-build."
 
 ## Prerequisites
 

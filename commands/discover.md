@@ -241,7 +241,8 @@ When discovery is complete:
   "shared_types_created_by": null,
   "stop_hook_active": false,
   "discovery_complete": true,
-  "sweep_state": null
+  "sweep_state": null,
+  "build_phase_started_at": "[current ISO timestamp]"
 }
 ```
 3. Populate the `nodes` object in state.json with each node ID set to `{"status": "pending"}`

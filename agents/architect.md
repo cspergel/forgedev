@@ -231,11 +231,13 @@ I propose [N] build phases:
   Phase 1: database, auth (no external dependencies)
   Phase 2: api, file-storage (depend on Phase 1)
   Phase 3: frontend-dashboard, frontend-login (depend on Phase 2)
-This means you can build Phase 1 first, verify it works, then Phase 2, etc.
-Adjust? [Y to accept / modify]
+The project starts at build_phase 1. You'll build and certify Phase 1
+before Phase 2 unlocks. Adjust? [Y to accept / modify]
 ```
 
-For SMALL projects (1-2 nodes): all nodes are Phase 1. No phase prompt needed.
+For SMALL projects (1-2 nodes) OR when all nodes resolve to Phase 1: no phase prompt needed.
+
+**Note:** This assignment is preliminary. After shared model identification (Phase 3), re-verify that phase assignments still respect implicit data dependencies from shared models. If a Phase 1 node and Phase 2 node share a model, the data layer must be Phase 1.
 
 ### Phase 3: Shared Model Identification
 
@@ -302,6 +304,7 @@ project:
   name: "[project name]"
   description: "[one-line description]"
   complexity_tier: "[SMALL|MEDIUM|LARGE]"
+  build_phase: 1
   tech_stack:
     runtime: "[node|deno|bun]"
     language: "[typescript|javascript]"
