@@ -73,6 +73,31 @@ git commit -m "feat(sprint10b): add build_phase_started_at to state schema"
 
 ---
 
+### Task 2b: Add spec_type and generated_from to spec schema
+
+**Files:**
+- Create or modify: spec schema template (if `templates/schemas/spec-schema.yaml` exists, modify; otherwise create a minimal template)
+
+**Step 1: Add spec_type and generated_from fields**
+
+Add to the spec file format documentation/template:
+```yaml
+# Optional Sprint 10B fields for ingested specs:
+# spec_type: "prescriptive"      # "prescriptive" (default, user-written) or "descriptive" (auto-generated from code)
+# generated_from: null            # "repo-ingestion" | "document-import" | null
+```
+
+If no spec schema template file exists, add these as comments in the existing spec example in CLAUDE.md or in a new `templates/schemas/spec-fields.yaml` reference file.
+
+**Step 2: Commit**
+
+```bash
+git add templates/schemas/
+git commit -m "feat(sprint10b): add spec_type and generated_from to spec schema"
+```
+
+---
+
 ### Task 3: Add phase validation to validate-manifest.js
 
 **Files:**
@@ -145,7 +170,8 @@ After the existing Sprint 9 wiki whitelist code and before the file_scope enforc
 
 ```javascript
   // Sprint 10B: Phase enforcement — cannot build nodes outside current build phase
-  if (activeStatus === "building" || activeStatus === "review-fixing") {
+  // Also covers sweeping — sweep fix agents writing into future-phase nodes must be blocked
+  if (activeStatus === "building" || activeStatus === "review-fixing" || activeStatus === "sweeping") {
     const buildPhase = (manifest.project && manifest.project.build_phase) || 1;
     const nodePhase = (manifest.nodes[activeNodeId] && manifest.nodes[activeNodeId].phase) || 1;
     if (nodePhase > buildPhase) {
@@ -396,6 +422,11 @@ git commit -m "feat(sprint10b): add phase awareness to build, sweep, deep-build 
 
 ## Batch 3: Repo Ingestion
 
+> **PREREQUISITE CHECK:** Before starting Batch 3, verify Sprint 10A is complete:
+> - `agents/translator.md` exists (needed for ingest Step 1)
+> - `agents/review-structuralist.md`, `agents/review-contractualist.md`, `agents/review-skeptic.md` exist (needed for ingest Steps 3+6)
+> - If any are missing, Batch 3 CANNOT proceed. Complete Sprint 10A first.
+
 ### Task 10: Create validate-ingest.js
 
 **Files:**
@@ -502,7 +533,44 @@ for (const node of (mapping.proposed_nodes || [])) {
   });
 }
 
-// Check 5: No scope overlaps between proposed nodes
+// Check 5: Claimed shared types exist and are imported by 3+ files
+for (const model of (mapping.shared_models || [])) {
+  // Check type/interface exists somewhere in the codebase
+  let found = false;
+  let importCount = 0;
+  const typePattern = new RegExp(`\\b(type|interface|class)\\s+${model.name}\\b`);
+  const importPattern = new RegExp(`\\b${model.name}\\b`);
+  const walk = (dir) => {
+    try {
+      for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        if (["node_modules", "dist", "build", ".next", ".git"].includes(entry.name)) continue;
+        const full = path.join(dir, entry.name);
+        if (entry.isDirectory()) { walk(full); continue; }
+        if (!entry.name.match(/\.[jt]sx?$/)) continue;
+        try {
+          const content = fs.readFileSync(full, "utf-8");
+          if (typePattern.test(content)) found = true;
+          if (importPattern.test(content)) importCount++;
+        } catch (_) {}
+      }
+    } catch (_) {}
+  };
+  walk(cwd);
+  checks.push({
+    name: "shared_type_exists",
+    node: model.name,
+    status: found ? "PASS" : "FAIL",
+    details: found ? `Type/interface ${model.name} found` : `Type/interface ${model.name} not found in codebase`,
+  });
+  checks.push({
+    name: "shared_type_usage",
+    node: model.name,
+    status: importCount >= 3 ? "PASS" : "FAIL",
+    details: `${model.name} referenced in ${importCount} files (need 3+)`,
+  });
+}
+
+// Check 6: No scope overlaps between proposed nodes
 const { minimatch } = require(path.join(__dirname, "..", "node_modules", "minimatch"));
 const nodes = mapping.proposed_nodes || [];
 for (let i = 0; i < nodes.length; i++) {
@@ -778,7 +846,7 @@ node -e "var fs=require('fs');var checks=[['agents/architect.md','Phase Assignme
 **Step 5: Commit**
 
 ```bash
-git add -p
+git status  # Verify only Sprint 10B files, then stage specific files
 git commit -m "feat(sprint10b): end-to-end verification complete"
 ```
 

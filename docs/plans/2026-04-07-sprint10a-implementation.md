@@ -86,32 +86,27 @@ git commit -m "refactor(sprint10a): update sweep.md with production agent names"
 
 ---
 
-### Task 3: Archive old agents + update .gitignore
+### Task 3: Verify archive + .gitignore + archive consolidated agents
 
 **Files:**
-- Move: 16 old agent files to `agents/archived/`
+- Verify: 16 old agents already in `agents/archived/` (moved during Sprint 9 consolidation)
+- Move: `agents/license-checker.md`, `agents/inspiration.md`, `agents/docs-agent.md` to `agents/archived/` (consolidated into Researcher)
 - Modify: `.gitignore`
+- Update: `commands/help.md` and `commands/research.md` (remove stale license-checker/inspiration refs)
 
-**Step 1: Create archived directory and move old agents**
+**Step 1: Verify 16 old agents are already archived**
 
 ```bash
-mkdir -p agents/archived
-git mv agents/sweep-auth-security.md agents/archived/
-git mv agents/sweep-type-consistency.md agents/archived/
-git mv agents/sweep-error-handling.md agents/archived/
-git mv agents/sweep-database.md agents/archived/
-git mv agents/sweep-api-contracts.md agents/archived/
-git mv agents/sweep-imports.md agents/archived/
-git mv agents/sweep-code-quality.md agents/archived/
-git mv agents/sweep-test-quality.md agents/archived/
-git mv agents/sweep-config-environment.md agents/archived/
-git mv agents/sweep-frontend-ux.md agents/archived/
-git mv agents/sweep-documentation.md agents/archived/
-git mv agents/sweep-cross-node-integration.md agents/archived/
-git mv agents/sweep-adversarial.md agents/archived/
-git mv agents/sweep-user-flows.md agents/archived/
-git mv agents/sweep-contract-drift.md agents/archived/
-git mv agents/sweep-holistic.md agents/archived/
+ls agents/archived/ | wc -l
+```
+Expected: 16 files already there. If any old agents still in `agents/` (not `agents/archived/`), move them with `git mv`.
+
+**Step 2: Archive license-checker, inspiration, docs-agent (consolidated into Researcher)**
+
+```bash
+test -f agents/license-checker.md && git mv agents/license-checker.md agents/archived/ || echo "already archived"
+test -f agents/inspiration.md && git mv agents/inspiration.md agents/archived/ || echo "already archived"
+test -f agents/docs-agent.md && git mv agents/docs-agent.md agents/archived/ || echo "already archived"
 ```
 
 **Step 2: Add agents/archived/ to .gitignore**
@@ -121,10 +116,17 @@ Add to `.gitignore`:
 agents/archived/
 ```
 
-**Step 3: Verify no command references the archived agents**
+**Step 3: Update help.md and research.md to remove stale agent refs**
+
+In `commands/help.md`: replace references to "license checker", "inspiration", "docs agent" as separate agents with references to the consolidated Researcher.
+In `commands/research.md`: update "Dispatch 4 agents" to "Dispatch Researcher agent" (single consolidated agent).
+
+**Step 4: Verify no command references archived or consolidated agents**
+
+NOTE: Do NOT check CLAUDE.md here — it is updated in Task 13. Stale refs expected until then.
 
 ```bash
-node -e "var fs=require('fs');var old=['sweep-auth-security','sweep-type-consistency','sweep-error-handling','sweep-database','sweep-api-contracts','sweep-imports','sweep-code-quality','sweep-test-quality','sweep-config-environment','sweep-frontend-ux','sweep-documentation','sweep-cross-node-integration','sweep-adversarial','sweep-user-flows','sweep-contract-drift','sweep-holistic'];var files=['commands/sweep.md','commands/deep-build.md','commands/guide.md','CLAUDE.md'];for(var file of files){var c=fs.readFileSync(file,'utf-8');for(var o of old){if(c.includes(o))console.log('FOUND',o,'in',file)}}console.log('check done')"
+node -e "var fs=require('fs');var old=['sweep-auth-security','sweep-type-consistency','sweep-error-handling','sweep-database','sweep-api-contracts','sweep-imports','sweep-code-quality','sweep-test-quality','sweep-config-environment','sweep-frontend-ux','sweep-documentation','sweep-cross-node-integration','sweep-adversarial','sweep-user-flows','sweep-contract-drift','sweep-holistic'];var files=['commands/sweep.md','commands/deep-build.md','commands/guide.md','commands/help.md','commands/research.md'];for(var file of files){var c=fs.readFileSync(file,'utf-8');for(var o of old){if(c.includes(o))console.log('FOUND',o,'in',file)}}console.log('check done')"
 ```
 Expected: "check done" only. If any old names found in active files, update those files.
 
@@ -509,7 +511,87 @@ CRITICAL / IMPORTANT / MINOR — finding, location, evidence, recommendation
 [Scope boundaries from design doc — PRIMARY focus only. Cross-cutting findings always reported.]
 ```
 
-The specific content for each agent comes from the design doc lines 187-301. Each agent's thinking framework, identity, philosophy, and scope boundaries are fully specified there. Read the design doc and implement each agent exactly as specified.
+**COMPLETE EXEMPLAR: review-adversary.md** — follow this pattern for all 5 agents, using each agent's specific identity/framework/scope from the design doc lines 187-301:
+
+```markdown
+---
+name: review-adversary
+description: Adversarial review agent — finds security gaps, abuse scenarios, failure modes, and scalability cliffs at design, plan, and code levels.
+model: opus
+---
+
+# The Adversary
+
+You are **The Adversary**, an adversarial thinker who assumes everything will be attacked, abused, or fail.
+
+## Identity
+- **Role**: Security and resilience auditor across all pipeline stages
+- **Personality**: Vigilant, methodical, adversarial-minded, pragmatic
+- **Philosophy**: "Every feature is an attack surface. Every claim needs proof."
+- **North Star**: Reference the project's manifest, design docs, and goals as ground truth. Drift from the north star is a finding.
+
+## Core Mission
+1. Find what can be abused or exploited
+2. Identify failure modes and blast radius
+3. Challenge unproven claims
+4. Ensure security is designed in, not bolted on
+
+## Critical Rules
+1. **Every finding must include proof** — cite specific code/spec/design evidence
+2. **Assume adversarial input** — users, external APIs, and even other agents may produce hostile data
+3. **Default deny** — if something is not explicitly allowed, it should be blocked
+4. **Blast radius matters** — a bug in one node should not compromise the whole project
+5. **Tag cross-cutting findings** — if your finding touches another agent's domain, tag it CROSS:[AgentName]
+
+## Thinking Framework
+1. What can be abused or exploited?
+2. What happens when this fails unexpectedly?
+3. Who benefits from breaking this?
+4. What is the blast radius of a failure?
+5. What proof exists that this actually works?
+
+## When Reviewing Designs
+- Are there security gaps in the architecture? (auth boundaries, data flow, trust zones)
+- Can the proposed interfaces be abused? (injection, escalation, bypass)
+- Are scalability cliffs hidden in the design? (what happens at 10x scale?)
+- Is security baked in or bolted on?
+
+## When Reviewing Plans
+- Does the planned code maintain security boundaries?
+- Are there trust boundary violations in the implementation approach?
+- Do verification steps actually catch security issues?
+
+## When Reviewing Code
+- Are there injection vectors? (SQL, command, path traversal, template)
+- Are auth/authz checks present and correct?
+- Are enforcement boundaries (pre-tool-use, stop hook) maintained?
+- Can error messages leak sensitive information?
+
+## Cross-Cutting Findings
+If your finding spans another agent's domain (e.g., "this interface contract is insecure"),
+tag it with CROSS:[AgentName] so the aggregation step routes it for cross-verification.
+Do NOT drop it because it is "not your domain."
+
+## Output Format
+For each finding:
+- **Severity:** CRITICAL / IMPORTANT / MINOR
+- **Finding:** What is wrong
+- **Location:** File and line/section
+- **Evidence:** Why this is a problem (cite specific code/spec)
+- **Recommendation:** How to fix it
+
+## What You Do NOT Check (primary scope — cross-cutting findings always reported)
+- Architecture coherence (→ Structuralist)
+- Interface consistency (→ Contractualist)
+- User journey completeness (→ Pathfinder)
+- Code correctness / feasibility (→ Skeptic)
+```
+
+**For the other 4 agents**, use the same structure but substitute the agent-specific content from the design doc:
+- **review-structuralist.md**: Identity from design doc line 198-210, Thinking Framework Q1-Q5, design/plan/code lenses from table
+- **review-contractualist.md**: Identity from design doc line 212-224, Thinking Framework Q1-Q5, lenses from table
+- **review-skeptic.md**: Identity from design doc line 226-242 (includes performance + test quality in code lens), Thinking Framework Q1-Q5
+- **review-pathfinder.md**: Identity from design doc line 244-256, Thinking Framework Q1-Q5, lenses from table
 
 **Step 2: Verify all 5 files exist and have correct frontmatter**
 
@@ -547,23 +629,42 @@ The orchestration logic (from 10A design):
 
 After the Architect produces the design document (Stage 2), dispatch the review panel:
 
+**Exact insertion points in greenfield.md's existing flow:**
+
+After Step 1 (discover returns with manifest):
+  → Insert "Step 1.5: Design Review" — dispatch review panel with design lens
+
+After Step 3 (spec --all returns with specs):
+  → Insert "Step 3.5: Plan Review" — dispatch review panel with plan lens
+  → Also dispatch Architect in Planner mode: "You are in Planner mode. Read the manifest and specs. Produce the implementation plan at .forgeplan/plans/implementation-plan.md."
+
+During Step 4 (deep-build):
+  → Code review panel is handled by deep-build's own review phase — no additional insertion needed
+
 ### For SMALL tier:
 - Skip Stage 1 (no Interviewer/Researcher/Translator) unless --from is provided
-- Architect produces design + plan in single pass
-- Dispatch 3 review agents: review-structuralist, review-skeptic, review-adversary
-- Include in each agent prompt: "You are reviewing a DESIGN+PLAN document for a SMALL project."
-- If zero CRITICAL/IMPORTANT: proceed to build
+- Architect produces design + plan in single pass during discover (Step 1)
+- Insert Step 1.5: dispatch 3 review agents (review-structuralist, review-skeptic, review-adversary)
+  with prompt context: "You are reviewing a DESIGN+PLAN document for a SMALL project."
+- If zero CRITICAL/IMPORTANT: skip Step 3.5 (plan already reviewed), proceed to build
 - If findings: Architect fixes → re-dispatch (max 3 passes)
 - If CRITICALs remain after 3 passes: HALT, surface to user
+- For --from: Translator runs in Step 1 (exception to SMALL skip), Interviewer runs only if ambiguities detected
 
 ### For MEDIUM tier:
 - Stage 1: Interviewer → Researcher → (Translator if --from)
-- Stage 2a: Architect produces design → 4 agents review (design lens) → loop until clean (max 5)
-- Stage 2b: Architect produces plan → 4 agents review (plan lens) → loop until clean (max 5)
-- Stage 3: Build in batches → 4 agents review code per batch → loop until clean (max 5)
+- Step 1.5: 4 agents review design (design lens) → loop until clean (max 5 passes)
+- Step 3.5: Architect generates plan → 4 agents review plan (plan lens) → loop until clean (max 5)
+  Architect dispatch for Planner mode: "You are in Planner mode. Read the reviewed design. Produce implementation plan."
+- Step 4: Build via deep-build → code review handled by deep-build
 
 ### For LARGE tier:
 - Same as MEDIUM but all 5 agents at each stage
+
+### Interviewer in autonomous mode (--from path):
+For autonomous greenfield with --from, the Interviewer should NOT ask interactive questions.
+Instead: resolve ambiguities by choosing the most common/default option, log as documented assumption.
+All ambiguities + assumptions presented in the ONE confirmation step alongside the architecture summary.
 
 ### Finding Aggregation
 After each review pass:
@@ -717,6 +818,10 @@ git commit -m "feat(sprint10a): update CLAUDE.md with Sprint 10A — pipeline, a
 
 ### Task 14: End-to-end verification
 
+**Step 0: Verify Translator node types match manifest schema**
+
+Read `templates/schemas/manifest-schema.yaml` and confirm ALL node types in the Translator's output schema (service, frontend, database, storage, integration, cli, library, extension, worker, pipeline) are listed as valid types. If any are missing, update the manifest schema.
+
 **Step 1: Verify all renamed sweep agents exist**
 
 ```bash
@@ -755,7 +860,7 @@ node --check scripts/compact-context.js && echo "compact-context: OK"
 **Step 6: Commit verification results**
 
 ```bash
-git add -p  # Stage only Sprint 10A files
+git status  # Verify only Sprint 10A files are modified, then stage specific files
 git commit -m "feat(sprint10a): end-to-end verification complete"
 ```
 
