@@ -110,17 +110,24 @@ for (const node of (mapping.proposed_nodes || [])) {
   }
 }
 
-// Check 3: No existing governed .forgeplan/ project (unless --force)
-// Check for manifest.yaml, not just the directory — ingest creates .forgeplan/
-// for its mapping file before validation runs, so the directory alone is expected.
+// Check 3: No existing .forgeplan/ content beyond our mapping file (unless --force)
+// Ingest Step 0 creates .forgeplan/ for the mapping file, so the directory itself is expected.
+// Check for ANY content beyond .ingest-mapping.json — manifest.yaml, state.json, specs/, etc.
 const forceFlag = process.argv.includes("--force");
-const hasGoverned = fs.existsSync(path.join(cwd, ".forgeplan", "manifest.yaml"));
-if (hasGoverned && !forceFlag) {
+const forgePlanDir = path.join(cwd, ".forgeplan");
+let hasExistingContent = false;
+if (fs.existsSync(forgePlanDir)) {
+  try {
+    const entries = fs.readdirSync(forgePlanDir);
+    hasExistingContent = entries.some(e => e !== ".ingest-mapping.json");
+  } catch (_) {}
+}
+if (hasExistingContent && !forceFlag) {
   checks.push({
     name: "no_existing_forgeplan",
     node: "project",
     status: "FAIL",
-    details: ".forgeplan/manifest.yaml already exists (governed project). Use --force to re-ingest.",
+    details: ".forgeplan/ contains existing project files. Use --force to re-ingest.",
   });
 } else {
   checks.push({ name: "no_existing_forgeplan", node: "project", status: "PASS", details: forceFlag ? "forced" : "clean" });

@@ -217,7 +217,8 @@ function main() {
     }
   }
 
-  // Find eligible nodes: pending/specced with all deps completed
+  // Find eligible nodes: pending/specced with all deps completed AND within current build phase
+  const buildPhase = (manifest.project && manifest.project.build_phase) || 1;
   const eligible = [];
   for (const id of sorted) {
     const ns = nodeStates[id];
@@ -225,6 +226,10 @@ function main() {
 
     if (fullyCompleteStatuses.includes(status)) continue;
     if (status === "building" || status === "reviewing" || status === "review-fixing" || status === "revising" || status === "sweeping") continue;
+
+    // Sprint 10B: Skip future-phase nodes
+    const nodePhase = (manifest.nodes[id] && manifest.nodes[id].phase) || 1;
+    if (nodePhase > buildPhase) continue;
 
     // Check all dependencies are completed
     const deps = manifest.nodes[id].depends_on || [];

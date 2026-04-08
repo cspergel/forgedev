@@ -23,6 +23,17 @@ node "${CLAUDE_PLUGIN_ROOT}/scripts/integrate-check.js"
 
 2. Parse the JSON output and present results to the user.
 
+## Cross-Phase Integration Mode (Sprint 10B)
+
+When invoked during phase advancement (by deep-build.md Phase Advancement step 3), run in **cross-phase mode**:
+
+1. Read `build_phase` from manifest. Identify nodes being promoted (phase == build_phase + 1).
+2. For each promoted node's interfaces: verify that the `target_node` in the current phase has the expected export/contract.
+3. For each current-phase node that `connects_to` a promoted node: verify the promoted node's interface-only spec matches what the current-phase code imports.
+4. Report: which cross-phase interfaces are satisfied, which have mismatches.
+
+This is distinct from the standard same-phase integration check — it specifically validates the handoff between phases before advancement proceeds.
+
 3. For any FAIL or WARN results, perform deeper LLM-assisted analysis:
    - Read the actual implementation files for both sides of the interface
    - Verify the source node exports what its spec promises

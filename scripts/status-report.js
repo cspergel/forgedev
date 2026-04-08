@@ -101,6 +101,17 @@ function main() {
     }
   }
 
+  // Sprint 10B: Phase information
+  const buildPhase = (manifest.project && manifest.project.build_phase) || 1;
+  const maxPhase = Math.max(1, ...nodeIds.map(id => (manifest.nodes[id].phase || 1)));
+  const phaseInfo = maxPhase > 1 ? {
+    build_phase: buildPhase,
+    max_phase: maxPhase,
+    current_phase_nodes: nodeIds.filter(id => (manifest.nodes[id].phase || 1) <= buildPhase),
+    future_phase_nodes: nodeIds.filter(id => (manifest.nodes[id].phase || 1) > buildPhase),
+    build_phase_started_at: state.build_phase_started_at || null,
+  } : null;
+
   console.log(JSON.stringify({
     type: "status_report",
     project: manifest.project || {},
@@ -115,6 +126,7 @@ function main() {
     sharedModels,
     activeNode: state.active_node || null,
     discoveryComplete: state.discovery_complete || false,
+    phase: phaseInfo,
   }, null, 2));
 }
 

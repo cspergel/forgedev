@@ -68,10 +68,10 @@ Initialize state with all nodes in "built" status.
 Create `.forgeplan/` directory structure (specs/, plans/, conversations/, reviews/, sweeps/).
 
 ### Step 8: Compile Wiki
-If tier is MEDIUM or LARGE, create wiki skeleton:
-- `.forgeplan/wiki/index.md` with project summary
-- `.forgeplan/wiki/nodes/[node-id].md` for each node
-- `.forgeplan/wiki/decisions.md` and `.forgeplan/wiki/rules.md`
+If tier is MEDIUM or LARGE:
+1. Create wiki skeleton: `.forgeplan/wiki/index.md`, `.forgeplan/wiki/nodes/[node-id].md` per node, `.forgeplan/wiki/decisions.md`, `.forgeplan/wiki/rules.md`
+2. Run `node "${CLAUDE_PLUGIN_ROOT}/scripts/compile-wiki.js"` to compile institutional knowledge from specs and code into the wiki.
+If tier is SMALL: skip wiki compilation.
 
 ### Step 9: Baseline Sweep
 Run `/forgeplan:sweep` for baseline quality assessment.
