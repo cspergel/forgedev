@@ -27,7 +27,7 @@ user-invocable: true
 | `/forgeplan:sweep [--cross-check]` | Sweep your codebase for cross-cutting issues — 3-5 consolidated team agents (tier-aware, all opus): Red (adversarial), Orange (contract), Blue (experience), Rainbow (architect), White (compliance). Progressive convergence drops clean agents. Add `--cross-check` for cross-model verification. |
 | `/forgeplan:deep-build` | Full autonomous pipeline: build all → verify-runnable → review → sweep → certify (tier-aware). Describe what you want, walk away. |
 | `/forgeplan:greenfield [description]` | Full pipeline from idea to certified app: describe → discover → research → spec → build → verify → review → sweep → certify. One confirmation, then walk away. |
-| `/forgeplan:research [topic]` | Search npm, GitHub, and docs for best practices, packages, and reference implementations. 4 agents in parallel: researcher, license checker, inspiration, docs. |
+| `/forgeplan:research [topic]` | Search npm, GitHub, and docs for packages, licenses, reference implementations, and best practices. 2 agents in parallel: researcher (packages + licenses + patterns) and docs agent (API documentation). |
 
 ## Evolving Your Project
 

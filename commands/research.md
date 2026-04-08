@@ -1,5 +1,5 @@
 ---
-description: Research agents search for existing implementations, check licenses, gather docs. Run before speccing to make informed dependency and pattern choices.
+description: Research agents search for packages, check licenses, find reference implementations, and gather API docs. Run before speccing to make informed dependency and pattern choices.
 user-invocable: true
 argument-hint: "[topic (e.g., 'supabase auth', 'stripe payments', 'file uploads')]"
 allowed-tools: Read Write Bash Glob Grep Agent WebSearch WebFetch
@@ -12,6 +12,17 @@ Dispatch research agents to gather best practices, packages, and documentation f
 ## Prerequisites
 
 - `.forgeplan/manifest.yaml` should exist (for tech_stack context), but research can run without it
+- **Optional but recommended for MEDIUM/LARGE projects:** Firecrawl MCP server for better web scraping. If Firecrawl tools are not available in the current session and the project is MEDIUM or LARGE tier, suggest setup:
+  ```
+  For deeper research, consider enabling Firecrawl (converts web pages to clean markdown):
+    Run: npx -y firecrawl-cli@latest init --all --browser
+    This auto-configures the Firecrawl MCP server for Claude Code.
+    Get a free API key at https://firecrawl.dev if prompted.
+
+  This is optional — research works without it, but documentation extraction
+  is significantly better with Firecrawl.
+  ```
+  Only show this suggestion once per session (check if already suggested by looking for `firecrawl` in the conversation context).
 
 ## Process
 
@@ -29,7 +40,7 @@ Dispatch research agents to gather best practices, packages, and documentation f
    mkdir -p .forgeplan/research
    ```
 
-4. **Dispatch 4 research agents in parallel** (single message, 4 Agent tool calls):
+4. **Dispatch 2 research agents in parallel** (single message, 2 Agent tool calls):
 
    For each agent, provide:
    - The agent's system prompt (read from its `.md` file in `${CLAUDE_PLUGIN_ROOT}/agents/`)
@@ -37,12 +48,8 @@ Dispatch research agents to gather best practices, packages, and documentation f
    - The project context (tech_stack, description)
 
    Agents to dispatch:
-   - **Researcher** (`researcher.md`): package search + best practices
-   - **License Checker** (`license-checker.md`): dependency risk analysis — pass the Researcher's recommended packages if available, otherwise pass tech_stack dependencies
-   - **Inspiration** (`inspiration.md`): similar project references
-   - **Docs Agent** (`docs-agent.md`): API documentation extraction
-
-   **Note:** The License Checker ideally runs after the Researcher (to check the recommended packages). For parallel dispatch, pass it the manifest's known dependencies. If the Researcher finishes first and you can dispatch License Checker with the results, do so — otherwise the parallel dispatch with manifest deps is acceptable.
+   - **Researcher** (`researcher.md`): package search + license checking + reference implementations + best practices (consolidated agent — handles packages, licenses, and inspiration in one pass)
+   - **Docs Agent** (`docs-agent.md`): API documentation extraction for the tech stack
 
 5. **Merge results** into a single report:
    - Start with a **Summary** section: key recommendations, flagged packages, reference count
@@ -60,7 +67,7 @@ Dispatch research agents to gather best practices, packages, and documentation f
 
    Recommended packages: [top 3 with one-line rationale each]
    License issues: [count] flagged (or "all clear")
-   Reference projects: [count] found
+   Reference projects: [count] found (architecture patterns extracted)
    Docs gathered: [list of technologies]
 
    Full report: .forgeplan/research/[filename].md

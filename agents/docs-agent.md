@@ -22,11 +22,14 @@ For each technology/integration:
    - Use WebSearch: "[technology] official documentation getting started"
    - Identify the canonical docs URL
 
-2. **Fetch key pages** via WebFetch:
-   - Getting started / quickstart guide
-   - Authentication / setup page
-   - API reference for commonly used methods
-   - Environment variables / configuration page
+2. **Fetch key pages** (prefer Firecrawl if available, fall back to WebFetch):
+   - **If Firecrawl MCP is available** (firecrawl tools in your tool list): use `firecrawl_scrape` to fetch pages as clean markdown. This is dramatically better for documentation extraction — no HTML parsing noise.
+   - **If Firecrawl is not available**: use WebFetch as fallback.
+   - Pages to fetch:
+     - Getting started / quickstart guide
+     - Authentication / setup page
+     - API reference for commonly used methods
+     - Environment variables / configuration page
 
 3. **Extract per technology:**
    - **Setup steps:** What needs to be installed, configured, env vars set

@@ -367,14 +367,16 @@ Deliverables: Ambient SessionStart (healthy-state display, contextual next-comma
 ### Sprint 8: Research Agents + Greenfield Pipeline (COMPLETE)
 **Goal:** Research agents search for best practices before building. Greenfield deep-build from discovery to certified. Phase B runtime verification. **DONE.**
 
-Deliverables: 4 research agents (researcher, license-checker, inspiration, docs-agent) dispatched in parallel by `/forgeplan:research`, `/forgeplan:greenfield` thin orchestrator (discover→research→spec→deep-build with one confirmation), `--autonomous` flags on discover and spec, `scripts/runtime-verify.js` Phase B endpoint verification (Levels 1-5 tier-aware: status codes, response shapes, auth boundaries, stress testing), deep-build Phase 4.5 wiring, builder+architect research awareness, manifest tech_stack.infrastructure field.
+Deliverables: 2 research agents (researcher, docs-agent) dispatched in parallel by `/forgeplan:research`, `/forgeplan:greenfield` thin orchestrator (discover→research→spec→deep-build with one confirmation), `--autonomous` flags on discover and spec, `scripts/runtime-verify.js` Phase B endpoint verification (Levels 1-5 tier-aware: status codes, response shapes, auth boundaries, stress testing), deep-build Phase 4.5 wiring, builder+architect research awareness, manifest tech_stack.infrastructure field. (Originally 4 agents — license-checker and inspiration consolidated into researcher post-Sprint 9.)
 
 **Pillar 1: Research Agents**
-- `/forgeplan:research [topic]` dispatches 4 agent types: Researcher (GitHub/npm search), License Checker, Inspiration (find similar projects), Docs Agent (gather API documentation)
-- Check licenses (MIT/Apache/etc.), download counts, maintenance status
-- Gather best practices for common patterns (auth, payments, file storage, etc.)
-- Output: recommended dependencies, proven patterns, architecture constraints
+- `/forgeplan:research [topic]` dispatches 2 agents in parallel: Researcher (packages + licenses + reference projects + patterns), Docs Agent (API documentation extraction)
+- Researcher uses query expansion, angle diversity (technical, security, community, contrarian), multi-signal quality scoring, and gap detection
+- Check licenses (MIT/Apache/etc.), download counts, maintenance status — all in one agent pass
+- Find reference implementations for architecture inspiration (not copying)
+- Output: recommended dependencies, license report, proven patterns, architecture constraints, research gaps
 - Results stored in `.forgeplan/research/` and fed into Architect during discovery
+- Optional Firecrawl MCP integration for better web scraping (recommended for MEDIUM/LARGE)
 
 **Pillar 2: Autonomous Greenfield Pipeline**
 - The full chain: discover → research → spec all → deep-build (build → verify-runnable → review → sweep → cross-model) → certified
