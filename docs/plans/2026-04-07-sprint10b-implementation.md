@@ -538,8 +538,9 @@ for (const model of (mapping.shared_models || [])) {
   // Check type/interface exists somewhere in the codebase
   let found = false;
   let importCount = 0;
-  const typePattern = new RegExp(`\\b(type|interface|class)\\s+${model.name}\\b`);
-  const importPattern = new RegExp(`\\b${model.name}\\b`);
+  const escaped = model.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // Escape regex metacharacters from LLM-generated names
+  const typePattern = new RegExp(`\\b(type|interface|class)\\s+${escaped}\\b`);
+  const importPattern = new RegExp(`\\b${escaped}\\b`);
   const walk = (dir) => {
     try {
       for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {

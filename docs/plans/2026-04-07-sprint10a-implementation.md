@@ -99,7 +99,7 @@ git commit -m "refactor(sprint10a): update sweep.md with production agent names"
 ```bash
 ls agents/archived/ | wc -l
 ```
-Expected: 16 files already there. If any old agents still in `agents/` (not `agents/archived/`), move them with `git mv`.
+Expected: 16-18 files already there (12 domain + 4 team + possibly license-checker/inspiration already archived). If any old agents still in `agents/` (not `agents/archived/`), move them with `git mv`.
 
 **Step 2: Archive license-checker, inspiration, docs-agent (consolidated into Researcher)**
 
@@ -109,12 +109,18 @@ test -f agents/inspiration.md && git mv agents/inspiration.md agents/archived/ |
 test -f agents/docs-agent.md && git mv agents/docs-agent.md agents/archived/ || echo "already archived"
 ```
 
-**Step 2: Add agents/archived/ to .gitignore**
+**Step 2b: Add agents/archived/ to .gitignore and untrack archived files**
 
 Add to `.gitignore`:
 ```
 agents/archived/
 ```
+
+Then untrack the already-committed archived files so .gitignore takes effect:
+```bash
+git rm --cached -r agents/archived/
+```
+This removes them from git tracking but keeps them on disk. Future `git status` will not show them.
 
 **Step 3: Update help.md and research.md to remove stale agent refs**
 
@@ -299,10 +305,12 @@ You MUST output valid JSON matching this schema:
     }
   ],
   "tech_stack": {
-    "runtime": "string",
-    "framework": "string",
-    "database": "string",
-    "test_framework": "string"
+    "runtime": "string — e.g., 'node', 'deno', 'bun'",
+    "framework": "string — e.g., 'express', 'fastify', 'next'",
+    "database": "string — e.g., 'postgresql', 'mongodb', 'sqlite'",
+    "auth": "string — e.g., 'supabase-auth', 'passport', 'clerk', 'none'",
+    "frontend": "string — e.g., 'react', 'vue', 'svelte', 'none'",
+    "test_framework": "string — e.g., 'vitest', 'jest', 'mocha'"
   },
   "ambiguities": [
     "string — each ambiguity as a question for the Interviewer"
