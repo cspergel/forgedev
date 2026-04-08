@@ -285,6 +285,23 @@ ForgePlan tracks the dependency graph and knows which nodes are affected.
   → /forgeplan:affected [model]   See which nodes a model change affects
 ```
 
+## Phase Guidance (Sprint 10B)
+
+If project has multiple phases (max_phase > 1):
+  If all current-phase nodes are reviewed and sweep-clean:
+    → "All phase [N] nodes are sweep-clean! Run /forgeplan:deep-build to advance to phase [N+1]."
+  If some current-phase nodes are not yet built:
+    → "Phase [N]: [built] of [total] nodes built. Next: /forgeplan:build [next-node] or /forgeplan:deep-build."
+
+## Post-Ingest Guidance (Sprint 10B)
+
+If `spec_type` is `"descriptive"` on any node (check spec files for `spec_type: "descriptive"`):
+```
+Some specs are auto-generated (descriptive). To add your actual requirements:
+  → /forgeplan:spec [node]    Edit a node's spec to add requirements, constraints, non-goals
+  → /forgeplan:review [node]  Review a node against its (updated) spec
+```
+
 ## Wiki-Informed Recommendations (Sprint 9 -- MEDIUM/LARGE only)
 
 After checking standard state conditions, if wiki exists and tier is not SMALL, check these additional triggers:

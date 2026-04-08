@@ -156,13 +156,10 @@ Ship after Sprint 8, before Sprint 9. Get real feedback on the full pipeline. Th
 
 **Design docs:** `docs/plans/2026-04-07-sprint10a-design.md`, `docs/plans/2026-04-07-sprint10a-implementation.md`
 
-### Sprint 10B: Ingest + Phase Gates
-**Goal:** Ingest existing repos into ForgePlan governance. Phase gates between pipeline stages.
+### Sprint 10B: Phased Builds + Repo Ingestion (COMPLETE)
+**Goal:** Large projects build in phases. Existing repos get governance retroactively.
 
-- `/forgeplan:ingest` — same intake pipeline with existing code as input (biggest adoption driver)
-- Cross-phase review gates
-- Spec schema updates for design pipeline
-- Shared type checking improvements
+Deliverables: `phase` field on nodes, `build_phase` on project, phase enforcement gate (Layer 1 in pre-tool-use.js), fail-closed stubs for security dependencies, phase-aware spec depth (full/interface-only/skip), phase advancement via deep-build with cross-phase integration, phase staleness warnings (>7 days), `/forgeplan:ingest` (Translator repo mode, validate-ingest.js ground-truth validation, double review gate, descriptive specs with `spec_type`/`generated_from`, wiki on ingest, guide onboarding), phase-aware build/sweep/deep-build commands.
 
 **Design docs:** `docs/plans/2026-04-07-sprint10b-design.md`, `docs/plans/2026-04-07-sprint10b-implementation.md`
 
@@ -197,6 +194,7 @@ Phantom→live progressive previews, Playwright browser testing, demo mode (seed
 | `/forgeplan:research` | Research packages, licenses, patterns, architecture |
 | `/forgeplan:greenfield` | Full pipeline: discover → design review → research → spec → plan review → build → code review → sweep → certify |
 | `/forgeplan:split` | Decompose a node into finer-grained nodes |
+| `/forgeplan:ingest` | Scan existing codebase → manifest + descriptive specs + governance |
 
 ## Agents
 

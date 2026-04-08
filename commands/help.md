@@ -29,6 +29,12 @@ user-invocable: true
 | `/forgeplan:greenfield [description\|--from doc.md]` | Full pipeline from idea to certified app: discover → design review → research → spec → plan review → build → code review → sweep → certify. Universal review panel (Adversary, Structuralist, Skeptic, Contractualist, Pathfinder) checks design, plan, and code. One confirmation, then walk away. |
 | `/forgeplan:research [topic]` | Search npm, GitHub, and docs for packages, licenses, reference implementations, and best practices. Consolidated Researcher agent: packages, licenses, patterns, architecture, API documentation. |
 
+## Existing Projects
+
+| Command | What it does |
+|---------|-------------|
+| `/forgeplan:ingest [--force]` | Already have code? Scans your codebase, maps it to ForgePlan nodes, generates descriptive specs, and runs a baseline sweep. All future changes go through the pipeline. |
+
 ## Evolving Your Project
 
 | Command | What it does |
