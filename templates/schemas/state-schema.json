@@ -195,7 +195,7 @@
         "agent_convergence": {
           "type": "object",
           "default": {},
-          "description": "Per-agent convergence tracking. Keys are agent names (e.g., 'sweep-red', 'sweep-orange', 'sweep-white'). Agents with status 'converged' are not re-dispatched.",
+          "description": "Per-agent convergence tracking. Keys are agent names (e.g., 'sweep-adversary', 'sweep-contractualist', 'sweep-skeptic'). Agents with status 'converged' are not re-dispatched.",
           "additionalProperties": {
             "type": "object",
             "properties": {
