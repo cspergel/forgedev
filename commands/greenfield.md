@@ -55,8 +55,10 @@ After discover produces the manifest and skeleton specs, dispatch the universal 
 | MEDIUM | + review-contractualist | 5 |
 | LARGE | + review-pathfinder | 5 |
 
+**Review scope expansion:** When dispatching review agents, include not just the changed artifacts but also their downstream consumers. If a contract or schema changed, the review agents should read every file that consumes it. For code reviews: grep for imports/requires of changed modules. For design reviews: include all commands and scripts that operate on the reviewed concepts.
+
 **Dispatch steps per pass:**
-1. Dispatch N agents in parallel (via Agent tool). Each agent receives the prompt context: "You are reviewing a DESIGN document. Read the manifest at `.forgeplan/manifest.yaml` and skeleton specs in `.forgeplan/specs/`. Apply your design lens."
+1. Dispatch N agents in parallel (via Agent tool). Each agent receives the prompt context: "You are reviewing a DESIGN document. Read the manifest at `.forgeplan/manifest.yaml` and skeleton specs in `.forgeplan/specs/`. Apply your design lens. Also check downstream consumers — any existing commands or scripts that would need to understand new concepts in this design."
 2. Collect all agent outputs
 3. Merge findings, deduplicate by location (same file+section = same finding), sort by severity (CRITICAL first)
 4. Route CROSS:[AgentName] tags for next pass
