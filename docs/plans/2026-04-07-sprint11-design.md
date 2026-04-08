@@ -1,62 +1,154 @@
-# Sprint 11 Design: Skills + Blueprints
+# Sprint 11 Design: Skills for All Agents + Blueprints
 
 **Date:** 2026-04-07
 **Status:** Draft (research-informed)
-**Goal:** Builder invokes external skills during code generation. Blueprints backed by research with vetted dependency stacks. Community blueprints with versioning.
-**Research:** `.forgeplan/research/skills-blueprints-sprint11.md`
+**Goal:** Every agent gets domain-specific skills via frontmatter. Builder invokes skills during code generation. Skill learner module captures patterns for reuse. Blueprints backed by research with vetted dependency stacks.
+**Research:** `.forgeplan/research/skills-blueprints-sprint11.md`, `skill-system-deep-dive.md`, `dynamic-skill-selection.md`, `baseline-skills-inventory.md`, `skills-per-agent-*.md` (4 files)
 
 ---
 
 ## Key Research Findings That Shape This Design
 
-1. **SKILL.md is already the standard.** 30+ agent products (Claude Code, Codex, Cursor, Copilot, Gemini CLI) use standard SKILL.md files. ForgePlan MUST NOT invent a new format — use SKILL.md natively.
+1. **SKILL.md is already the standard.** 30+ agent products use it. ForgePlan MUST NOT invent a new format.
 
-2. **Progressive disclosure solves context bloat.** The Agent Skills spec uses three stages: metadata (~100 tokens at startup), full instructions (<5000 tokens on activation), reference files on demand. Critical for ForgePlan where the builder might have 5-10 domain skills available.
+2. **Subagents load skills via `skills:` frontmatter** — injects full content at startup. Subagents do NOT inherit parent skills. This is the mechanism for per-agent skill loading.
 
-3. **ClawHub is the marketplace model.** 13,729+ published skills with semver versioning, semantic search, CLI install. ForgePlan community blueprints should follow this pattern.
+3. **Select skills BEFORE dispatching agents** (not mid-execution) — changing tools mid-iteration invalidates KV-cache.
 
-4. **Plop is the best template engine for blueprints.** 553K/week downloads, MIT, programmatic API the builder can invoke. create-t3-app's modular installer pattern (select features, get correctly wired code, centralized dependency version map) is the architecture model.
+4. **15 curated skills outperform 100 general ones.** Curation over accumulation.
 
-5. **Copier's answer-tracking is the versioning model.** `.copier-answers.yml` tracks template version + user answers, enables diff-based updates when blueprints change.
+5. **Include "when to use" metadata** in skill descriptions — improves selection accuracy by 4-8%.
+
+6. **Progressive disclosure solves context bloat.** Metadata (~100 tokens at startup), full instructions (<5000 tokens on activation), reference files on demand.
+
+7. **ClawHub is the marketplace model.** 13,729+ published skills with semver versioning.
+
+8. **Copier's answer-tracking is the versioning model** for community blueprints.
 
 ---
 
-## Pillar 1: Skill-Augmented Building
+## Pillar 1: Skills for ALL Agents (MANDATORY)
 
-### How It Works
+### The Principle
 
-The builder agent detects node type from the manifest and activates relevant skills before generating code.
+Every agent in ForgePlan gets domain-specific skills that make it better at its job. Skills are loaded via `skills:` frontmatter in the agent's `.md` file. The orchestrator (build.md, sweep.md, etc.) can also dynamically add skills based on node type and tech_stack.
 
+### Complete Skill Map
+
+#### Architect (4 skills — compiled into prompt, tier-aware)
+
+| Skill | Source | What It Adds |
+|---|---|---|
+| DDD Strategic Design | CodeMachine0121/Claude-Code-Skill-DDD | Bounded contexts → nodes, aggregates → shared models, domain events → connections |
+| Design Patterns + Anti-Patterns | ratacat/claude-skills | 20 patterns, symptom-to-pattern framework, God Object/Anemic Domain avoidance |
+| Database Designer | alirezarezvani/claude-skills | ERD modeling, normalization (1NF-BCNF), database selection matrix |
+| API Designer | Jeffallan/claude-skills | Resource modeling, contract design during discovery |
+
+**Tier-aware loading:**
+- SMALL: Anti-pattern checklist only (prevent God Object nodes)
+- MEDIUM: + Database Designer + API Designer (inform decomposition)
+- LARGE: Full DDD Strategic Design (bounded contexts, event storming)
+
+**Integration:** These are COMPILED into `agents/architect.md` as reasoning sections, not loaded at runtime. The architect's prompt grows ~500-1000 tokens depending on tier. This avoids runtime skill loading overhead for the most context-sensitive agent.
+
+#### Builder (6 core + 5 conditional — frontmatter + dynamic)
+
+**Core skills (always loaded via frontmatter):**
+
+| Skill | Source | What It Adds |
+|---|---|---|
+| coding-standards | affaan-m/everything-claude-code | KISS/DRY/YAGNI, TypeScript naming, Zod validation, immutability |
+| backend-patterns | affaan-m/everything-claude-code | Repository/service/middleware layers, N+1 prevention, transactions, caching |
+| tdd-workflow | affaan-m/everything-claude-code | RED-GREEN-REFACTOR, 80%+ coverage gates, mocking strategy |
+| authentication-patterns | travisjneuman | OAuth/PKCE, JWT rotation, MFA, RBAC, Clerk/Supabase/NextAuth |
+| react-best-practices | Vercel Labs (277K installs) | 69 performance rules across 8 categories |
+| composition-patterns | Vercel Labs | Compound components, state lifting, variant components |
+
+**Conditional skills (loaded dynamically by orchestrator based on tech_stack):**
+
+| Skill | When Loaded | What It Adds |
+|---|---|---|
+| supabase-postgres | `tech_stack.database: supabase` | Schema design, RLS, migrations, Supabase-specific patterns |
+| mastering-typescript | Always for TypeScript projects | Branded types, discriminated unions, advanced generics |
+| better-auth | `tech_stack.auth: custom` | Auth implementation without a managed provider |
+| web-design-guidelines | Frontend nodes exist | 100+ a11y/performance/UX standards |
+| frontend-patterns | Non-Next.js React projects | General React patterns (Next.js uses react-best-practices) |
+
+**Tier-aware loading:**
+- SMALL: coding-standards + 1 stack-specific (2-3 total)
+- MEDIUM: coding-standards + backend-patterns + tdd-workflow + 1-2 stack-specific (4-5 total)
+- LARGE: All 6 core + relevant conditional (5-6 total, max governed by config.yaml)
+
+#### Reviewer (3 skills)
+
+| Skill | Source | What It Adds |
+|---|---|---|
+| code-review-skill | awesome-skills | 4-phase review process, severity taxonomy (blocking/important/nit/suggestion) |
+| code-review-graph | tirth8205 | Tree-sitter knowledge graph for 6.8x token reduction on reviews |
+| Confidence scoring pattern | Anthropic methodology | 0-100 confidence scoring on judgment-based dimensions |
+
+#### Researcher (3 skills)
+
+| Skill | Source | What It Adds |
+|---|---|---|
+| deep-research-skill | 199-biotechnologies | 8-phase pipeline, source credibility scoring (0-100), self-critique |
+| managing-dependencies | andrew | Supply chain risk: transitive depth, bus factor, typosquatting |
+| Pattern extraction | affaan-m methodology | Structured Problem → Pattern → Rationale → When-to-use format |
+
+#### Adversary — sweep agent (3 skills)
+
+| Skill | Source | What It Adds |
+|---|---|---|
+| sharp-edges + insecure-defaults | Trail of Bits | Algorithm footguns, fail-secure analysis, configuration cliffs |
+| owasp-security | agamm | Full OWASP Top 10:2025, ASVS 5.0 verification levels |
+| secure-code-review | mahmutka | Semgrep integration, CWE taxonomy, deserialization/XXE |
+
+#### Contractualist — sweep agent (2 skills)
+
+| Skill | Source | What It Adds |
+|---|---|---|
+| mastering-typescript | SpillwaveSolutions | Branded types, discriminated unions, Zod boundary validation |
+| api-contract-auditor | levnikolaevich | Layer leakage detection, entity exposure, missing DTOs |
+
+#### Pathfinder — sweep agent (3 skills)
+
+| Skill | Source | What It Adds |
+|---|---|---|
+| web-interface-guidelines | Vercel Labs | 99 specific UX rules across 7 categories |
+| accesslint reviewer | AccessLint | Programmatic WCAG audit + contrast calculator MCP server |
+| tdd-workflow | affaan-m | Test quality audit, anti-pattern catalog, E2E Playwright patterns |
+
+#### Structuralist — sweep agent (2 skills)
+
+| Skill | Source | What It Adds |
+|---|---|---|
+| layer-boundary-auditor | levnikolaevich | Grep-based I/O isolation, transaction boundary ownership |
+| simplify + simplicity principles | Anthropic | POLA enforcement, function size limits, AI bloat detection |
+
+#### Skeptic — sweep agent (2 skills)
+
+| Skill | Source | What It Adds |
+|---|---|---|
+| differential-review | Trail of Bits | Git-history-aware review, cross-function data flow tracking |
+| code-review | awesome-skills | 280+ structured checks, 4-phase review, boundary condition checklists |
+
+### Skill Loading Mechanism
+
+**For agents dispatched via Agent tool (builder, sweep agents, reviewer, researcher):**
 ```
-manifest.yaml:
-  nodes:
-    frontend:
-      type: frontend
-      tech_stack_override: { frontend: "react" }
-
-Builder reads node → type: frontend, stack: react
-  → Activates: frontend-design skill (if installed)
-  → Builder now has React component patterns, accessibility rules, styling conventions
-  → Generated code follows skill guidance
+build.md orchestrator:
+  1. Read node type + tech_stack from manifest
+  2. Read config.yaml skills section (enabled? explicit? disabled? max_active?)
+  3. Determine tier → select skill count
+  4. Read relevant SKILL.md files from skills/ directories
+  5. Embed skill content in Agent tool prompt alongside spec + manifest
+  6. Dispatch builder with skills pre-loaded
 ```
 
-### Skill Detection Flow
-
-1. Builder reads the node's `type` and `tech_stack` fields
-2. Scans for installed skills matching the domain:
-   - `type: frontend` + `frontend: react` → look for `react`, `frontend-design`, `tailwind` skills
-   - `type: service` + `api_framework: express` → look for `express`, `api-design`, `rest` skills
-   - `type: database` + `orm: drizzle` → look for `drizzle`, `schema-design` skills
-3. Activates matching skills (reads their full instructions)
-4. Skills provide: patterns, conventions, anti-patterns, code examples
-5. Builder generates code informed by activated skills
-
-### Skill Sources (Priority Order)
-
-1. **Project-local skills:** `.forgeplan/skills/` directory (project-specific conventions)
-2. **Plugin-bundled skills:** `${CLAUDE_PLUGIN_ROOT}/skills/` (ForgePlan ships with core skills)
-3. **User-installed skills:** `~/.claude/skills/` or ClawHub-installed skills
-4. **Research-derived skills:** Auto-generated from `/forgeplan:research` output (Sprint 11 stretch)
+**For the architect agent (invoked directly by discover.md):**
+- Skills are COMPILED into `agents/architect.md` as tier-aware reasoning sections
+- No runtime loading — the prompt already contains the methodology
+- Keeps the discovery conversation fast (no skill lookup overhead)
 
 ### Per-Project Configuration
 
@@ -64,7 +156,7 @@ Builder reads node → type: frontend, stack: react
 # .forgeplan/config.yaml
 skills:
   enabled: true                    # Master toggle (default: true for MEDIUM/LARGE, false for SMALL)
-  auto_detect: true                # Builder auto-detects relevant skills (default: true)
+  auto_detect: true                # Orchestrator auto-detects relevant skills (default: true)
   explicit:                        # Always activate these skills regardless of detection
     - frontend-design
     - api-patterns
@@ -73,35 +165,72 @@ skills:
   max_active: 5                    # Maximum concurrent skills to prevent context bloat
 ```
 
-### Tier-Aware Skill Loading
+### Skill Expansion — How Agents Get New Skills
 
+**Path 1: Research-to-Skill Pipeline (automatic)**
 ```
-SMALL:  Skills disabled by default (keep it fast). User can enable via config.
-MEDIUM: Auto-detect + max 3 active skills.
-LARGE:  Auto-detect + max 5 active skills + research-derived skills.
+/forgeplan:research finds patterns → auto-generates lightweight SKILL.md
+  → saved to .forgeplan/skills/
+  → next build picks it up automatically
+  → sweep validates the pattern worked
+  → if validated, promote to shared skill
 ```
 
-### Builder Integration
+**Path 2: Skill Learner Module (semi-automatic)**
+```
+PostToolUse hook monitors code generation patterns
+  → detects when similar patterns appear 3+ times
+  → suggests: "You've built 3 Stripe webhook handlers this way. Save as a skill?"
+  → generates SKILL.md from the pattern
+  → saved to .forgeplan/skills/
+  → auto-activates on similar future work
+```
 
-The builder.md agent prompt gets a new section:
-
-```markdown
-## Skill-Augmented Building (Sprint 11)
-
-Before generating code for a node:
-1. Read `.forgeplan/config.yaml` skills section
-2. If skills.enabled: scan for matching skills based on node type + tech_stack
-3. Activate up to skills.max_active matching skills (read their full instructions)
-4. Apply skill guidance during code generation
-5. If no skills match: build normally (skills are additive, never blocking)
-
-Skills provide GUIDANCE, not enforcement. The spec is still the authority.
-If a skill recommends a pattern that contradicts the spec, follow the spec.
+**Path 3: Manual Install (user-driven)**
+```
+User finds a skill on ClawHub / GitHub / npm
+  → installs to ~/.claude/skills/ or .forgeplan/skills/
+  → config.yaml explicit: section can force-load it
 ```
 
 ---
 
-## Pillar 2: Research-Backed Blueprints
+## Pillar 2: Skill Learner Module (Portable Microservice)
+
+### What It Does
+
+Watches coding patterns, detects repetition, and helps users build a personal SKILL.md library from their actual work.
+
+### Core Loop
+
+```
+Monitor → Detect → Suggest → Save → Activate → Validate → Promote
+```
+
+1. **Monitor:** PostToolUse hook tracks file writes during builds — what patterns are being generated
+2. **Detect:** After 3+ occurrences of similar structure (same imports, same error handling shape, same middleware pattern), flag it
+3. **Suggest:** "You've built 3 Express route handlers with Zod validation + try/catch + error response. Save as a skill?"
+4. **Save:** Generate a SKILL.md with the pattern + examples from actual code → `.forgeplan/skills/`
+5. **Activate:** Next build with similar node type, the skill is auto-detected and loaded
+6. **Validate:** Sweep agents verify the generated code quality — if sweep finds issues in skill-guided code, downrank the skill
+7. **Promote:** After 5+ successful uses with no sweep issues, suggest promoting to `~/.claude/skills/` (cross-project)
+
+### Architecture: Portable Microservice
+
+- Self-contained module: `scripts/skill-learner/` directory with clean API boundary
+- Dependencies: ONLY fs, path, and the SKILL.md format — no ForgePlan-specific state
+- Can be extracted and released as a standalone Claude Code plugin
+- Interface: `detectPatterns(files)` → `generateSkill(pattern)` → `saveSkill(skill, directory)`
+
+### What It Does NOT Do
+
+- Does not automatically modify agent behavior without user consent (always suggests, never forces)
+- Does not couple to manifest/nodes/state — works with just a codebase + skills directory
+- Does not replace curated skills — it supplements them with project-specific patterns
+
+---
+
+## Pillar 3: Research-Backed Blueprints
 
 ### What a Blueprint Becomes
 
@@ -152,11 +281,7 @@ dependencies:
     note: "Preferred over bcrypt to avoid postinstall build issues"
 ```
 
-When the builder runs `npm install`, it uses versions from `deps.lock.yaml` instead of blindly installing latest. The researcher agent validates these periodically.
-
 ### Blueprint Generation from Research
-
-After `/forgeplan:research [topic]` runs, the output can seed a new blueprint:
 
 ```
 /forgeplan:research "multi-tenant SaaS with Stripe and Supabase"
@@ -170,37 +295,33 @@ After `/forgeplan:research [topic]` runs, the output can seed a new blueprint:
 
 ---
 
-## Pillar 3: Community Blueprints with Versioning
+## Pillar 4: Community Blueprints with Versioning
 
 ### Versioning Model (Copier Pattern)
-
-When a project is created from a blueprint, track the source:
 
 ```yaml
 # .forgeplan/blueprint-origin.yaml
 blueprint: "client-portal"
 version: "1.2.0"
-source: "forgeplan/blueprints"     # or "community/username/blueprint-name"
+source: "forgeplan/blueprints"
 created_at: "2026-04-07"
-answers:                           # User's customization choices
+answers:
   database: supabase
   auth: supabase-auth
   frontend: react
   deployment: vercel
 ```
 
-When the blueprint updates (new dependency versions, new patterns, security fixes):
+Update flow:
 ```
 /forgeplan:blueprint --update
   → Reads blueprint-origin.yaml
-  → Fetches latest version of the blueprint
-  → Shows diff: what changed in deps.lock.yaml, skills/, blueprint.yaml
+  → Fetches latest version
+  → Shows diff
   → User confirms which changes to apply
 ```
 
 ### Community Blueprint Format
-
-Community blueprints are GitHub repos following a standard structure:
 
 ```
 my-blueprint/
@@ -209,7 +330,6 @@ my-blueprint/
   skills/                 # Domain-specific skills
   README.md               # What this blueprint is for
   CHANGELOG.md            # Version history
-  version: "1.0.0"        # In blueprint.yaml
 ```
 
 Install: `/forgeplan:discover template:github:username/my-blueprint`
@@ -218,34 +338,83 @@ Install: `/forgeplan:discover template:github:username/my-blueprint`
 
 ## Implementation Order
 
-1. **Skill detection + activation in builder.md** — builder reads skills based on node type
-2. **Config.yaml skills section** — per-project skill configuration
-3. **deps.lock.yaml schema + builder integration** — builder reads vetted deps
-4. **Blueprint generation from research** — `/forgeplan:blueprint --from-research`
-5. **Blueprint versioning** — `.forgeplan/blueprint-origin.yaml` + update flow
-6. **Community blueprint install** — `template:github:user/repo` in discover
+### Batch 1: Skill Infrastructure (foundation)
+1. Install/vendor the 28 core skill SKILL.md files into `skills/` directory structure
+2. Add `skills:` frontmatter to ALL 10 agent `.md` files with their curated skills
+3. Add skills section to `templates/schemas/config-schema.yaml`
+4. Update `commands/build.md` — orchestrator reads config, selects skills, embeds in builder prompt
+5. Update `commands/sweep.md` — orchestrator loads sweep agent skills before dispatch
+
+### Batch 2: Architect + Dynamic Selection
+6. Compile architect skills into `agents/architect.md` as tier-aware reasoning sections
+7. Update `commands/discover.md` — tier-aware architect skill sections activate
+8. Build dynamic skill selection: orchestrator reads node type + tech_stack → picks conditional skills
+9. Update `commands/review.md` — reviewer skill loading
+
+### Batch 3: Skill Learner Module
+10. Create `scripts/skill-learner/` module — pattern detection engine
+11. Wire into PostToolUse hook — monitor code generation patterns
+12. Build SKILL.md generator — transform detected patterns into standard format
+13. Add `/forgeplan:skill` command — manage skills (list, create, promote, delete)
+
+### Batch 4: Blueprints
+14. Create `deps.lock.yaml` for existing blueprints (client-portal, saas-starter, internal-dashboard)
+15. Update builder to read `deps.lock.yaml` for dependency versions
+16. Create `/forgeplan:blueprint` command (create from research, update, list)
+17. Add `blueprint-origin.yaml` tracking + update flow
+18. Add `template:github:user/repo` support to discover.md
 
 ---
 
 ## What This Sprint Does NOT Include
 
-- Skill marketplace/registry (use ClawHub or GitHub directly)
-- Skill authoring tools (use standard SKILL.md format)
+- Skill marketplace/registry hosting (use ClawHub or GitHub directly)
+- Skill authoring wizard (use standard SKILL.md format manually)
 - Blueprint CI/CD (automated dependency updates) — Sprint 13+
 - Cross-platform skill compatibility testing — deferred
+- Semantic retrieval for skills (only needed at 20+ skills — we have 28, borderline, defer to Sprint 12 if needed)
 
 ---
 
-## Files That Need Changes (~12)
+## Files That Need Changes (~25)
 
-- `agents/builder.md` — skill detection + activation + deps.lock reading
-- `commands/build.md` — skill loading before build
-- `commands/discover.md` — `template:github:user/repo` community blueprint support
+**Agent files (10):**
+- `agents/architect.md` — compiled skill sections (tier-aware)
+- `agents/builder.md` — `skills:` frontmatter with 6 core skills
+- `agents/reviewer.md` — `skills:` frontmatter with 3 skills
+- `agents/researcher.md` — `skills:` frontmatter with 3 skills
+- `agents/sweep-adversary.md` — `skills:` frontmatter with 3 skills
+- `agents/sweep-contractualist.md` — `skills:` frontmatter with 2 skills
+- `agents/sweep-pathfinder.md` — `skills:` frontmatter with 3 skills
+- `agents/sweep-structuralist.md` — `skills:` frontmatter with 2 skills
+- `agents/sweep-skeptic.md` — `skills:` frontmatter with 2 skills
+- `agents/docs-agent.md` — archived (consolidated into researcher in Sprint 10A)
+
+**Command files (6):**
+- `commands/build.md` — skill loading orchestration
+- `commands/sweep.md` — sweep agent skill loading
+- `commands/review.md` — reviewer skill loading
+- `commands/discover.md` — community blueprint support
+- `commands/research.md` — `--blueprint` flag
+- `commands/skill.md` — NEW: skill management command
+
+**New files (~8):**
+- `skills/` directory with 28+ SKILL.md files (installed/vendored)
+- `scripts/skill-learner/` module (3-4 files)
+- `commands/blueprint.md` — NEW: blueprint management
+- `templates/blueprints/*/deps.lock.yaml` — 3 files
+
+**Schema/config:**
 - `templates/schemas/config-schema.yaml` — skills section
-- `templates/schemas/manifest-schema.yaml` — blueprint_origin field (optional)
-- `templates/blueprints/client-portal/deps.lock.yaml` — NEW: vetted deps for existing blueprint
-- `templates/blueprints/saas-starter/deps.lock.yaml` — NEW: vetted deps
-- `templates/blueprints/internal-dashboard/deps.lock.yaml` — NEW: vetted deps
-- `commands/research.md` — `--blueprint` flag for blueprint generation
-- `commands/blueprint.md` — NEW: blueprint management command (create from research, update, list)
 - `CLAUDE.md` — Sprint 11 documentation
+
+---
+
+## Skills We Should PUBLISH
+
+Our 7-dimension spec compliance review approach is unique in the ecosystem. After Sprint 11, publish as open-source SKILL.md files:
+- `forgeplan-spec-compliance` — the Reviewer's 7-dimension audit methodology
+- `forgeplan-architecture-down` — the Architect's decomposition approach
+- `forgeplan-sweep-convergence` — the progressive convergence algorithm
+
+These become ForgePlan's contribution back to the skill ecosystem and a marketing channel.
