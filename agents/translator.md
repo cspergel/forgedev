@@ -117,7 +117,7 @@ In repo mode, you scan an EXISTING codebase instead of reading external document
 3. **Identify shared types:** Find files imported by 3+ other files (scan import/require statements). These are shared model candidates.
 4. **Read package.json:** Extract dependencies, scripts, engine requirements → tech_stack
 5. **Read existing tests:** Identify test framework, coverage baseline
-6. **Apply containment checks:** Reject symlinks escaping project root, reject >60% scope breadth (per-workspace for monorepos), reject existing .forgeplan/ (unless --force)
+6. **Be aware of containment rules** (symlinks, scope breadth, existing .forgeplan/) — `validate-ingest.js` enforces these deterministically. Focus on producing accurate mappings.
 7. **Output the same JSON schema** as document mode, with `"source": "repo"`
 
 ### Key Difference from Document Mode

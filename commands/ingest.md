@@ -15,6 +15,12 @@ Bring an existing codebase under ForgePlan governance.
 
 ## Process
 
+### Step 0: Create .forgeplan/ directory
+Create `.forgeplan/` if it doesn't exist (needed for Step 2 mapping file):
+```bash
+mkdir -p .forgeplan
+```
+
 ### Step 1: Translator Scans Repo
 Dispatch the Translator agent in repo mode (read `agents/translator.md`).
 Include in prompt: "You are in REPO MODE. Scan the codebase at [cwd]. Read the directory structure, package.json, imports, and tests. Output the standard JSON mapping with source: repo."

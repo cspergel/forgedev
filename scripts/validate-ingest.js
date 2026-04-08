@@ -13,14 +13,75 @@ if (!inputPath || !fs.existsSync(inputPath)) {
   process.exit(2);
 }
 
-const mapping = JSON.parse(fs.readFileSync(inputPath, "utf-8"));
+// C3 fix: Graceful JSON parse with structured error output
+let mapping;
+try {
+  let raw = fs.readFileSync(inputPath, "utf-8");
+  // Strip markdown fences if present
+  raw = raw.replace(/^```(?:json)?\s*\n?/m, "").replace(/\n?```\s*$/m, "");
+  mapping = JSON.parse(raw);
+} catch (e) {
+  console.log(JSON.stringify({
+    status: "ERROR",
+    message: `Invalid JSON input: ${e.message}`,
+    total_checks: 0,
+    passed: 0,
+    failed: 0,
+    checks: [],
+  }, null, 2));
+  process.exit(2);
+}
+
 const cwd = process.cwd();
 const checks = [];
 
+// C1 fix: Normalize paths for case-insensitive comparison on Windows
+const normPath = (s) => process.platform === "win32" ? s.toLowerCase() : s;
+const normCwd = normPath(path.resolve(cwd));
+
+// Helper: resolve scope dir from file_scope glob
+const resolveScopeDir = (fileScope) => {
+  const scopeDir = fileScope.replace(/\*\*.*$/, "").replace(/\/+$/, "");
+  return { scopeDir, absDir: path.resolve(cwd, scopeDir) };
+};
+
+// Check 0 (C2 fix): Validate all scopes are within project root FIRST
+for (const node of (mapping.proposed_nodes || [])) {
+  const { scopeDir, absDir } = resolveScopeDir(node.file_scope);
+  if (!normPath(absDir).startsWith(normCwd)) {
+    checks.push({
+      name: "scope_within_project",
+      node: node.id,
+      status: "FAIL",
+      details: `${scopeDir} resolves to ${absDir} (outside project root)`,
+    });
+  } else {
+    checks.push({
+      name: "scope_within_project",
+      node: node.id,
+      status: "PASS",
+      details: "within project",
+    });
+  }
+}
+
+// Early exit if any scope escapes project root
+const escapeFailures = checks.filter(c => c.name === "scope_within_project" && c.status === "FAIL");
+if (escapeFailures.length > 0) {
+  console.log(JSON.stringify({
+    status: "FAIL",
+    message: "Scope escapes project root — aborting remaining checks",
+    total_checks: checks.length,
+    passed: checks.filter(c => c.status === "PASS").length,
+    failed: escapeFailures.length,
+    checks,
+  }, null, 2));
+  process.exit(1);
+}
+
 // Check 1: Every proposed node directory exists
 for (const node of (mapping.proposed_nodes || [])) {
-  const scopeDir = node.file_scope.replace(/\*\*.*$/, "").replace(/\/+$/, "");
-  const absDir = path.resolve(cwd, scopeDir);
+  const { scopeDir, absDir } = resolveScopeDir(node.file_scope);
   const exists = fs.existsSync(absDir);
   checks.push({
     name: "directory_exists",
@@ -32,12 +93,11 @@ for (const node of (mapping.proposed_nodes || [])) {
 
 // Check 2: No symlinks escape project root
 for (const node of (mapping.proposed_nodes || [])) {
-  const scopeDir = node.file_scope.replace(/\*\*.*$/, "").replace(/\/+$/, "");
-  const absDir = path.resolve(cwd, scopeDir);
+  const { scopeDir, absDir } = resolveScopeDir(node.file_scope);
   if (fs.existsSync(absDir)) {
     try {
       const realPath = fs.realpathSync(absDir);
-      const escapes = !realPath.startsWith(cwd);
+      const escapes = !normPath(realPath).startsWith(normCwd);
       checks.push({
         name: "no_symlink_escape",
         node: node.id,
@@ -65,13 +125,15 @@ if (hasForgePlan && !forceFlag) {
 }
 
 // Check 4: No scope covers >60% of total source files
-const countFilesIn = (dir, exclude) => {
+// I4 fix: exclude .forgeplan/ from counts
+const EXCLUDE_DIRS = ["node_modules", "dist", "build", ".next", ".git", ".forgeplan"];
+const countFilesIn = (dir) => {
   let count = 0;
   try {
     const entries = fs.readdirSync(dir, { withFileTypes: true });
     for (const entry of entries) {
-      if ((exclude || ["node_modules", "dist", "build", ".next", ".git"]).includes(entry.name)) continue;
-      if (entry.isDirectory()) count += countFilesIn(path.join(dir, entry.name), exclude);
+      if (EXCLUDE_DIRS.includes(entry.name)) continue;
+      if (entry.isDirectory()) count += countFilesIn(path.join(dir, entry.name));
       else count++;
     }
   } catch (_) {}
@@ -81,8 +143,7 @@ const countFilesIn = (dir, exclude) => {
 const totalFiles = countFilesIn(cwd);
 
 for (const node of (mapping.proposed_nodes || [])) {
-  const scopeDir = node.file_scope.replace(/\*\*.*$/, "").replace(/\/+$/, "");
-  const absDir = path.resolve(cwd, scopeDir);
+  const { absDir } = resolveScopeDir(node.file_scope);
   const nodeFiles = fs.existsSync(absDir) ? countFilesIn(absDir) : 0;
   const pct = totalFiles > 0 ? Math.round(nodeFiles / totalFiles * 100) : 0;
   checks.push({
@@ -94,23 +155,24 @@ for (const node of (mapping.proposed_nodes || [])) {
 }
 
 // Check 5: Claimed shared types exist and are imported by 3+ files
+// C4 fix: use import-specific pattern, exclude definition file from count
 for (const model of (mapping.shared_models || [])) {
-  let found = false;
+  let definitionFile = null;
   let importCount = 0;
   const escaped = model.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const typePattern = new RegExp(`\\b(type|interface|class)\\s+${escaped}\\b`);
-  const importPattern = new RegExp(`\\b${escaped}\\b`);
+  const importPattern = new RegExp(`(?:import|require).*\\b${escaped}\\b`);
   const walk = (dir) => {
     try {
       for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-        if (["node_modules", "dist", "build", ".next", ".git"].includes(entry.name)) continue;
+        if (EXCLUDE_DIRS.includes(entry.name)) continue;
         const full = path.join(dir, entry.name);
         if (entry.isDirectory()) { walk(full); continue; }
         if (!entry.name.match(/\.[jt]sx?$/)) continue;
         try {
           const content = fs.readFileSync(full, "utf-8");
-          if (typePattern.test(content)) found = true;
-          if (importPattern.test(content)) importCount++;
+          if (typePattern.test(content)) definitionFile = full;
+          if (importPattern.test(content) && full !== definitionFile) importCount++;
         } catch (_) {}
       }
     } catch (_) {}
@@ -119,14 +181,14 @@ for (const model of (mapping.shared_models || [])) {
   checks.push({
     name: "shared_type_exists",
     node: model.name,
-    status: found ? "PASS" : "FAIL",
-    details: found ? `Type/interface ${model.name} found` : `Type/interface ${model.name} not found in codebase`,
+    status: definitionFile ? "PASS" : "FAIL",
+    details: definitionFile ? `Type/interface ${model.name} found` : `Type/interface ${model.name} not found in codebase`,
   });
   checks.push({
     name: "shared_type_usage",
     node: model.name,
     status: importCount >= 3 ? "PASS" : "FAIL",
-    details: `${model.name} referenced in ${importCount} files (need 3+)`,
+    details: `${model.name} imported in ${importCount} files (need 3+)`,
   });
 }
 
@@ -134,8 +196,9 @@ for (const model of (mapping.shared_models || [])) {
 const nodes = mapping.proposed_nodes || [];
 for (let i = 0; i < nodes.length; i++) {
   for (let j = i + 1; j < nodes.length; j++) {
-    const a = nodes[i].file_scope.replace(/\*\*$/, "");
-    const b = nodes[j].file_scope.replace(/\*\*$/, "");
+    // Normalize: strip **, ensure trailing /
+    const a = nodes[i].file_scope.replace(/\*\*$/, "").replace(/\/?$/, "/");
+    const b = nodes[j].file_scope.replace(/\*\*$/, "").replace(/\/?$/, "/");
     if (a.startsWith(b) || b.startsWith(a)) {
       checks.push({
         name: "no_scope_overlap",
