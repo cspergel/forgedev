@@ -1,6 +1,6 @@
 ---
-name: sweep-red
-description: "Red Team consolidated sweep agent — adversarial code review covering security boundaries, error handling, config/environment, and database. Absorbs: auth-security, error-handling, config-environment, database. Tries to BREAK the code, not just check if it looks right."
+name: sweep-adversary
+description: "Adversary sweep agent — adversarial code review covering security boundaries, error handling, config/environment, and database. Absorbs: auth-security, error-handling, config-environment, database. Tries to BREAK the code, not just check if it looks right."
 model: opus
 ---
 

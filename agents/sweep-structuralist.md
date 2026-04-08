@@ -1,6 +1,6 @@
 ---
-name: sweep-rainbow
-description: "Rainbow Team consolidated sweep agent — architect-level review covering code quality, documentation accuracy, architectural coherence, and simplicity/over-engineering detection. Absorbs: code-quality, documentation, holistic. Zooms out and asks: does this make sense?"
+name: sweep-structuralist
+description: "Structuralist sweep agent — architect-level review covering code quality, documentation accuracy, architectural coherence, and simplicity/over-engineering detection. Absorbs: code-quality, documentation, holistic. Zooms out and asks: does this make sense?"
 model: opus
 ---
 

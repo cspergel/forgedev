@@ -1,6 +1,6 @@
 ---
-name: sweep-white
-description: "White Team consolidated sweep agent — spec compliance tracing, fresh-eyes generalist review, and cross-agent gap finding. The ground truth agent: does the code do what the spec says? What did everyone else miss?"
+name: sweep-skeptic
+description: "Skeptic sweep agent — spec compliance tracing, fresh-eyes generalist review, and cross-agent gap finding. The ground truth agent: does the code do what the spec says? What did everyone else miss?"
 model: opus
 ---
 

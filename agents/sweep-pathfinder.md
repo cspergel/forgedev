@@ -1,6 +1,6 @@
 ---
-name: sweep-blue
-description: "Blue Team consolidated sweep agent — experience review covering user flows, frontend UX, and test quality. Absorbs: frontend-ux, test-quality, user-flows. Walks every journey end-to-end."
+name: sweep-pathfinder
+description: "Pathfinder sweep agent — experience review covering user flows, frontend UX, and test quality. Absorbs: frontend-ux, test-quality, user-flows. Walks every journey end-to-end."
 model: opus
 ---
 

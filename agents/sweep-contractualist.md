@@ -1,6 +1,6 @@
 ---
-name: sweep-orange
-description: "Orange Team consolidated sweep agent — contract consistency review covering types, API contracts, imports, and cross-node integration. Absorbs: type-consistency, api-contracts, imports, cross-node-integration. Diffs both sides of every boundary."
+name: sweep-contractualist
+description: "Contractualist sweep agent — contract consistency review covering types, API contracts, imports, and cross-node integration. Absorbs: type-consistency, api-contracts, imports, cross-node-integration. Diffs both sides of every boundary."
 model: opus
 ---
 
