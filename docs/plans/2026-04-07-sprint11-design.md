@@ -336,6 +336,76 @@ Install: `/forgeplan:discover template:github:username/my-blueprint`
 
 ---
 
+## Pillar 5: Anti-Slop Design Quality
+
+### The Problem
+
+Every AI-built app looks the same: purple gradients, rounded cards, too much padding, emoji in headers, "Welcome to your dashboard!" The instant someone sees it they know AI built it. ForgePlan-built apps should be indistinguishable from human-designed apps.
+
+### Anti-Slop Rules (baked into frontend-design skill)
+
+The `frontend-design` skill loaded during frontend node builds includes these hard rules:
+
+- No gradient backgrounds unless the user asks for them
+- No emoji in UI text
+- No "Welcome to..." hero sections
+- No purple-blue-teal default palette
+- No excessive border-radius (not everything is a pill)
+- No card-based layouts for everything
+- White space is intentional, not padding bloat
+- Typography hierarchy over color hierarchy
+- One accent color, not a rainbow
+- If it looks like a Vercel template, start over
+- Prefer system fonts or one font family max
+- Muted, professional color palettes by default
+- Dense, information-rich layouts over spacious empty ones
+- No stock placeholder copy — real labels, real microcopy
+
+### Design Pass (deep-build pipeline addition)
+
+A dedicated design agent runs after frontend nodes are built, before review:
+
+```
+deep-build pipeline:
+  build → verify-runnable → DESIGN PASS → review → sweep → certify
+```
+
+**What the design pass does:**
+1. Reads all frontend node files
+2. Checks anti-slop rules (deterministic — regex/AST for gradient classes, emoji, specific phrases)
+3. Checks visual consistency (same spacing scale, color usage, typography across components)
+4. Checks component quality (loading/empty/error states have distinct, non-generic visuals)
+5. Generates findings like sweep agents: `FINDING: F1 — Generic "Welcome" hero section in App.tsx:12`
+6. Fix agent applies changes (same fresh-agent-on-fix pattern as sweep)
+
+**Tier-aware depth:**
+- SMALL: Anti-slop rule check only (fast, deterministic)
+- MEDIUM: + visual consistency check
+- LARGE: + component quality audit
+
+### User Steering (one round, at the end)
+
+After the design pass, before sweep:
+```
+"Frontend design pass complete. Here's a summary of what was built:
+  - 3 pages: login, dashboard, settings
+  - Palette: slate-900/white/blue-600 accent
+  - Layout: sidebar + content area
+  - Typography: Inter, 3 sizes
+
+  Would you like to adjust anything? (e.g., 'darker', 'more minimal',
+  'add a logo placeholder', 'use green accent instead')
+  Or press enter to continue to sweep."
+```
+
+One round of feedback. User steers taste, system handles quality.
+
+### Future: Phantom-to-Live Steering (Standalone App)
+
+In the standalone ForgePlan Workstation, users will watch the build happening in a visual preview. They can drop comments during the build: "darker here", "make this sidebar collapsible", "too much spacing." The build agent picks up comments in real-time. This is a visual canvas feature — deferred to post-plugin.
+
+---
+
 ## Implementation Order
 
 ### Batch 1: Skill Infrastructure (foundation)
@@ -351,18 +421,24 @@ Install: `/forgeplan:discover template:github:username/my-blueprint`
 8. Build dynamic skill selection: orchestrator reads node type + tech_stack → picks conditional skills
 9. Update `commands/review.md` — reviewer skill loading
 
-### Batch 3: Skill Learner Module
-10. Create `scripts/skill-learner/` module — pattern detection engine
-11. Wire into PostToolUse hook — monitor code generation patterns
-12. Build SKILL.md generator — transform detected patterns into standard format
-13. Add `/forgeplan:skill` command — manage skills (list, create, promote, delete)
+### Batch 3: Design Quality + Anti-Slop
+10. Create `skills/frontend-design/SKILL.md` with anti-slop rules + clean design patterns
+11. Create `agents/design-pass.md` — post-build design agent for visual consistency
+12. Update `commands/deep-build.md` — add design pass phase after build, before review
+13. Add user steering prompt — one round of aesthetic feedback after design pass
 
-### Batch 4: Blueprints
-14. Create `deps.lock.yaml` for existing blueprints (client-portal, saas-starter, internal-dashboard)
-15. Update builder to read `deps.lock.yaml` for dependency versions
-16. Create `/forgeplan:blueprint` command (create from research, update, list)
-17. Add `blueprint-origin.yaml` tracking + update flow
-18. Add `template:github:user/repo` support to discover.md
+### Batch 4: Skill Learner Module
+14. Create `scripts/skill-learner/` module — pattern detection engine
+15. Wire into PostToolUse hook — monitor code generation patterns
+16. Build SKILL.md generator — transform detected patterns into standard format
+17. Add `/forgeplan:skill` command — manage skills (list, create, promote, delete)
+
+### Batch 5: Blueprints
+18. Create `deps.lock.yaml` for existing blueprints (client-portal, saas-starter, internal-dashboard)
+19. Update builder to read `deps.lock.yaml` for dependency versions
+20. Create `/forgeplan:blueprint` command (create from research, update, list)
+21. Add `blueprint-origin.yaml` tracking + update flow
+22. Add `template:github:user/repo` support to discover.md
 
 ---
 
@@ -370,8 +446,21 @@ Install: `/forgeplan:discover template:github:username/my-blueprint`
 
 - Skill marketplace/registry hosting (use ClawHub or GitHub directly)
 - Skill authoring wizard (use standard SKILL.md format manually)
-- Blueprint CI/CD (automated dependency updates) — Sprint 13+
+- Blueprint CI/CD (automated dependency updates) — Sprint 14+
 - Cross-platform skill compatibility testing — deferred
+- Phantom-to-live steering (standalone app — Sprint 15)
+- Semantic skill retrieval (only needed at 20+ skills — defer unless needed)
+
+---
+
+## Future Sprint Roadmap
+
+| Sprint | Focus |
+|---|---|
+| 12 | MCP Integrations — live API validation, auto-detection, selective tool loading |
+| 13 | **Dogfood Sprint** — build SMALL + MEDIUM app end-to-end, zero feature dev, measure everything |
+| 14 | Bug fixes + refinements from dogfood findings |
+| 15 | **Standalone App** — visual canvas, phantom-to-live preview, node visualization, lifecycle bar, real-time build steering |
 - Semantic retrieval for skills (only needed at 20+ skills — we have 28, borderline, defer to Sprint 12 if needed)
 
 ---
