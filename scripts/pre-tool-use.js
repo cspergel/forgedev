@@ -501,6 +501,7 @@ function evaluateBash(toolInput, cwd) {
     /^\s*node\s+[^\s]*regenerate-shared-types\.js/, // our own type generator
     /^\s*node\s+[^\s]*cross-model-bridge\.js/,   // Sprint 6: cross-model sweep bridge
     /^\s*node\s+[^\s]*verify-runnable\.js/,       // our own verification script (Phase A)
+    /^\s*node\s+[^\s]*validate-ingest\.js/,      // Sprint 10B: repo ingestion validation
     /^\s*node\s+[^\s]*runtime-verify\.js/,        // Phase B runtime verification
     /^\s*node\s+[^\s]*worktree-manager\.js/,     // our own worktree manager
     /^\s*node\s+[^\s]*compact-context\.js/,      // our own compaction context script

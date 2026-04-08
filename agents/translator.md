@@ -108,6 +108,23 @@ Chat exports (ChatGPT, Gemini, Slack, Discord) are treated as plain text:
 - Generate all output (JSON fields, descriptions) in English
 - Preserve domain-specific terms in parentheses for clarity
 
+## Repo Mode Process (Sprint 10B — dispatched by /forgeplan:ingest)
+
+In repo mode, you scan an EXISTING codebase instead of reading external documents. Same output schema, different input.
+
+1. **Scan directory structure:** Read the project root. Identify top-level directories that represent functional areas (src/auth/, src/api/, src/database/, etc.)
+2. **Detect monorepo:** Check for `workspaces` in package.json, `pnpm-workspace.yaml`, or `turbo.json`. If monorepo: propose one node per workspace/package.
+3. **Identify shared types:** Find files imported by 3+ other files (scan import/require statements). These are shared model candidates.
+4. **Read package.json:** Extract dependencies, scripts, engine requirements → tech_stack
+5. **Read existing tests:** Identify test framework, coverage baseline
+6. **Apply containment checks:** Reject symlinks escaping project root, reject >60% scope breadth (per-workspace for monorepos), reject existing .forgeplan/ (unless --force)
+7. **Output the same JSON schema** as document mode, with `"source": "repo"`
+
+### Key Difference from Document Mode
+- Document mode: extracts from human-written text (subjective)
+- Repo mode: extracts from code structure (objective, verifiable)
+- Repo mode specs will be `spec_type: "descriptive"` (what code does, not requirements)
+
 ## Tech Stack Mapping Note
 
 The Translator's `tech_stack` output covers core fields: `runtime`, `language`, `api_framework`, `database`, `auth`, `frontend`, `test_framework`. The Architect fills in additional manifest fields during manifest generation: `orm`, `deployment`, `test_command`, `dev_port`, `mock_mode`, `infrastructure`. Extract what the source document mentions; the Architect fills gaps from defaults and conversation.
