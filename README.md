@@ -23,7 +23,7 @@ Developers using Claude Code who have been burned by AI drift. You've experience
 ForgePlan scales to your project:
 - **Simple projects** get a quick architecture confirmation, a fast build, and a basic quality sweep. Done in one session.
 - **Medium projects** get full specs, sequential builds with reviews, and thorough multi-agent sweeps.
-- **Complex projects** get the full pipeline — fine-grained nodes, 5 parallel sweep agents (all opus), cross-model verification by a different AI, and convergence certification.
+- **Complex projects** get the full pipeline — fine-grained nodes, all 5 sweep agents (Adversary, Contractualist, Pathfinder, Structuralist, Skeptic — all opus), cross-model verification by a different AI, and convergence certification.
 
 The governance intensity matches the complexity. ForgePlan never disappears — it just compresses for simpler work.
 
