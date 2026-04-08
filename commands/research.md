@@ -47,9 +47,8 @@ Dispatch research agents to gather best practices, packages, and documentation f
    - The research topic
    - The project context (tech_stack, description)
 
-   Agents to dispatch:
-   - **Researcher** (`researcher.md`): package search + license checking + reference implementations + best practices (consolidated agent — handles packages, licenses, and inspiration in one pass)
-   - **Docs Agent** (`docs-agent.md`): API documentation extraction for the tech stack
+   Agent to dispatch:
+   - **Researcher** (`researcher.md`): consolidated research agent — handles package search, license checking, reference implementations, best practices, architecture patterns, API documentation extraction, and prior art in one pass. (Sprint 10A: absorbs former license-checker, inspiration, and docs-agent.)
 
 5. **Merge results** into a single report:
    - Start with a **Summary** section: key recommendations, flagged packages, reference count
