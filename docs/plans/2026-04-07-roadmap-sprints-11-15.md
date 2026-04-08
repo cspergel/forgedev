@@ -146,11 +146,44 @@ Prove the system works end-to-end by building real apps. No new features — onl
 - **Bug tickets:** prioritized list of issues found (becomes Sprint 14 backlog)
 - **Feature requests:** things you wished existed (becomes Sprint 15+ backlog)
 - **Token cost analysis:** breakdown by phase (discover, spec, build, review, sweep)
+- **Competitive cost comparison:** real data for marketing/positioning (see below)
+
+### Token Cost Tracking + Competitive Comparison
+
+**Track tokens carefully during both builds.** This data becomes marketing material.
+
+**Per-build metrics to capture:**
+- Total tokens (input + output) across all agent invocations
+- Total estimated cost at current API pricing
+- Token breakdown by phase: discover, research, spec, build, verify, review, design pass, sweep
+- Agent invocation count per phase
+- Convergence cost: how many sweep passes, tokens per pass
+
+**Competitive comparison to build (use same app as baseline):**
+
+| Approach | Tokens | Cost | Time | Touches | Drift Risk |
+|---|---|---|---|---|---|
+| ForgePlan SMALL | measured | measured | measured | measured | 0 (governed) |
+| ForgePlan MEDIUM | measured | measured | measured | measured | 0 (governed) |
+| Raw Claude Code (same app, no governance) | estimate | estimate | estimate | estimate | HIGH |
+| Cursor (same app) | N/A | subscription | estimate | many | MEDIUM |
+| Manual development | 0 | salary | days/weeks | all | depends |
+
+**The story to tell:**
+- "16 agents × 4 passes cost $X. 5 agents × 2 passes cost $Y — same quality, Z% cheaper"
+- "A MEDIUM app with governance cost $50 in tokens and took 4 hours. Without governance, the same app would cost $30 but you'd spend $100+ fixing drift later"
+- "The first build costs more. The second build costs less because skills learned from the first build carry over"
+
+**How to capture comparison data:**
+- Build the SMALL app once with ForgePlan, once with raw Claude Code (no plugin, just prompting)
+- Compare: token usage, time, code quality, whether it actually runs, how many manual fixes needed
+- This is the most persuasive marketing asset: same person, same app, same day, with vs without
 
 ### Rules
 - **NO feature development during this sprint.** If something is broken, document it and work around it.
 - **NO prompt tweaking.** The agent prompts are what they are. If they're wrong, that's a Sprint 14 fix.
 - **Document EVERYTHING.** The dogfood report is the most valuable deliverable — it replaces speculation with data.
+- **Track tokens for EVERY agent invocation.** This is marketing data, not just diagnostics.
 
 ---
 
