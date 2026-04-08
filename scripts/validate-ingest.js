@@ -36,8 +36,9 @@ const cwd = process.cwd();
 const checks = [];
 
 // C1 fix: Normalize paths for case-insensitive comparison on Windows
+// Also ensure trailing separator to prevent C:\repo matching C:\repo-other
 const normPath = (s) => process.platform === "win32" ? s.toLowerCase() : s;
-const normCwd = normPath(path.resolve(cwd));
+const normCwd = normPath(path.resolve(cwd) + path.sep);
 
 // Helper: resolve scope dir from file_scope glob
 const resolveScopeDir = (fileScope) => {
@@ -48,7 +49,7 @@ const resolveScopeDir = (fileScope) => {
 // Check 0 (C2 fix): Validate all scopes are within project root FIRST
 for (const node of (mapping.proposed_nodes || [])) {
   const { scopeDir, absDir } = resolveScopeDir(node.file_scope);
-  if (!normPath(absDir).startsWith(normCwd)) {
+  if (!normPath(absDir + path.sep).startsWith(normCwd) && normPath(absDir) !== normPath(path.resolve(cwd))) {
     checks.push({
       name: "scope_within_project",
       node: node.id,
@@ -97,7 +98,7 @@ for (const node of (mapping.proposed_nodes || [])) {
   if (fs.existsSync(absDir)) {
     try {
       const realPath = fs.realpathSync(absDir);
-      const escapes = !normPath(realPath).startsWith(normCwd);
+      const escapes = !normPath(realPath + path.sep).startsWith(normCwd) && normPath(realPath) !== normPath(path.resolve(cwd));
       checks.push({
         name: "no_symlink_escape",
         node: node.id,

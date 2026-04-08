@@ -30,7 +30,7 @@ Translator outputs structured JSON mapping.
 
 ### Step 2: Ground-Truth Validation
 Write Translator output to `.forgeplan/.ingest-mapping.json`
-Run: `node "${CLAUDE_PLUGIN_ROOT}/scripts/validate-ingest.js" .forgeplan/.ingest-mapping.json`
+Run: `node "${CLAUDE_PLUGIN_ROOT}/scripts/validate-ingest.js" .forgeplan/.ingest-mapping.json` (append `--force` if the user passed `--force` to ingest)
 If FAIL: re-dispatch Translator with validation errors as context. Max 3 retries.
 If still failing after 3 retries: halt with "Repo structure too unusual for automatic ingestion. Run /forgeplan:discover manually."
 
@@ -73,9 +73,11 @@ If tier is MEDIUM or LARGE:
 2. Run `node "${CLAUDE_PLUGIN_ROOT}/scripts/compile-wiki.js"` to compile institutional knowledge from specs and code into the wiki.
 If tier is SMALL: skip wiki compilation.
 
-### Step 9: Baseline Sweep
-Run `/forgeplan:sweep` for baseline quality assessment.
-This establishes a finding baseline — the sweep will likely find many issues in an existing codebase. These are informational, not blocking.
+### Step 9: Baseline Sweep (Read-Only)
+Run `/forgeplan:sweep --baseline` for baseline quality assessment.
+**CRITICAL: Do NOT auto-fix findings during baseline sweep.** This is an INFORMATIONAL pass only — the sweep agents report findings but no fix agents are dispatched. On an existing repo, auto-fixing would rewrite user code during onboarding.
+
+If `/forgeplan:sweep` does not support `--baseline`, instruct the sweep to SKIP Phase 4 (fix cycle) and Phase 5-7 (convergence). Run only Phases 1-3 (dispatch agents, collect findings, deduplicate) and Phase 8 (final report). Store findings in `.forgeplan/sweeps/baseline-report.md` for the user to review.
 
 ### Step 10: Guide Onboarding
 Output via /forgeplan:guide:

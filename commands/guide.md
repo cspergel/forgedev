@@ -67,6 +67,9 @@ You haven't started a project yet. Here's how to begin:
   → /forgeplan:discover [describe your project]
     Tell me what you want to build and I'll create the architecture.
 
+  → /forgeplan:ingest
+    Already have code? Bring an existing codebase under ForgePlan governance.
+
   → /forgeplan:discover template:client-portal
     Start from a template (also: saas-starter, internal-dashboard)
 

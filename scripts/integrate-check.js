@@ -206,6 +206,44 @@ function main() {
     }
   }
 
+  // --- Sprint 10B: Cross-Phase Interface Check ---
+  // When build_phase < max_phase, verify that current-phase nodes' interfaces
+  // to future-phase nodes match the future-phase interface-only specs
+  const buildPhase = (manifest.project && manifest.project.build_phase) || 1;
+  const maxPhase = Math.max(1, ...nodeIds.map(id => (manifest.nodes[id].phase || 1)));
+  if (maxPhase > buildPhase) {
+    for (const nodeId of nodeIds) {
+      const nodePhase = (manifest.nodes[nodeId] && manifest.nodes[nodeId].phase) || 1;
+      if (nodePhase > buildPhase) continue; // Only check current-phase nodes' outgoing interfaces
+      const spec = specs[nodeId];
+      if (!spec || !Array.isArray(spec.interfaces)) continue;
+      for (const iface of spec.interfaces) {
+        const targetId = iface.target_node;
+        const targetPhase = (manifest.nodes[targetId] && manifest.nodes[targetId].phase) || 1;
+        if (targetPhase <= buildPhase) continue; // Same-phase: handled above
+        const targetSpec = specs[targetId];
+        if (!targetSpec) {
+          results.push({
+            source: nodeId, target: targetId, type: iface.type || "unknown",
+            contract: iface.contract || "(no contract)", status: "WARN", fault: "CROSS_PHASE",
+            detail: `Cross-phase: "${nodeId}" (phase ${nodePhase}) connects to "${targetId}" (phase ${targetPhase}) but "${targetId}" has no spec yet. Interface-only spec needed before phase advancement.`,
+          });
+        } else {
+          // Verify the target's interface-only spec has a reciprocal
+          const targetInterfaces = targetSpec.interfaces || [];
+          const reciprocal = targetInterfaces.find(ti => ti.target_node === nodeId);
+          if (!reciprocal) {
+            results.push({
+              source: nodeId, target: targetId, type: iface.type || "unknown",
+              contract: iface.contract || "(no contract)", status: "WARN", fault: "CROSS_PHASE",
+              detail: `Cross-phase: "${nodeId}" declares interface to future-phase "${targetId}", but "${targetId}"'s interface-only spec has no reciprocal entry.`,
+            });
+          }
+        }
+      }
+    }
+  }
+
   // --- Shared Model Field Consistency Check ---
   // Verify src/shared/types/index.ts matches manifest shared_models
   if (manifest.shared_models) {

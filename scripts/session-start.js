@@ -37,6 +37,7 @@ function main() {
       "\n" +
       "No project detected in this directory. Quick start:\n" +
       "  /forgeplan:discover    Describe what you want to build\n" +
+      "  /forgeplan:ingest      Already have code? Bring it under governance\n" +
       "  /forgeplan:guide       Walkthrough of how ForgePlan works\n" +
       "  /forgeplan:help        See all commands\n" +
       "---------------------------\n"

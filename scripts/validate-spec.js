@@ -91,11 +91,17 @@ function validateSpec(spec, manifest) {
     }
   }
 
+  // Sprint 10B: Interface-only specs (phase == build_phase + 1) only require interfaces
+  const isInterfaceOnly = spec.spec_type === "interface-only" ||
+    (Array.isArray(spec.interfaces) && spec.interfaces.length > 0 &&
+     (!Array.isArray(spec.acceptance_criteria) || spec.acceptance_criteria.length === 0) &&
+     spec.generated_from === "phase-promotion");
+
   // Required array fields with type enforcement
-  const arrayFields = [
-    "inputs", "outputs", "shared_dependencies", "interfaces",
-    "acceptance_criteria", "constraints", "non_goals", "failure_modes", "depends_on",
-  ];
+  const arrayFields = isInterfaceOnly
+    ? ["interfaces", "depends_on"]  // Interface-only specs only need these
+    : ["inputs", "outputs", "shared_dependencies", "interfaces",
+       "acceptance_criteria", "constraints", "non_goals", "failure_modes", "depends_on"];
   for (const field of arrayFields) {
     if (spec[field] === undefined || spec[field] === null) {
       errors.push(`Missing required field: ${field}`);
@@ -151,7 +157,7 @@ function validateSpec(spec, manifest) {
       if (!ac.test) errors.push(`acceptance_criteria[${i}] (${ac.id || "?"}): missing test field`);
       if (!ac.description) warnings.push(`acceptance_criteria[${i}] (${ac.id || "?"}): missing description`);
     }
-    if (spec.acceptance_criteria.length === 0) {
+    if (spec.acceptance_criteria.length === 0 && !isInterfaceOnly) {
       errors.push("acceptance_criteria must have at least 1 entry — build, review, and Stop hook all depend on concrete criteria");
     }
   }
@@ -172,11 +178,11 @@ function validateSpec(spec, manifest) {
     }
   }
 
-  if (Array.isArray(spec.non_goals) && spec.non_goals.length === 0) {
+  if (Array.isArray(spec.non_goals) && spec.non_goals.length === 0 && !isInterfaceOnly) {
     errors.push("non_goals must have at least 1 entry to prevent scope creep");
   }
 
-  if (Array.isArray(spec.failure_modes) && spec.failure_modes.length === 0) {
+  if (Array.isArray(spec.failure_modes) && spec.failure_modes.length === 0 && !isInterfaceOnly) {
     errors.push("failure_modes must have at least 1 entry to guide the reviewer");
   }
 

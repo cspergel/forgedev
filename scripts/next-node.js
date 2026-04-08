@@ -284,12 +284,34 @@ function main() {
       };
       console.log(JSON.stringify(result, null, 2));
     } else {
-      const result = {
-        type: "blocked",
-        message: "No nodes are ready to build — all remaining nodes depend on unfinished nodes. Run /forgeplan:status to see which nodes are blocking, or /forgeplan:recover to fix stuck nodes.",
-        progress: { completed, total: nodeIds.length },
-      };
-      console.log(JSON.stringify(result, null, 2));
+      // Sprint 10B: Check if current-phase is complete but future phases remain
+      const currentPhaseTotal = nodeIds.filter(id => ((manifest.nodes[id] && manifest.nodes[id].phase) || 1) <= buildPhase).length;
+      const currentPhaseComplete = nodeIds.filter(id => {
+        const ns = nodeStates[id];
+        const nodePhase = (manifest.nodes[id] && manifest.nodes[id].phase) || 1;
+        return nodePhase <= buildPhase && ns && fullyCompleteStatuses.includes(ns.status);
+      }).length;
+      const maxPhase = Math.max(1, ...nodeIds.map(id => (manifest.nodes[id] && manifest.nodes[id].phase) || 1));
+
+      if (currentPhaseComplete === currentPhaseTotal && maxPhase > buildPhase) {
+        const result = {
+          type: "phase_complete",
+          message: `All phase ${buildPhase} nodes are complete! Run /forgeplan:deep-build to advance to phase ${buildPhase + 1}.`,
+          progress: { completed: currentPhaseComplete, total: currentPhaseTotal, phase: buildPhase, max_phase: maxPhase },
+          next_steps: [
+            { command: "/forgeplan:deep-build", description: `Advance to phase ${buildPhase + 1} (runs cross-phase integration, promotes specs, builds next phase)` },
+            { command: "/forgeplan:status", description: "See full project status with phase progress" },
+          ],
+        };
+        console.log(JSON.stringify(result, null, 2));
+      } else {
+        const result = {
+          type: "blocked",
+          message: "No nodes are ready to build — all remaining nodes depend on unfinished nodes. Run /forgeplan:status to see which nodes are blocking, or /forgeplan:recover to fix stuck nodes.",
+          progress: { completed, total: nodeIds.length },
+        };
+        console.log(JSON.stringify(result, null, 2));
+      }
     }
     process.exit(0);
   }
