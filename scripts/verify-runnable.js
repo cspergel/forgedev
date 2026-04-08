@@ -320,7 +320,13 @@ async function main() {
   // --- Step 3: Run tests ---
   let testCmd;
   if (testCommand) {
-    testCmd = testCommand;
+    // Validate test_command against known safe runners to prevent arbitrary shell execution
+    if (!/^(npm|npx|node|deno|bun|pnpm|yarn)\s/.test(testCommand) && testCommand !== "npm test") {
+      results.push({ phase: "tests", status: "fail", error: `Untrusted test_command in manifest: "${testCommand}". Must start with npm, npx, node, deno, bun, pnpm, or yarn.`, classification: "code" });
+      testCmd = null;
+    } else {
+      testCmd = testCommand;
+    }
   } else {
     switch (runtime) {
       case "deno":
@@ -361,7 +367,11 @@ async function main() {
     testsExist = true; // On error, assume tests exist and let the test runner decide
   }
 
-  if (!testsExist) {
+  if (!testCmd) {
+    // Untrusted test_command — already reported above, skip test execution
+    steps.push({ name: "test", status: "fail", output: "Test command rejected (untrusted)", errorType: "code" });
+    hasCodeErrors = true;
+  } else if (!testsExist) {
     steps.push({
       name: "test",
       status: "warning",

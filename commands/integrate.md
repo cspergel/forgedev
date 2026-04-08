@@ -28,13 +28,24 @@ node "${CLAUDE_PLUGIN_ROOT}/scripts/integrate-check.js"
 When invoked during phase advancement (by deep-build.md Phase Advancement step 3), run in **cross-phase mode**:
 
 1. Read `build_phase` from manifest. Identify nodes being promoted (phase == build_phase + 1).
-2. For each promoted node's interfaces: verify that the `target_node` in the current phase has the expected export/contract.
-3. For each current-phase node that `connects_to` a promoted node: verify the promoted node's interface-only spec matches what the current-phase code imports.
-4. Report: which cross-phase interfaces are satisfied, which have mismatches.
+2. Run `integrate-check.js` for the deterministic spec-to-spec check (reciprocal interfaces, types, contract text). If any FAIL → halt advancement immediately.
+3. Run `verify-cross-phase.js` for the deterministic implementation check:
+   ```bash
+   node "${CLAUDE_PLUGIN_ROOT}/scripts/verify-cross-phase.js"
+   ```
+   This reads actual source files from current-phase nodes and verifies their exports match what interface-only specs declare. It catches the case where specs agree but the implementation diverges — the most common cross-phase failure mode. If any FAIL → halt advancement.
+4. **LLM-assisted deep check (on any FAIL or WARN from steps 2-3):** For each failure:
+   - Read the actual implementation files for both sides
+   - Verify export signatures match the spec's contract (parameter types, return types)
+   - Verify the current-phase node's tests cover the cross-phase interface
+   - If the LLM confirms the mismatch: report as FAIL. If the mismatch is a false positive (e.g., re-exported through a barrel file): mark as resolved.
+5. Report: which cross-phase interfaces are satisfied, which have mismatches.
 
-This is distinct from the standard same-phase integration check — it specifically validates the handoff between phases before advancement proceeds.
+This is distinct from the standard same-phase integration check — it specifically validates the handoff between phases before advancement proceeds. Steps 2 (spec-to-spec) + 3 (implementation) together provide deterministic enforcement. Step 4 adds LLM judgment for edge cases.
 
-3. For any FAIL or WARN results, perform deeper LLM-assisted analysis:
+## Same-Phase Deeper Analysis
+
+For any same-phase FAIL or WARN results from `integrate-check.js`, perform deeper LLM-assisted analysis:
    - Read the actual implementation files for both sides of the interface
    - Verify the source node exports what its spec promises
    - Verify the target node imports and uses it correctly
@@ -106,3 +117,10 @@ If interfaces fail, suggest specific remediation for each failure based on the f
   - `/forgeplan:next` to see the recommended build order
 - **Fault: MISSING_SPEC** — "One or both nodes don't have specs yet."
   - `/forgeplan:spec [node-id]` to generate the missing spec
+- **Fault: CROSS_PHASE** — "Cross-phase interface mismatch between a current-phase and future-phase node."
+  - `/forgeplan:spec [future-phase-node]` to update the interface-only spec
+  - `/forgeplan:build [current-phase-node]` if the current-phase implementation is wrong
+  - Both sides must document matching contracts before phase advancement
+- **Fault: SHARED_TYPES** — "Shared model in manifest doesn't match src/shared/types/index.ts."
+  - `/forgeplan:regen-types` to regenerate shared types from manifest
+  - Check that the manifest `shared_models` section matches your intended data model

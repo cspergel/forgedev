@@ -260,14 +260,20 @@ for (const model of (mapping.shared_models || [])) {
   const escaped = model.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const typePattern = new RegExp(`\\b(type|interface|class)\\s+${escaped}\\b`);
   const importPattern = new RegExp(`(?:import|require).*\\b${escaped}\\b`);
+  const walkVisited = new Set();
   const walk = (dir) => {
     try {
+      const resolved = normPath(fs.realpathSync(dir));
+      if (walkVisited.has(resolved)) return; // cycle detection
+      walkVisited.add(resolved);
       for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
         if (EXCLUDE_DIRS.includes(entry.name)) continue;
         const full = path.join(dir, entry.name);
         if (entry.isDirectory()) { walk(full); continue; }
         if (!entry.name.match(/\.[jt]sx?$/)) continue;
         try {
+          const stat = fs.statSync(full);
+          if (stat.size > 1024 * 1024) continue; // skip files >1MB
           const content = fs.readFileSync(full, "utf-8");
           if (typePattern.test(content)) definitionFile = full;
           if (importPattern.test(content) && full !== definitionFile) importCount++;

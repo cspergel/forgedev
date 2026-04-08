@@ -59,6 +59,7 @@ This is a sequential loop using existing commands:
        3. Continue the pipeline to the next node — do not break autonomy.
        4. In the Phase 8 deep-build report, include a section: "**Nodes with unverified ACs (bounce exhaustion):** Node [id] completed with unverified ACs: [list]. The sweep will re-evaluate these."
    - `"complete"`: all nodes done, proceed to Phase 3 (verify-runnable)
+   - `"phase_complete"`: all current-phase nodes done but future phases remain. Proceed to Phase 3 (verify-runnable). Phase Advancement after Phase 8 handles incrementing `build_phase` and looping back.
    - `"stuck"`: auto-recover stuck nodes based on their current status, then re-run next-node.js. Do NOT invoke interactive `/forgeplan:recover` — deep-build must stay autonomous.
      - `"building"` → reset to `"specced"` (rebuild from scratch)
      - `"reviewing"` → reset to `"built"` (re-review)
@@ -73,7 +74,7 @@ This is a sequential loop using existing commands:
      ```
    - `"rebuild_needed"`: for each listed node, run `/forgeplan:build [node-id]` then `/forgeplan:review [node-id]` (same build+review pattern as the recommendation branch — no unreviewed nodes in the autonomous pipeline), then re-run next-node.js
    - `"sweep_active"`: a sweep is still active from an interrupted run. Clear `sweep_state` to null, clear `active_node` to null, then re-run next-node.js. This resets the stale sweep so the build loop can proceed.
-3. Repeat until `"complete"`.
+3. Repeat until `"complete"` or `"phase_complete"`.
 
 All existing enforcement (PreToolUse, PostToolUse, Builder agent, Stop hook) applies exactly as in manual builds. The deep-build orchestrator just drives the loop.
 
@@ -245,7 +246,7 @@ This phase follows the **exact same logic as sweep Phase 6** (Task 9). All statu
 [Final integration check output]
 ```
 
-3. Clear `sweep_state` to null
+3. **If Phase Advancement will run** (build_phase < max_phase): set `sweep_state.current_phase` to `"phase-advancing"` and `sweep_state.operation` to `"deep-building"` (do NOT clear sweep_state yet — crash recovery needs the breadcrumb). **If NOT advancing** (build_phase >= max_phase or single-phase): clear `sweep_state` to null.
 4. Present results:
 
 ```
@@ -286,10 +287,11 @@ After Phase 8 certification completes:
    [Y to advance / N to stay on current phase]
    ```
    For autonomous deep-build (--autonomous): auto-advance without prompt unless cross-phase review finds CRITICALs.
-3. Run /forgeplan:integrate with cross-phase lens (MANDATORY — this is distinct from the Phase 4 same-phase integration check. Cross-phase integration verifies that built interfaces match what newly-promoted nodes expect.)
-4. If integrate passes: increment `build_phase` in manifest, set `build_phase_started_at` in state
-5. Run /forgeplan:spec for promoted nodes — detect interface-only specs (specs with `interfaces` section but no `acceptance_criteria` section) and re-run spec generation to promote to full specs
-6. Start new build cycle for promoted nodes (loop back to Phase 2)
+3. Run /forgeplan:integrate with cross-phase lens (MANDATORY — this is distinct from the Phase 4 same-phase integration check). This runs BOTH `integrate-check.js` (spec-to-spec) AND `verify-cross-phase.js` (implementation-to-spec). Both must pass.
+4. If integrate passes (both scripts exit 0): increment `build_phase` in manifest, set `build_phase_started_at` in state
+5. Run /forgeplan:spec for promoted nodes — detect interface-only specs (specs with `interfaces` section but no `acceptance_criteria` section) and re-run spec generation to promote to full specs. **If any promoted node's spec generation fails:** halt with error, preserve `sweep_state` (still has `current_phase: "phase-advancing"`), and present: "Phase advancement failed during spec promotion for [node-id]. Run /forgeplan:recover to resume."
+6. Clear `sweep_state` to null (phase advancement is now complete — safe to clear the breadcrumb).
+7. Start new build cycle for promoted nodes (loop back to Phase 2)
 
 ## Error Handling
 

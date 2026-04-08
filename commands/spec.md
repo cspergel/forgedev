@@ -36,7 +36,7 @@ If the argument contains `--autonomous` or `--all --autonomous`, use the Autonom
 5. Write the complete spec to `.forgeplan/specs/[node-id].yaml` using ALL 14 fields from the node spec schema
 6. Run spec validation: `node "${CLAUDE_PLUGIN_ROOT}/scripts/validate-spec.js" .forgeplan/specs/[node-id].yaml .forgeplan/manifest.yaml`
 7. Run manifest validation: `node "${CLAUDE_PLUGIN_ROOT}/scripts/validate-manifest.js" .forgeplan/manifest.yaml`
-8. **Read** `.forgeplan/state.json`, then **update** (do not overwrite): set `nodes.[node-id].status` to `"specced"` and `last_updated` to current ISO timestamp. Preserve all other existing fields.
+8. **Read** `.forgeplan/state.json`, then **update** (do not overwrite): set `nodes.[node-id].status` to `"specced"` (or `"revised"` if the node was previously `"built"` — see Descriptive Spec Refinement above), `nodes.[node-id].spec_type` to the spec's `spec_type` value (e.g., `"prescriptive"`, `"interface-only"`), and `last_updated` to current ISO timestamp. Preserve all other existing fields.
 9. Present a summary of the spec and confirm with the user
 
 ## All Nodes Mode (`/forgeplan:spec --all`)
@@ -118,11 +118,20 @@ Write the spec to `.forgeplan/specs/[node-id].yaml` and confirm with the user.
 
 Suggest next: `/forgeplan:build [node-id]` to build this node, or `/forgeplan:next` to see the recommended order.
 
+## Descriptive Spec Refinement (Sprint 10B — Post-Ingest)
+
+When the existing spec has `spec_type: "descriptive"` (auto-generated from `/forgeplan:ingest`):
+
+1. **Read the existing descriptive spec as a starting point.** It contains what the code currently does, not what it should do. Present the existing description, interfaces, and any auto-detected patterns to the user.
+2. **Engage the user to add real requirements:** acceptance criteria, constraints, non-goals, failure modes. The descriptive spec's description and interfaces are the baseline — enhance them, don't discard them.
+3. **Set the output spec to:** `spec_type: "prescriptive"` and clear `generated_from` (or set to null). This marks the spec as human-refined.
+4. **Status handling for ingested nodes:** If the node's current status is `"built"` (code already exists from ingest), set status to `"revised"` instead of `"specced"`. This triggers a review against the new prescriptive spec without re-building (the code already exists). Do NOT downgrade a `"built"` node to `"specced"` — that would cause the builder to re-generate code on top of the existing codebase.
+
 ## Phase-Aware Spec Depth (Sprint 10B)
 
 Read `build_phase` from manifest. For each node:
-- **phase == build_phase:** Generate full spec (ACs, constraints, tests, interfaces, non-goals)
-- **phase == build_phase + 1:** Generate interface-only spec (interfaces section only — what it provides, what it consumes. No ACs, no test fields, no constraints yet.)
+- **phase == build_phase:** Generate full spec (ACs, constraints, tests, interfaces, non-goals). Set `spec_type: "prescriptive"`.
+- **phase == build_phase + 1:** Generate interface-only spec. **REQUIRED markers:** Set `spec_type: "interface-only"` and `generated_from: "phase-promotion"` in the YAML frontmatter. The spec MUST contain: `node`, `name`, `description`, `file_scope`, `interfaces`, `shared_dependencies`, `depends_on`. It MUST NOT contain: `acceptance_criteria`, `constraints`, `non_goals`, `failure_modes`, `inputs`, `outputs`, `data_models`. Without these markers, `validate-spec.js` will reject the spec.
 - **phase > build_phase + 1:** Skip — no spec generated. Node exists in manifest as a stub entry only.
 
 When `--all` is passed, apply this logic to all nodes. When a specific node is named, generate full spec regardless of phase (user override).

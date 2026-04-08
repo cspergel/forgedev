@@ -29,14 +29,16 @@ function escapeRegex(s) {
 function extractBlock(content, startIndex) {
   let depth = 0;
   let started = false;
+  const maxLen = 100000; // interface blocks >100KB are not realistic — parse failure
   for (let i = startIndex; i < content.length; i++) {
+    if (i - startIndex > maxLen) return content.slice(startIndex, i);
     if (content[i] === "{") { depth++; started = true; }
     else if (content[i] === "}") { depth--; }
     if (started && depth === 0) {
       return content.slice(startIndex, i + 1);
     }
   }
-  return content.slice(startIndex); // fallback if no closing brace
+  return content.slice(startIndex, startIndex + maxLen); // bounded fallback
 }
 
 function main() {

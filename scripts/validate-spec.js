@@ -91,26 +91,35 @@ function validateSpec(spec, manifest) {
     }
   }
 
+  // Validate spec_type enum if present
+  const validSpecTypes = ["prescriptive", "descriptive", "interface-only"];
+  if (spec.spec_type && !validSpecTypes.includes(spec.spec_type)) {
+    warnings.push(`Unrecognized spec_type "${spec.spec_type}". Valid values: ${validSpecTypes.join(", ")}.`);
+  }
+
   // Sprint 10B: Interface-only specs (phase > build_phase) only require interfaces
-  const isInterfaceOnly = spec.spec_type === "interface-only" ||
+  let isInterfaceOnly = spec.spec_type === "interface-only" ||
     (Array.isArray(spec.interfaces) && spec.interfaces.length > 0 &&
      (!Array.isArray(spec.acceptance_criteria) || spec.acceptance_criteria.length === 0) &&
      spec.generated_from === "phase-promotion");
 
   // Sprint 10B: Validate that interface-only is only used for future-phase nodes
+  // If misused on a current-phase node, report the error AND run full validation (don't relax fields)
   if (isInterfaceOnly && manifest) {
     const buildPhase = (manifest.project && manifest.project.build_phase) || 1;
     const nodePhase = (manifest.nodes && manifest.nodes[spec.node] && manifest.nodes[spec.node].phase) || 1;
     if (nodePhase <= buildPhase) {
       errors.push(`spec_type "interface-only" is only valid for future-phase nodes (phase > build_phase). Node "${spec.node}" is phase ${nodePhase}, build_phase is ${buildPhase}. Use "prescriptive" or "descriptive" for current-phase nodes.`);
+      isInterfaceOnly = false; // Force full validation — don't relax fields for misused spec_type
     }
   } else if (isInterfaceOnly && !manifest) {
-    warnings.push(`Cannot verify interface-only spec phase without manifest — phase validation skipped.`);
+    errors.push(`Cannot verify interface-only spec phase without manifest — provide manifest path or ensure .forgeplan/manifest.yaml exists.`);
+    isInterfaceOnly = false; // Force full validation — can't verify legitimacy without manifest
   }
 
   // Required array fields with type enforcement
   const arrayFields = isInterfaceOnly
-    ? ["interfaces", "depends_on"]  // Interface-only specs only need these
+    ? ["interfaces", "shared_dependencies", "depends_on"]  // Interface-only specs need these
     : ["inputs", "outputs", "shared_dependencies", "interfaces",
        "acceptance_criteria", "constraints", "non_goals", "failure_modes", "depends_on"];
   for (const field of arrayFields) {
@@ -149,11 +158,13 @@ function validateSpec(spec, manifest) {
     }
   }
 
-  // data_models must be an object (can be empty)
-  if (spec.data_models === undefined || spec.data_models === null) {
-    errors.push("Missing required field: data_models");
-  } else if (typeof spec.data_models !== "object" || Array.isArray(spec.data_models)) {
-    errors.push(`data_models: must be an object/map (got ${Array.isArray(spec.data_models) ? "array" : typeof spec.data_models})`);
+  // data_models must be an object (can be empty) — not required for interface-only specs
+  if (!isInterfaceOnly) {
+    if (spec.data_models === undefined || spec.data_models === null) {
+      errors.push("Missing required field: data_models");
+    } else if (typeof spec.data_models !== "object" || Array.isArray(spec.data_models)) {
+      errors.push(`data_models: must be an object/map (got ${Array.isArray(spec.data_models) ? "array" : typeof spec.data_models})`);
+    }
   }
 
   // Quality rules

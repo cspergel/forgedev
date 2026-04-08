@@ -28,6 +28,21 @@ Translator outputs structured JSON mapping.
 
 **Validate output:** Same validation as discover.md's Translator path — parse JSON, check required fields (project_name, proposed_nodes, shared_models, tier_assessment, ambiguities). Strip markdown fences if present. Fall back to error message if invalid after 3 retries: "Repo structure too unusual for automatic ingestion. Run /forgeplan:discover manually."
 
+### Step 1.5: Force-Ingest Confirmation (--force only)
+If `--force` was passed AND `.forgeplan/` already contains project artifacts (manifest.yaml, state.json, specs/), present an explicit overwrite warning before proceeding:
+```
+⚠ Re-ingesting will OVERWRITE existing ForgePlan artifacts:
+  - .forgeplan/manifest.yaml (your current architecture)
+  - .forgeplan/specs/*.yaml (all node specs)
+  - .forgeplan/state.json (build/review state)
+  - .forgeplan/wiki/ (knowledge base)
+
+  Existing sweep reports and conversation logs will be preserved.
+
+  This cannot be undone. Continue? (y/n)
+```
+If the user declines, halt. If `--confirm-auto` is also passed, skip this confirmation (for autonomous pipelines).
+
 ### Step 2: Ground-Truth Validation
 Write Translator output to `.forgeplan/.ingest-mapping.json`
 Run: `node "${CLAUDE_PLUGIN_ROOT}/scripts/validate-ingest.js" .forgeplan/.ingest-mapping.json` (append `--force` if the user passed `--force` to ingest)
@@ -64,8 +79,15 @@ Loop until clean (max 5 passes).
 
 ### Step 7: Write Manifest + Specs + State
 Write `.forgeplan/manifest.yaml`, `.forgeplan/state.json`, `.forgeplan/specs/*.yaml`
-Initialize state with all nodes in "built" status.
-Create `.forgeplan/` directory structure (specs/, plans/, conversations/, reviews/, sweeps/).
+Initialize state with all nodes in "built" status. For each node, also set `nodes.[node-id].spec_type` to `"descriptive"` in state.json — this caches the spec_type so session-start.js doesn't need to read spec YAML files on every session start.
+Create `.forgeplan/` directory structure (specs/, plans/, conversations/, reviews/, sweeps/) using `mkdir -p` (safe — does not overwrite existing directories or their contents). **When `--force` is set:** only overwrite manifest.yaml, state.json, specs/*.yaml, and wiki/. Preserve existing sweeps/, conversations/, reviews/, and plans/ directories and their contents.
+
+### Step 7.5: Validate Generated Specs
+For each generated spec, run validation:
+```bash
+node "${CLAUDE_PLUGIN_ROOT}/scripts/validate-spec.js" .forgeplan/specs/[node-id].yaml .forgeplan/manifest.yaml
+```
+If any spec fails validation, fix the spec (re-engage Architect) and re-validate. Do not proceed to Step 8 with invalid specs.
 
 ### Step 8: Compile Wiki
 If tier is MEDIUM or LARGE:

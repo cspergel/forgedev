@@ -425,6 +425,52 @@ function determineSuggestion(counts, state, nodeIds, nodeStates, manifest) {
     return null;
   }
 
+  // Sprint 10B: Ingest-aware suggestions — descriptive specs need refinement before review/sweep
+  // Check state.json first (spec_type cached there since ingest/spec commands write it),
+  // fall back to reading spec YAML files if state doesn't have spec_type
+  if (manifest && manifest.project) {
+    const ingestBuildPhase = (manifest.project.build_phase) || 1;
+
+    // Fast path: check state.json for cached spec_type
+    for (const nodeId of nodeIds) {
+      const ns = nodeStates[nodeId];
+      if (!ns) continue;
+      const isTerminal = ns.status === "reviewed" || ns.status === "revised";
+      if (isTerminal) continue;
+      const nodePhase = (manifest.nodes[nodeId] && manifest.nodes[nodeId].phase) || 1;
+      if (nodePhase > ingestBuildPhase) continue;
+      if (ns.spec_type === "descriptive") {
+        return `/forgeplan:spec ${nodeId} (refine descriptive specs from ingest)`;
+      }
+    }
+
+    // Slow path fallback: read spec YAML files (for projects ingested before spec_type caching)
+    const specsDir = path.join(process.cwd(), ".forgeplan", "specs");
+    if (fs.existsSync(specsDir)) {
+      try {
+        const specFiles = fs.readdirSync(specsDir).filter(f => f.endsWith(".yaml"));
+        for (const sf of specFiles) {
+          const nodeId = sf.replace(".yaml", "");
+          if (!nodeIds.includes(nodeId)) continue;
+          const nodePhase = (manifest.nodes[nodeId] && manifest.nodes[nodeId].phase) || 1;
+          if (nodePhase > ingestBuildPhase) continue;
+          const ns = nodeStates[nodeId];
+          const isTerminal = ns && (ns.status === "reviewed" || ns.status === "revised");
+          if (isTerminal) continue;
+          // Skip if state already has spec_type (already checked above)
+          if (ns && ns.spec_type) continue;
+          const filePath = path.join(specsDir, sf);
+          const stat = fs.statSync(filePath);
+          if (stat.size > 1024 * 1024) continue;
+          const content = fs.readFileSync(filePath, "utf-8");
+          if (content.includes('spec_type: "descriptive"') || content.includes("spec_type: descriptive")) {
+            return `/forgeplan:spec ${nodeId} (refine descriptive specs from ingest)`;
+          }
+        }
+      } catch (_) {}
+    }
+  }
+
   // Sprint 10B: Phase-aware suggestions — if only future-phase nodes remain, suggest advancement
   const buildPhase = (manifest && manifest.project && manifest.project.build_phase) || 1;
   const maxPhase = manifest ? Math.max(1, ...nodeIds.map(id => (manifest.nodes[id].phase || 1))) : 1;
@@ -434,7 +480,7 @@ function determineSuggestion(counts, state, nodeIds, nodeStates, manifest) {
       const ns = nodeStates[id];
       return ns && (ns.status === "built" || ns.status === "reviewed" || ns.status === "revised");
     }).length;
-    if (currentPhaseComplete === currentPhaseNodes.length && currentPhaseNodes.length > 0) {
+    if (currentPhaseComplete === currentPhaseNodes.length && currentPhaseNodes.length > 0 && buildPhase < maxPhase) {
       return `/forgeplan:deep-build (advance to phase ${buildPhase + 1})`;
     }
     // Only suggest actions for current-phase nodes
@@ -447,6 +493,17 @@ function determineSuggestion(counts, state, nodeIds, nodeStates, manifest) {
       return ns && ns.status === "specced";
     });
     if (currentSpecced.length > 0) {
+      // Check if the specced node has an interface-only spec (needs full spec before build)
+      const specPath = path.join(process.cwd(), ".forgeplan", "specs", `${currentSpecced[0]}.yaml`);
+      try {
+        const specStat = fs.statSync(specPath);
+        if (specStat.size < 1024 * 1024) {
+          const specContent = fs.readFileSync(specPath, "utf-8");
+          if (specContent.includes('spec_type: "interface-only"') || specContent.includes("spec_type: interface-only")) {
+            return `/forgeplan:spec ${currentSpecced[0]} (promote interface-only spec to full)`;
+          }
+        }
+      } catch (_) {}
       return `/forgeplan:build ${currentSpecced[0]}`;
     }
     if (currentPending.length > 0) {

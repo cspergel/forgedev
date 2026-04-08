@@ -95,10 +95,10 @@ function processHook(input) {
 
   // --- 1. Classify file BEFORE registering in manifest ---
   // Must happen first so the manifest check sees pre-build state
+  // NOTE: Uses the single `state` object read at line 86. No re-reads — avoids TOCTOU race.
   let fileAction = "created"; // default for conversation log
+  let stateModified = false; // track if we need to write state back
   try {
-    // Re-read state in case it changed
-    state = JSON.parse(fs.readFileSync(statePath, "utf-8"));
 
     if (!state.nodes) state.nodes = {};
     if (!state.nodes[activeNodeId]) {
@@ -185,7 +185,7 @@ function processHook(input) {
 
     if (targetList && !state.nodes[activeNodeId][targetList].includes(relPath)) {
       state.nodes[activeNodeId][targetList].push(relPath);
-      atomicWriteJson(statePath, state);
+      stateModified = true;
     }
   } catch (err) {
     process.stderr.write(
@@ -194,22 +194,20 @@ function processHook(input) {
   }
 
   // --- 1b. Sweep mode: track modified files per pass ---
+  // Uses same `state` object — no re-read needed (single read/modify/write pattern)
   if (state.active_node && state.active_node.status === "sweeping") {
     try {
-      // Re-read state for sweep_state (may have been updated by classification above)
-      const freshState = JSON.parse(fs.readFileSync(statePath, "utf-8"));
-      if (freshState.sweep_state) {
-        const passKey = String(freshState.sweep_state.pass_number || 1);
-        if (!freshState.sweep_state.modified_files_by_pass) {
-          freshState.sweep_state.modified_files_by_pass = {};
+      if (state.sweep_state) {
+        const passKey = String(state.sweep_state.pass_number || 1);
+        if (!state.sweep_state.modified_files_by_pass) {
+          state.sweep_state.modified_files_by_pass = {};
         }
-        if (!freshState.sweep_state.modified_files_by_pass[passKey]) {
-          freshState.sweep_state.modified_files_by_pass[passKey] = [];
+        if (!state.sweep_state.modified_files_by_pass[passKey]) {
+          state.sweep_state.modified_files_by_pass[passKey] = [];
         }
-        if (!freshState.sweep_state.modified_files_by_pass[passKey].includes(relPath)) {
-          freshState.sweep_state.modified_files_by_pass[passKey].push(relPath);
-          freshState.last_updated = new Date().toISOString();
-          atomicWriteJson(statePath, freshState);
+        if (!state.sweep_state.modified_files_by_pass[passKey].includes(relPath)) {
+          state.sweep_state.modified_files_by_pass[passKey].push(relPath);
+          stateModified = true;
         }
       }
     } catch (err) {
@@ -217,6 +215,12 @@ function processHook(input) {
         `ForgePlan: Could not record this file change for the current sweep pass. The sweep's per-pass diff may be incomplete.\n`
       );
     }
+  }
+
+  // Single write: flush all state changes at once (avoids TOCTOU race from multiple reads)
+  if (stateModified) {
+    state.last_updated = new Date().toISOString();
+    atomicWriteJson(statePath, state);
   }
 
   // --- 2. Register file in manifest (after classification) ---

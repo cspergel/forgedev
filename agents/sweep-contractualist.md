@@ -58,6 +58,12 @@ You are a contract consistency reviewer. Your job is to check that every produce
 - **Routing/dispatch completeness:** For switch statements or if-else chains that route on enum values or status strings — does EVERY possible value have a handler? Missing cases are runtime bugs. Every persisted status should have a resume/recovery path.
 - **Stale references:** Hardcoded file paths, command names, field names, agent names in the code. Have any been renamed, removed, or moved? Check if new items are missing from help text, whitelists, or schema definitions.
 
+### 5. Data Store Boundary Contracts
+
+- **Field lives in the wrong data store:** If a script reads a field from state.json, verify it actually exists there (not only in spec YAML or manifest). ForgePlan has 4 data stores: `manifest.yaml` (architecture, phases, shared models), `state.json` (node status, build state), `specs/*.yaml` (spec_type, ACs, interfaces), `wiki/` (decisions, patterns). Each stores different facets — don't assume a field exists where it's convenient to read.
+- **Schema/template drift:** When a validator changes what fields it requires, the schema template comment must be updated in the same change. Check that `node-spec-schema.yaml` comments match `validate-spec.js` behavior. Check that command docs (spec.md, build.md) match what the validator accepts.
+- **Command says X, script enforces Y:** For each command that calls a script, verify the command's documented behavior matches what the script actually checks. If the command adds an LLM step on top of the script, verify the LLM step covers what the script doesn't.
+
 ## How to Work
 
 For each shared model and each API boundary:

@@ -233,7 +233,7 @@ function reviewViaCli(config, prompt, cwd) {
     // CRITICAL: shell:true on Windows routes through cmd.exe which re-parses
     // arguments — spaces split args, & chains commands. We must double-quote
     // every argument to protect against this.
-    const safeArgs = [...args.map(String), tmpPrompt].map(a => `"${a}"`);
+    const safeArgs = [...args.map(String), tmpPrompt].map(a => `"${String(a).replace(/"/g, '\\"')}"`);
     const proc = spawnSync(command, safeArgs, {
       encoding: "utf-8", timeout, cwd, shell: true,
       stdio: ["pipe", "pipe", "pipe"],
@@ -294,8 +294,8 @@ async function reviewViaApi(config, prompt) {
       break;
 
     case "google":
-      url = `https://generativelanguage.googleapis.com/v1beta/models/${model || "gemini-2.5-flash"}:generateContent?key=${apiKey}`;
-      headers = { "Content-Type": "application/json" };
+      url = `https://generativelanguage.googleapis.com/v1beta/models/${model || "gemini-2.5-flash"}:generateContent`;
+      headers = { "Content-Type": "application/json", "x-goog-api-key": apiKey };
       body = JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
       });

@@ -35,6 +35,8 @@ Look at the code with no domain bias. The other agents have specific lenses (sec
 - **Race conditions:** Two async operations that could interleave. A read-modify-write without a lock. A cache that can serve stale data during a concurrent update.
 - **Wrong defaults:** Timeout of 0 (never times out). Page size of 10,000 (returns everything). Retry count of 0 (never retries when it should). Default port that conflicts with common services.
 - **Unreachable code:** Conditions that can never be true. Return statements before cleanup code. Switch cases after a default that returns.
+- **Enforcement gaps:** If a command says a step is "MANDATORY" or "REQUIRED," verify there's a deterministic check (script, hook, or gate) that enforces it. Prose instructions in markdown commands can be skipped by the LLM — they are not enforcement. A mandatory step with no backing script is a false gate.
+- **Dead code from error paths:** If a validator detects an error and pushes it to an errors array, check whether the rest of the function still runs with a relaxed/wrong state. Errors should reset mode flags, not just accumulate messages while the code continues in a permissive mode.
 
 ### 3. Cross-Agent Gap Finding (Pass 2+ Only)
 

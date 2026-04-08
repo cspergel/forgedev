@@ -181,10 +181,26 @@ async function startServer(techStack) {
   }
 
   const env = { ...process.env };
+  let createdTempEnv = false;
+  const tempEnvPath = path.join(cwd, ".env.verify-tmp");
   if (!fs.existsSync(path.join(cwd, ".env")) && fs.existsSync(path.join(cwd, ".env.example"))) {
     try {
-      fs.copyFileSync(path.join(cwd, ".env.example"), path.join(cwd, ".env"));
+      // Use a temp file instead of creating .env permanently (side-effect free verification)
+      fs.copyFileSync(path.join(cwd, ".env.example"), tempEnvPath);
+      createdTempEnv = true;
       env.MOCK_MODE = "true";
+      // Load temp env vars into the env object so the spawned process gets them
+      const envContent = fs.readFileSync(tempEnvPath, "utf-8");
+      for (const line of envContent.split("\n")) {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith("#")) continue;
+        const eqIdx = trimmed.indexOf("=");
+        if (eqIdx > 0) {
+          const key = trimmed.slice(0, eqIdx).trim();
+          const val = trimmed.slice(eqIdx + 1).trim();
+          if (!env[key]) env[key] = val; // don't override existing env vars
+        }
+      }
     } catch {}
   }
 
@@ -287,11 +303,13 @@ async function startServer(techStack) {
     killProcess(child.pid, isWindows);
     // Clean up PID file on start failure (don't leave stale entry)
     try { fs.unlinkSync(pidFile); } catch {}
+    // Clean up temp .env
+    if (createdTempEnv) { try { fs.unlinkSync(tempEnvPath); } catch {} }
     const errorType = /EADDRINUSE|address already in use/i.test(serverOutput) ? "environment" : "code";
     return { error: `Server failed to start: ${serverOutput.substring(0, 300)}`, errorType };
   }
 
-  return { child, serverOutput, isWindows };
+  return { child, serverOutput, isWindows, _cleanupTempEnv: createdTempEnv ? tempEnvPath : null };
 }
 
 function killProcess(pid, isWindows) {
@@ -579,6 +597,8 @@ async function main() {
   const cleanup = () => {
     killProcess(server.child.pid, server.isWindows);
     try { fs.unlinkSync(runtimePidFile); } catch {}
+    // Clean up temp .env created by startServer
+    if (server._cleanupTempEnv) { try { fs.unlinkSync(server._cleanupTempEnv); } catch {} }
   };
   process.on("SIGINT", () => { cleanup(); process.exit(1); });
   process.on("SIGTERM", () => { cleanup(); process.exit(1); });

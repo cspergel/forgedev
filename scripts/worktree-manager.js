@@ -131,11 +131,27 @@ function mergeWorktree(nodeId) {
     process.exit(2);
   }
 
-  // Commit any uncommitted changes in the worktree
+  // Commit any uncommitted changes in the worktree (scoped to avoid committing .env, node_modules, etc.)
   const status = run("git status --porcelain", { cwd: worktreePath, throwOnError: false });
   if (status) {
     try {
-      run("git add -A", { cwd: worktreePath });
+      // Read file_scope from manifest to scope git add (don't use -A which stages everything)
+      let fileScope = null;
+      try {
+        const yaml = require(path.join(__dirname, "..", "node_modules", "js-yaml"));
+        const manifest = yaml.load(fs.readFileSync(path.join(cwd, ".forgeplan", "manifest.yaml"), "utf-8"));
+        if (manifest.nodes && manifest.nodes[nodeId]) {
+          fileScope = manifest.nodes[nodeId].file_scope;
+        }
+      } catch {}
+      if (fileScope) {
+        // Strip trailing ** for git add (e.g., "src/auth/**" → "src/auth/")
+        const scopeDir = fileScope.replace(/\*+$/, "");
+        run(`git add -- "${scopeDir}" .forgeplan/`, { cwd: worktreePath });
+      } else {
+        // Fallback: add all but exclude sensitive patterns
+        run("git add -A -- . ':!.env*' ':!node_modules'", { cwd: worktreePath });
+      }
       run(`git commit -m "forgeplan: sweep fix for ${nodeId}"`, { cwd: worktreePath });
     } catch (err) {
       // Commit failed with real uncommitted changes — do NOT clean up, report error

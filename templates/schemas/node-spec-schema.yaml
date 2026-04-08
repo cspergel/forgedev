@@ -10,7 +10,7 @@ node: ""                              # Node ID (must match manifest key)
 name: ""                              # Human-readable name
 
 # --- Spec Metadata (Sprint 10B) ---
-# spec_type: "prescriptive"          # "prescriptive" (default, user-written) | "descriptive" (auto-generated from code via /forgeplan:ingest) | "interface-only" (future-phase: identity + interfaces + shared_dependencies only, no ACs)
+# spec_type: "prescriptive"          # "prescriptive" (default, user-written) | "descriptive" (auto-generated from code via /forgeplan:ingest) | "interface-only" (future-phase: requires node, name, description, file_scope, interfaces, shared_dependencies, depends_on. Omit: acceptance_criteria, constraints, non_goals, failure_modes, inputs, outputs, data_models)
 # generated_from: null                # "repo-ingestion" | "document-import" | "phase-promotion" | null
 
 # --- Description ---

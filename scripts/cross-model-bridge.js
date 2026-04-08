@@ -474,7 +474,7 @@ function crossCheckViaCli(config, prompt, cwd) {
     fs.writeFileSync(tmpPrompt, prompt, "utf-8");
     // spawnSync with shell:true for .cmd shim resolution on Windows.
     // Double-quote every argument for cmd.exe safety (spaces, &, etc.)
-    const safeArgs = [...args.map(String), tmpPrompt].map(a => `"${a}"`);
+    const safeArgs = [...args.map(String), tmpPrompt].map(a => `"${String(a).replace(/"/g, '\\"')}"`);
     const proc = spawnSync(command, safeArgs, {
       encoding: "utf-8", timeout, cwd, shell: true,
       stdio: ["pipe", "pipe", "pipe"],
@@ -527,8 +527,8 @@ async function crossCheckViaApi(config, prompt) {
       });
       break;
     case "google":
-      url = `https://generativelanguage.googleapis.com/v1beta/models/${model || "gemini-2.5-flash"}:generateContent?key=${apiKey}`;
-      headers = { "Content-Type": "application/json" };
+      url = `https://generativelanguage.googleapis.com/v1beta/models/${model || "gemini-2.5-flash"}:generateContent`;
+      headers = { "Content-Type": "application/json", "x-goog-api-key": apiKey };
       body = JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
       });

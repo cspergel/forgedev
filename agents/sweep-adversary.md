@@ -55,7 +55,19 @@ You are an adversarial code reviewer. Your job is NOT to check if the code looks
 - For each validation check, find a CORRECT input that fails anyway.
 - For each test assertion, check: can this test pass when the behavior is actually broken? (e.g., testing that a function doesn't throw, without checking the return value)
 
-### 6. State Machine Holes
+### 6. Validator Heuristic Bypasses
+
+- For each validator that has a "special path" (relaxed validation for a category of input), find an input that triggers the special path but shouldn't qualify. Example: a validator that relaxes checks for `spec_type: "interface-only"` — can a non-interface-only spec set that field to bypass checks?
+- Check if error paths still leave the system in a relaxed state. If a validator detects misuse (pushes an error) but doesn't reset its mode flag, the relaxed validation still runs alongside the error.
+- **Mandatory steps without enforcement:** If a command says "MANDATORY: do X" but nothing deterministic verifies X happened, that's a false-pass gate. Prose instructions in markdown commands are not enforcement.
+
+### 7. Unbounded Resource Consumption
+
+- Scripts that read files without size guards — can a large or malicious file cause OOM or hang?
+- Recursive directory walks without cycle detection — can symlinks cause infinite recursion?
+- Operations that run on every session start or hook invocation — are they bounded?
+
+### 8. State Machine Holes
 
 - Can retry/resume/recovery reach an inconsistent state?
 - Can two operations race to update the same state?
