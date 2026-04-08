@@ -607,24 +607,35 @@ function main() {
         continue;
       }
 
-      // If some symbols are imported/used but others are missing, still PASS
-      // but note the partial coverage in the detail.
+      // Check symbol coverage: ALL found → PASS, SOME found → WARN, NONE found is handled above.
       const evidenceParts = [];
       if (importedSymbols.length > 0) evidenceParts.push(`imported: ${importedSymbols.join(", ")}`);
       if (usedSymbols.length > 0) evidenceParts.push(`used in code: ${usedSymbols.join(", ")}`);
-      const missingNote = missingSymbols.length > 0
-        ? ` Not found in target code: ${missingSymbols.join(", ")}.`
-        : "";
 
-      results.push({
-        source: nodeId,
-        target: targetId,
-        type: ifaceType,
-        contract,
-        status: "PASS",
-        fault: null,
-        detail: `Interface documented on both sides, contracts match, and implementation evidence found (${evidenceParts.join("; ")}).${missingNote} Shared models: ${sharedDetail}.`,
-      });
+      if (missingSymbols.length > 0) {
+        // Partial evidence: some contracted symbols found, others missing → WARN
+        const foundCount = symbols.length - missingSymbols.length;
+        results.push({
+          source: nodeId,
+          target: targetId,
+          type: ifaceType,
+          contract,
+          status: "WARN",
+          fault: "TARGET",
+          detail: `Interface documented on both sides and contracts match, but only partial evidence: ${foundCount} of ${symbols.length} symbols verified (${evidenceParts.join("; ")}). Not found in target code: ${missingSymbols.join(", ")}. Shared models: ${sharedDetail}.`,
+        });
+      } else {
+        // All contracted symbols found → PASS
+        results.push({
+          source: nodeId,
+          target: targetId,
+          type: ifaceType,
+          contract,
+          status: "PASS",
+          fault: null,
+          detail: `Interface documented on both sides, contracts match, and all implementation evidence found (${evidenceParts.join("; ")}). Shared models: ${sharedDetail}.`,
+        });
+      }
     }
   }
 

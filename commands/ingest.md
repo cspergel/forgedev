@@ -103,16 +103,17 @@ Run `/forgeplan:sweep --baseline` for baseline quality assessment.
 ### Step 10: Guide Onboarding
 Output via /forgeplan:guide:
 ```
-Your project has been ingested into ForgePlan governance.
+Your project has been mapped into ForgePlan with descriptive specs.
   [N] nodes mapped, [N] shared models identified
-  [N] findings from baseline sweep (informational)
+  [N] findings from baseline sweep (informational only, no auto-fixes)
 
-Your specs are auto-generated (descriptive). To add actual requirements:
-  → /forgeplan:spec [node]    Edit a node's spec to add requirements
-  → /forgeplan:review [node]  Review a node against its spec
-  → /forgeplan:status         See the full project state
+Your specs are auto-generated (descriptive) — they capture what exists
+but don't yet enforce requirements. To refine into full governance:
+  → /forgeplan:spec [node]    Replace descriptive spec with prescriptive requirements
+  → /forgeplan:review [node]  Review a node against its refined spec
+  → /forgeplan:status         See which nodes still carry descriptive specs
 
   → /forgeplan:guide            Get guidance anytime
 
-All future changes go through the ForgePlan pipeline.
+Once specs are refined to prescriptive, future changes go through the full pipeline.
 ```

@@ -51,8 +51,21 @@ const isWithinProject = (candidate) => {
 };
 
 // Helper: resolve scope dir from file_scope glob
+// Glob-aware: extract the non-glob base directory (everything before the first
+// path segment containing *, ?, {, or [). For example:
+//   "packages/*/src/**/*.ts" → "packages"
+//   "src/auth/**"            → "src/auth"
+//   "src/**/*.ts"            → "src"
+//   "**/*.ts"                → "."
 const resolveScopeDir = (fileScope) => {
-  const scopeDir = fileScope.replace(/\*\*.*$/, "").replace(/\/+$/, "");
+  const normalized = fileScope.replace(/\\/g, "/");
+  const segments = normalized.split("/");
+  const baseSegments = [];
+  for (const seg of segments) {
+    if (/[*?{\[]/.test(seg)) break;
+    baseSegments.push(seg);
+  }
+  const scopeDir = baseSegments.length > 0 ? baseSegments.join("/") : ".";
   return { scopeDir, absDir: path.resolve(cwd, scopeDir) };
 };
 
@@ -313,8 +326,10 @@ for (const node of (mapping.proposed_nodes || [])) {
   checks.push({
     name: "scope_breadth",
     node: node.id,
-    status: pct > 60 ? "FAIL" : "PASS",
-    details: `${nodeFiles}/${totalFiles} files (${pct}%) matching ${node.file_scope}`,
+    status: pct > 60 ? "WARN" : "PASS",
+    details: pct > 60
+      ? `Node ${node.id} covers ${pct}% of project files (${nodeFiles}/${totalFiles}). Consider splitting into smaller nodes for better enforcement, or ignore if this is intentionally a broad-scope node.`
+      : `${nodeFiles}/${totalFiles} files (${pct}%) matching ${node.file_scope}`,
   });
 }
 
@@ -435,15 +450,36 @@ for (const model of (mapping.shared_models || [])) {
     });
   }
 
-  // Usage check: also WARN instead of FAIL when definition was non-JS (import counting may not apply)
+  // Usage check: WARN instead of FAIL when import-based reuse check doesn't apply.
+  // Import counting is only reliable for JS/TS codebases. For other languages
+  // (Prisma, JSON Schema, Python, YAML, etc.), the import pattern won't match
+  // and a FAIL would be a false positive.
+  // Detect JS/TS repo: check mapping.tech_stack or fall back to definition source.
+  const techStack = mapping.tech_stack || {};
+  const stackLanguage = (techStack.language || techStack.runtime || "").toLowerCase();
+  const isJsTsRepo = stackLanguage
+    ? /\b(javascript|typescript|node|deno|bun|js|ts)\b/.test(stackLanguage)
+    : ["js/ts", "drizzle"].includes(definitionSource);
+
   if (definitionSource && !["js/ts", "drizzle"].includes(definitionSource)) {
+    // Definition found in a non-JS/TS pattern — import counting won't work
     checks.push({
       name: "shared_type_usage",
       node: model.name,
       status: importCount >= 2 ? "PASS" : "WARN",
       details: `${model.name} defined in ${definitionSource} — JS/TS import count (${importCount}) may not reflect actual usage. Verify manually.`,
     });
+  } else if (!isJsTsRepo) {
+    // Not a JS/TS repo — shared model reuse check is unreliable
+    const lang = stackLanguage || "unknown";
+    checks.push({
+      name: "shared_type_usage",
+      node: model.name,
+      status: importCount >= 2 ? "PASS" : "WARN",
+      details: `Shared model reuse check is limited to JS/TS imports. Manual verification recommended for ${lang}.${definitionFile ? "" : " No definition found — define manually."}`,
+    });
   } else {
+    // JS/TS repo — import-based reuse check is reliable, FAIL is appropriate
     checks.push({
       name: "shared_type_usage",
       node: model.name,

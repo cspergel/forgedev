@@ -131,7 +131,7 @@ When the existing spec has `spec_type: "descriptive"` (auto-generated from `/for
 
 Read `build_phase` from manifest. For each node:
 - **phase == build_phase:** Generate full spec (ACs, constraints, tests, interfaces, non-goals). Set `spec_type: "prescriptive"`.
-- **phase == build_phase + 1:** Generate interface-only spec. **REQUIRED markers:** Set `spec_type: "interface-only"` and `generated_from: "phase-promotion"` in the YAML frontmatter. The spec MUST contain: `node`, `name`, `description`, `file_scope`, `interfaces`, `shared_dependencies`, `depends_on`. It MUST NOT contain: `acceptance_criteria`, `constraints`, `non_goals`, `failure_modes`, `inputs`, `outputs`, `data_models`. Without these markers, `validate-spec.js` will reject the spec.
+- **phase == build_phase + 1:** Generate interface-only spec. **Recommended markers:** Set `spec_type: "interface-only"` and `generated_from: "phase-promotion"` in the YAML frontmatter for best validation accuracy. The spec MUST contain: `node`, `name`, `description`, `file_scope`, `interfaces`, `shared_dependencies`, `depends_on`. It MUST NOT contain: `acceptance_criteria`, `constraints`, `non_goals`, `failure_modes`, `inputs`, `outputs`, `data_models`. Note: `validate-spec.js` can also detect interface-only shape heuristically (interfaces present + no acceptance_criteria + phase-promotion origin), but explicit markers are preferred.
 - **phase > build_phase + 1:** Skip — no spec generated. Node exists in manifest as a stub entry only.
 
 When `--all` is passed, apply this logic to all nodes. When a specific node is named, generate full spec regardless of phase (user override).

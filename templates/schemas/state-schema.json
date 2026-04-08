@@ -97,6 +97,11 @@
             "type": ["string", "null"],
             "description": "Path to most recent cross-model review report, or null. Only set when BYOK cross-model review is configured in config.yaml."
           },
+          "spec_type": {
+            "type": "string",
+            "enum": ["full", "descriptive", "interface-only"],
+            "description": "Cached spec type for quick access without reading spec YAML"
+          },
           "revision_history": {
             "type": "array",
             "items": {

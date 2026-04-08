@@ -115,7 +115,7 @@ passed = (verdict === "PASS" || verdict === "PASS_WITH_WARNINGS")
 failures = interfaces.filter(i => i.status === "FAIL")
 ```
 
-If `verdict === "INCOMPLETE"`: log warning, treat as pass (same as sweep Phase 5).
+If `verdict === "INCOMPLETE"`: log warning, treat as pass with warning (same as sweep Phase 5). Note: integrate-check.js exits non-zero for INCOMPLETE, so check the verdict in JSON output rather than relying on exit code alone.
 
 If integration fails and `failures.length > 0`, add each failure as a finding in `sweep_state.findings.pending` and proceed to fix cycle.
 

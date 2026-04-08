@@ -192,20 +192,22 @@ Choose [1/2/3]:
   - Otherwise: restart from `"claude-sweep"`
 - If `active_node` was set (mid-fix), clear it and set `nodes.[node].status` back to the pre-sweep status
 
-**Abort behavior:**
-- If `sweep_state.phase_advancement` exists (MUST check BEFORE nullifying sweep_state):
-  - Restore `project.build_phase` in manifest from `phase_advancement.from_build_phase`
-  - Restore backed-up promoted specs and manifest from `phase_advancement.backup_dir`
-  - Delete `.forgeplan/phase-advance-backup/`
-  - Restore `build_phase_started_at` in state.json from the backup, or clear it to `null` if no backup value exists (prevents stale timestamp from the aborted phase)
-- Set `sweep_state` to `null` in state.json
-- If `active_node` was set (mid-fix):
-  - Clear `active_node` to `null`
-- **Scan ALL `state.nodes` entries for orphaned "sweeping" status.** For each node with `status: "sweeping"`:
-  - If `previous_status` is set: restore `status` to `previous_status`, clear `previous_status`
-  - If `previous_status` is not set: set `status` to `"built"` (safest default — the node was built before the sweep started)
-  - This handles edge cases where the crash happened between setting node status and setting active_node
-- Sweep reports remain in `.forgeplan/sweeps/` for reference
+**Abort behavior (steps MUST execute in this order):**
+
+1. **Read `sweep_state.phase_advancement`** from state.json (must read BEFORE nullifying sweep_state).
+2. **If `phase_advancement` exists, do the rollback:**
+   - Restore `project.build_phase` in manifest from `phase_advancement.from_build_phase`
+   - Restore backed-up promoted specs and manifest from `phase_advancement.backup_dir`
+   - Delete `.forgeplan/phase-advance-backup/`
+   - Restore `build_phase_started_at` in state.json from the backup, or clear it to `null` if no backup value exists (prevents stale timestamp from the aborted phase)
+3. **If `active_node` was set (mid-fix):** clear `active_node` to `null`
+4. **Scan ALL `state.nodes` entries for orphaned "sweeping" status.** For each node with `status: "sweeping"`:
+   - If `previous_status` is set: restore `status` to `previous_status`, clear `previous_status`
+   - If `previous_status` is not set: set `status` to `"built"` (safest default — the node was built before the sweep started)
+   - This handles edge cases where the crash happened between setting node status and setting active_node
+5. **Set `sweep_state` to `null`** in the in-memory state object (AFTER all reads of sweep_state fields are complete).
+6. **Write state.json** atomically (single write with all changes from steps 2-5).
+7. Sweep reports remain in `.forgeplan/sweeps/` for reference.
 
 **After any recovery action, suggest next steps:**
 ```
