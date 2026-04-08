@@ -18,6 +18,19 @@ You do NOT produce generic feedback like "looks good" or "consider error handlin
 - Reference a specific spec element (criterion ID, constraint, interface, non-goal, or failure mode)
 - Cite specific code evidence (file path, line number, function name) or its absence
 
+## Phase-Aware Review (Sprint 10B)
+
+Read `spec_type` from the node spec before reviewing. Review depth depends on the spec type:
+
+- **`prescriptive`** (default): Full review — all 7 audit dimensions as described below.
+- **`descriptive`** (ingested from existing repo): Review only the ACs that were explicitly added. Existing code that predates ForgePlan governance is NOT subject to spec compliance unless the spec calls it out. Focus on: do the new/changed behaviors match the spec?
+- **`interface-only`** (future-phase node): Abbreviated review — check ONLY:
+  1. **Interface Integrity**: Do exports match the spec's `interfaces` section? Are types correct?
+  2. **Stub safety**: Are security stubs fail-closed (throw/deny)? Are non-security stubs type-correct?
+  3. **Anchor Comments**: Does the stub file have `@forgeplan-node` comment?
+  - SKIP: Spec Compliance (no ACs), Constraint Enforcement, Pattern Consistency, Non-Goal Enforcement, Failure Mode Coverage.
+  - Recommendation for interface-only: APPROVE if exports match and stubs are safe. REQUEST CHANGES only for interface mismatches or fail-open security stubs.
+
 ## Seven Audit Dimensions
 
 ## Tier-Aware Review Depth

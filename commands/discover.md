@@ -63,7 +63,7 @@ When loading a template:
 
 **Existing project guard:** Before entering document import mode, check if `.forgeplan/` already exists or if the directory contains project files (package.json, tsconfig.json, src/, app/, lib/, or similar). If so, warn the user:
 - If `.forgeplan/manifest.yaml` exists with built/reviewed nodes: "An existing ForgePlan project was detected with built nodes. To modify the architecture, use `/forgeplan:revise`. To start fresh, delete `.forgeplan/` first. Continue with re-discovery? (y/n)"
-- If project files exist but no `.forgeplan/`: "Existing project files detected. ForgePlan will create an architecture and generate code. The build phase WILL create and modify files including package.json, tsconfig.json, entry points, and source files in node-scoped directories. Consider committing your current state first (`git add -A && git commit -m 'pre-forgeplan'`) so you can fully revert with `git reset --hard HEAD~1` if needed. Continue? (y/n)"
+- If project files exist but no `.forgeplan/`: "Existing project files detected. You have two options:\n  1. `/forgeplan:ingest` — Bring this existing codebase under ForgePlan governance (recommended for existing projects). Scans your code, generates descriptive specs, runs baseline sweep.\n  2. Continue with `/forgeplan:discover` — Create a NEW architecture and generate NEW code. This WILL create and modify files including package.json, tsconfig.json, entry points, and source files.\nWhich would you prefer? (1 for ingest / 2 for discover / n to cancel)"
 Only proceed if confirmed.
 
 If the user's argument contains `--from`, they are importing an external document:

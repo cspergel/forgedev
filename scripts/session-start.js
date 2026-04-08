@@ -284,7 +284,7 @@ function buildAmbientStatus(forgePlanDir, manifestPath, statePath, state) {
     : null;
 
   // Determine suggested next command based on project state
-  const suggestion = determineSuggestion(counts, state, nodeIds, nodeStates);
+  const suggestion = determineSuggestion(counts, state, nodeIds, nodeStates, manifest);
 
   // Build the output lines
   const lines = [];
@@ -402,7 +402,7 @@ function isWikiStale(state, forgePlanDir) {
  * Determine the contextual next-command suggestion based on node states.
  * Includes specific node names in suggestions where possible.
  */
-function determineSuggestion(counts, state, nodeIds, nodeStates) {
+function determineSuggestion(counts, state, nodeIds, nodeStates, manifest) {
   const { total, pending, specced, built, reviewed, inProgress } = counts;
 
   // If there's an active sweep that completed, suggest status/measure
@@ -423,6 +423,35 @@ function determineSuggestion(counts, state, nodeIds, nodeStates) {
       if (targetStatuses.includes(status)) return id;
     }
     return null;
+  }
+
+  // Sprint 10B: Phase-aware suggestions — if only future-phase nodes remain, suggest advancement
+  const buildPhase = (manifest && manifest.project && manifest.project.build_phase) || 1;
+  const maxPhase = manifest ? Math.max(1, ...nodeIds.map(id => (manifest.nodes[id].phase || 1))) : 1;
+  if (maxPhase > 1) {
+    const currentPhaseNodes = nodeIds.filter(id => (manifest.nodes[id].phase || 1) <= buildPhase);
+    const currentPhaseComplete = currentPhaseNodes.filter(id => {
+      const ns = nodeStates[id];
+      return ns && (ns.status === "built" || ns.status === "reviewed" || ns.status === "revised");
+    }).length;
+    if (currentPhaseComplete === currentPhaseNodes.length && currentPhaseNodes.length > 0) {
+      return `/forgeplan:deep-build (advance to phase ${buildPhase + 1})`;
+    }
+    // Only suggest actions for current-phase nodes
+    const currentPending = currentPhaseNodes.filter(id => {
+      const ns = nodeStates[id];
+      return !ns || ns.status === "pending";
+    });
+    const currentSpecced = currentPhaseNodes.filter(id => {
+      const ns = nodeStates[id];
+      return ns && ns.status === "specced";
+    });
+    if (currentSpecced.length > 0) {
+      return `/forgeplan:build ${currentSpecced[0]}`;
+    }
+    if (currentPending.length > 0) {
+      return `/forgeplan:spec ${currentPending[0]}`;
+    }
   }
 
   // All reviewed — suggest sweep or integrate

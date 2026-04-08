@@ -125,6 +125,13 @@ In repo mode, you scan an EXISTING codebase instead of reading external document
 - Repo mode: extracts from code structure (objective, verifiable)
 - Repo mode specs will be `spec_type: "descriptive"` (what code does, not requirements)
 
+### Phase Assignment for Repo Mode
+When scanning an existing codebase, assign phases based on the dependency graph you discover:
+1. **Default all nodes to Phase 1.** Existing code is already running — there's no reason to defer it.
+2. **Exception: planned-but-unbuilt features.** If the codebase has TODOs, empty directories, or stub files for features not yet implemented, assign those to Phase 2.
+3. **Exception: document-described future work.** If the ingest includes a roadmap document alongside the repo, use the document's phasing for future features.
+4. Set `"source": "repo"` in output. The Architect will set `build_phase: 1` in the manifest since the existing code is already built.
+
 ## Tech Stack Mapping Note
 
 The Translator's `tech_stack` output covers core fields: `runtime`, `language`, `api_framework`, `database`, `auth`, `frontend`, `test_framework`. The Architect fills in additional manifest fields during manifest generation: `orm`, `deployment`, `test_command`, `dev_port`, `mock_mode`, `infrastructure`. Extract what the source document mentions; the Architect fills gaps from defaults and conversation.

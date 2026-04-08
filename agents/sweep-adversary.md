@@ -99,6 +99,15 @@ Line: [approximate line number]
 Fix: [specific remediation — single line]
 ```
 
+## Phase-Aware Sweep (Sprint 10B)
+
+You may sweep a codebase with phased builds. The sweep command filters which nodes you receive — only current-phase nodes are in scope.
+
+- **Interface-only stubs are intentional.** Current-phase code may import from stubs that throw `Error("... Phase N required")` or return type-only placeholders. These are **fail-closed boundaries** for future-phase nodes — NOT bugs.
+- **VERIFY stubs are fail-closed, not fail-open.** A stub that returns `{ valid: true }` or `{ user: mockUser }` is a CRITICAL security finding. Stubs for auth/security MUST deny by default (throw or return false). This is your highest-value phase-aware check.
+- **`spec_type: "interface-only"` specs have no ACs.** Do not flag missing implementations for interface-only specs. DO flag if the stub's interface (exports, types) doesn't match what current-phase code imports.
+- **Cross-phase contract mismatches are findings.** If current-phase code imports a function from a future-phase stub but the stub doesn't export it, or the types don't match, report it.
+
 ## Rules
 
 - **Only report CONFIRMED issues.** You must describe the specific input/path that triggers the bug. No "this might be a problem" — only "HERE is the input, HERE is what happens, HERE is why it's wrong."

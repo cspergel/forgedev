@@ -58,10 +58,11 @@ Run /forgeplan:sweep to review and resolve them.
 
 Based on project state, suggest relevant next actions:
 
-- **All nodes pending:** `/forgeplan:spec --all` then `/forgeplan:build --all`
+- **All nodes pending:** `/forgeplan:spec --all` then `/forgeplan:build --all` for the current phase
 - **Some nodes built, some pending:** `/forgeplan:next` to see what to build next
 - **All nodes built but not reviewed:** `/forgeplan:review --all`
 - **All nodes reviewed:** `/forgeplan:integrate` then `/forgeplan:measure`
+- **Current phase complete:** `/forgeplan:deep-build` to advance to the next phase
 - **Project complete:** Suggest common changes:
   - `/forgeplan:revise --model [ModelName]` to add/change a shared model field (cascades to all affected nodes)
   - `/forgeplan:revise [node-id]` to change a single node

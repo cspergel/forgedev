@@ -1,5 +1,5 @@
 ---
-description: Full pipeline from idea to certified app. Chains discover → research → spec → deep-build. One confirmation, then walk away.
+description: Full pipeline from idea to certified app. Chains discover → design review → research → spec → plan review → deep-build. One confirmation, then walk away.
 user-invocable: true
 argument-hint: "[project description or --from document.md]"
 allowed-tools: Read Write Edit Bash Glob Grep Agent
@@ -7,7 +7,7 @@ allowed-tools: Read Write Edit Bash Glob Grep Agent
 
 # Greenfield Build
 
-One command to go from idea to certified app. You describe what you want, confirm the architecture once, and ForgePlan handles the rest: discover → research → spec → build → verify → review → sweep → certify.
+One command to go from idea to certified app. You describe what you want, confirm the architecture once, and ForgePlan handles the rest: discover → design review → research → spec → plan review → build → verify → review → sweep → certify.
 
 **THIS COMMAND IS AUTONOMOUS AFTER ONE CONFIRMATION. Do not stop between steps to ask the user questions. Run straight through from discover to certified.**
 
@@ -98,15 +98,20 @@ For each identified topic, run `/forgeplan:research [topic]`.
 
 **If research fails for a topic:** log a warning and continue. Research is informative, not blocking.
 
-### Step 3: Spec all nodes (autonomous)
+### Step 3: Spec all nodes (autonomous, phase-aware)
 
-Generate full specs for all nodes:
+Generate specs for all nodes:
 
 ```
 /forgeplan:spec --all --autonomous
 ```
 
-This reads research findings from `.forgeplan/research/` and generates complete specs with acceptance criteria, test fields, interfaces, constraints, and failure modes — all without user interaction.
+This reads research findings from `.forgeplan/research/` and applies the Sprint 10B phased-spec contract automatically:
+- Current-phase nodes get full specs with acceptance criteria, tests, constraints, and failure modes
+- Next-phase nodes get interface-only specs
+- Later-phase nodes stay deferred until promotion
+
+All of that happens without user interaction.
 
 If spec generation fails for a node, halt with error and preserve state. The user can fix and re-run `/forgeplan:greenfield` to resume.
 

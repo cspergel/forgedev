@@ -177,6 +177,19 @@ When the build is complete:
 
 **Note:** Setting agent_status to DONE does NOT mean the build is complete. The Stop hook independently verifies acceptance criteria before allowing the status transition to "built." Your self-assessment is input to the verification, not a substitute for it.
 
+## Phase-Aware Building (Sprint 10B)
+
+Read `spec_type` from the node spec at `.forgeplan/specs/[node-id].yaml`. Build behavior depends on the spec type:
+
+- **`prescriptive`** (default): Full build. Implement all ACs, write tests, follow the complete build process above.
+- **`descriptive`** (ingested from existing repo): Existing code is the baseline. Build only what the spec's ACs explicitly ask for — enhance or fix, don't rewrite.
+- **`interface-only`** (future-phase node): Implement ONLY the public interface — exports, type definitions, and function stubs. No business logic, no tests for logic. Every function body should either:
+  - Throw with a clear message: `throw new Error("[function] not implemented — Phase [N] required")`
+  - Return a type-safe default for non-security functions (e.g., empty arrays, null)
+  - Use **fail-closed stubs** for security functions (see below)
+
+For `interface-only` builds, create the node's `index.ts` with all exports matching the spec's `interfaces` section. Other nodes will import from this file. The stub must be type-correct so current-phase consumers compile.
+
 ## Fail-Closed Stubs for Security Dependencies (Sprint 10B)
 
 When importing from a future-phase node that provides authentication, authorization, or security services: implement a **FAIL-CLOSED** stub.

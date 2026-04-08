@@ -38,7 +38,16 @@ const checks = [];
 // C1 fix: Normalize paths for case-insensitive comparison on Windows
 // Also ensure trailing separator to prevent C:\repo matching C:\repo-other
 const normPath = (s) => process.platform === "win32" ? s.toLowerCase() : s;
-const normCwd = normPath(path.resolve(cwd) + path.sep);
+const projectRoot = path.resolve(cwd);
+const normProjectRoot = normPath(projectRoot);
+const normCwd = normPath(projectRoot + path.sep);
+const EXCLUDE_DIRS = ["node_modules", "dist", "build", ".next", ".git", ".forgeplan"];
+
+const isWithinProject = (candidate) => {
+  const resolved = path.resolve(candidate);
+  const normalized = normPath(resolved);
+  return normalized === normProjectRoot || normalized.startsWith(normCwd);
+};
 
 // Helper: resolve scope dir from file_scope glob
 const resolveScopeDir = (fileScope) => {
@@ -49,7 +58,7 @@ const resolveScopeDir = (fileScope) => {
 // Check 0 (C2 fix): Validate all scopes are within project root FIRST
 for (const node of (mapping.proposed_nodes || [])) {
   const { scopeDir, absDir } = resolveScopeDir(node.file_scope);
-  if (!normPath(absDir + path.sep).startsWith(normCwd) && normPath(absDir) !== normPath(path.resolve(cwd))) {
+  if (!isWithinProject(absDir)) {
     checks.push({
       name: "scope_within_project",
       node: node.id,
@@ -98,7 +107,7 @@ for (const node of (mapping.proposed_nodes || [])) {
   if (fs.existsSync(absDir)) {
     try {
       const realPath = fs.realpathSync(absDir);
-      const escapes = !normPath(realPath + path.sep).startsWith(normCwd) && normPath(realPath) !== normPath(path.resolve(cwd));
+      const escapes = !isWithinProject(realPath);
       checks.push({
         name: "no_symlink_escape",
         node: node.id,
@@ -109,6 +118,83 @@ for (const node of (mapping.proposed_nodes || [])) {
       checks.push({ name: "no_symlink_escape", node: node.id, status: "FAIL", details: e.message });
     }
   }
+}
+
+// Check 2b: nested symlinks/junctions inside a scope must also stay within the project root
+function findNestedSymlinkEscape(rootDir) {
+  const visited = new Set();
+  const walk = (dir) => {
+    // Resolve real path to detect cycles and junctions
+    let resolvedDir;
+    try {
+      resolvedDir = normPath(fs.realpathSync(dir));
+    } catch (_) {
+      return { linkPath: dir, realPath: "unresolvable path — cannot verify" };
+    }
+    if (visited.has(resolvedDir)) return null; // cycle detection
+    visited.add(resolvedDir);
+
+    // Fail-closed: if we can't read a directory, assume it may contain escaping links
+    let entries = [];
+    try {
+      entries = fs.readdirSync(dir, { withFileTypes: true });
+    } catch (err) {
+      if (err.code === "EACCES" || err.code === "EPERM") {
+        return { linkPath: dir, realPath: `permission denied — cannot verify (${err.code})` };
+      }
+      return null;
+    }
+    for (const entry of entries) {
+      if (EXCLUDE_DIRS.includes(entry.name)) continue;
+      const fullPath = path.join(dir, entry.name);
+      let stat;
+      try {
+        stat = fs.lstatSync(fullPath);
+      } catch (_) {
+        continue;
+      }
+      if (stat.isSymbolicLink()) {
+        try {
+          const realPath = fs.realpathSync(fullPath);
+          if (!isWithinProject(realPath)) {
+            return { linkPath: fullPath, realPath };
+          }
+        } catch (err) {
+          return { linkPath: fullPath, realPath: `unresolvable symlink (${err.message})` };
+        }
+        continue;
+      }
+      // Check directories (including NTFS junctions which report as directories, not symlinks)
+      if (stat.isDirectory()) {
+        try {
+          const realPath = fs.realpathSync(fullPath);
+          if (!isWithinProject(realPath)) {
+            return { linkPath: fullPath, realPath: `${realPath} (junction/mount outside project)` };
+          }
+        } catch (_) {
+          // Can't resolve — continue walking but it's suspicious
+        }
+        const nested = walk(fullPath);
+        if (nested) return nested;
+      }
+    }
+    return null;
+  };
+  return walk(rootDir);
+}
+
+for (const node of (mapping.proposed_nodes || [])) {
+  const { scopeDir, absDir } = resolveScopeDir(node.file_scope);
+  if (!fs.existsSync(absDir)) continue;
+  const escapedLink = findNestedSymlinkEscape(absDir);
+  checks.push({
+    name: "no_nested_symlink_escape",
+    node: node.id,
+    status: escapedLink ? "FAIL" : "PASS",
+    details: escapedLink
+      ? `${escapedLink.linkPath} resolves to ${escapedLink.realPath} (outside project)`
+      : "within project",
+  });
 }
 
 // Check 3: No existing .forgeplan/ content beyond our mapping file (unless --force)
@@ -136,14 +222,16 @@ if (hasExistingContent && !forceFlag) {
 
 // Check 4: No scope covers >60% of total source files
 // I4 fix: exclude .forgeplan/ from counts
-const EXCLUDE_DIRS = ["node_modules", "dist", "build", ".next", ".git", ".forgeplan"];
-const countFilesIn = (dir) => {
+const countFilesIn = (dir, visited = new Set()) => {
   let count = 0;
   try {
+    const resolved = normPath(fs.realpathSync(dir));
+    if (visited.has(resolved)) return 0; // cycle detection (circular symlinks/junctions)
+    visited.add(resolved);
     const entries = fs.readdirSync(dir, { withFileTypes: true });
     for (const entry of entries) {
       if (EXCLUDE_DIRS.includes(entry.name)) continue;
-      if (entry.isDirectory()) count += countFilesIn(path.join(dir, entry.name));
+      if (entry.isDirectory()) count += countFilesIn(path.join(dir, entry.name), visited);
       else count++;
     }
   } catch (_) {}

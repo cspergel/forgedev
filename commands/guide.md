@@ -22,6 +22,8 @@ Evaluate the full project state and give the user clear, actionable guidance.
 
 Read the state and match the FIRST condition that applies (priority order):
 
+For phased projects (`max_phase > 1`), generic `spec --all` / `build --all` guidance applies to the CURRENT build phase only. Future-phase nodes stay interface-only or deferred until `/forgeplan:deep-build` advances the phase.
+
 ### Active sweep or deep-build in progress
 Check: `sweep_state` is not null and `current_phase` is not `"halted"`
 ```

@@ -180,6 +180,13 @@ src/
 - [Any contradictions found between sources]
 ```
 
+## Phase-Aware Research (Sprint 10B)
+
+When researching for a phased project, tailor depth to the build phase:
+- **Current phase (build_phase):** Full research — packages, patterns, reference projects, gotchas. This code is being built now.
+- **Future phases (phase > build_phase):** Interface-level research only — what shape will the API/SDK take? What are the key types and contracts? Skip deep package comparison or implementation patterns — those can be researched when the phase is built.
+- **Cross-phase dependencies:** If Phase 1 code needs to call Phase 2 stubs, research what the real Phase 2 interface will look like so the stubs are accurate. Example: if Phase 2 adds Stripe payments, research Stripe's API shape so the stub matches the real SDK.
+
 ## Rules
 - Always verify packages exist and are maintained before recommending
 - Prefer packages with MIT/Apache-2.0/ISC licenses

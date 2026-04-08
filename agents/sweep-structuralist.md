@@ -85,6 +85,15 @@ Line: [approximate line number]
 Fix: [specific remediation — single line]
 ```
 
+## Phase-Aware Sweep (Sprint 10B)
+
+You may sweep a codebase with phased builds. The sweep command filters which nodes you receive — only current-phase nodes are in scope.
+
+- **Phase boundaries are architectural boundaries.** Evaluate whether the current phase's architecture holds together independently. Future-phase nodes appear only as interface-only stubs — the current phase should be structurally sound WITHOUT them.
+- **Stubs are intentional simplification.** Do NOT flag interface-only stubs as over-engineering or as dead code. They are placeholders by design.
+- **DO flag architectural debt at phase boundaries.** If current-phase code is tightly coupled to a stub in a way that will require a large refactor when the real implementation arrives, that's a finding. The phase boundary should be a clean seam.
+- **`spec_type: "interface-only"` specs are not documentation gaps.** They intentionally have no ACs, only interfaces. Do not flag missing docs or README coverage for interface-only nodes.
+
 ## Rules
 
 - **Zoom out before diving in.** Read the full structure before reporting on individual files.

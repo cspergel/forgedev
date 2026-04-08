@@ -91,11 +91,22 @@ function validateSpec(spec, manifest) {
     }
   }
 
-  // Sprint 10B: Interface-only specs (phase == build_phase + 1) only require interfaces
+  // Sprint 10B: Interface-only specs (phase > build_phase) only require interfaces
   const isInterfaceOnly = spec.spec_type === "interface-only" ||
     (Array.isArray(spec.interfaces) && spec.interfaces.length > 0 &&
      (!Array.isArray(spec.acceptance_criteria) || spec.acceptance_criteria.length === 0) &&
      spec.generated_from === "phase-promotion");
+
+  // Sprint 10B: Validate that interface-only is only used for future-phase nodes
+  if (isInterfaceOnly && manifest) {
+    const buildPhase = (manifest.project && manifest.project.build_phase) || 1;
+    const nodePhase = (manifest.nodes && manifest.nodes[spec.node] && manifest.nodes[spec.node].phase) || 1;
+    if (nodePhase <= buildPhase) {
+      errors.push(`spec_type "interface-only" is only valid for future-phase nodes (phase > build_phase). Node "${spec.node}" is phase ${nodePhase}, build_phase is ${buildPhase}. Use "prescriptive" or "descriptive" for current-phase nodes.`);
+    }
+  } else if (isInterfaceOnly && !manifest) {
+    warnings.push(`Cannot verify interface-only spec phase without manifest — phase validation skipped.`);
+  }
 
   // Required array fields with type enforcement
   const arrayFields = isInterfaceOnly

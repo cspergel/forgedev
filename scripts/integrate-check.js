@@ -16,6 +16,10 @@ const fs = require("fs");
 const path = require("path");
 const yaml = require("js-yaml");
 
+function normalizeContract(text) {
+  return String(text || "").trim().replace(/\s+/g, " ").toLowerCase();
+}
+
 /** Escape a string for use in RegExp */
 function escapeRegex(s) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -84,8 +88,17 @@ function main() {
     }
   }
 
-  // Check each interface
+  const buildPhase = (manifest.project && manifest.project.build_phase) || 1;
+  const maxPhase = Math.max(1, ...nodeIds.map(id => (manifest.nodes[id].phase || 1)));
+
+  // Check each same-phase/built interface.
+  // Future-phase interface-only specs are validated separately below.
   for (const nodeId of nodeIds) {
+    const sourceNode = manifest.nodes[nodeId];
+    const sourcePhase = (sourceNode && sourceNode.phase) || 1;
+    const sourceBuilt = sourceNode && sourceNode.files && sourceNode.files.length > 0;
+    if (sourcePhase > buildPhase && !sourceBuilt) continue;
+
     const spec = specs[nodeId];
     if (!spec || !Array.isArray(spec.interfaces)) continue;
 
@@ -130,9 +143,7 @@ function main() {
       );
 
       // Check both nodes have files (are built)
-      const sourceNode = manifest.nodes[nodeId];
       const targetNode = manifest.nodes[targetId];
-      const sourceBuilt = sourceNode.files && sourceNode.files.length > 0;
       const targetBuilt = targetNode.files && targetNode.files.length > 0;
 
       if (!sourceBuilt && !targetBuilt) {
@@ -207,11 +218,86 @@ function main() {
   }
 
   // --- Sprint 10B: Cross-Phase Interface Check ---
-  // When build_phase < max_phase, verify that current-phase nodes' interfaces
-  // to future-phase nodes match the future-phase interface-only specs
-  const buildPhase = (manifest.project && manifest.project.build_phase) || 1;
-  const maxPhase = Math.max(1, ...nodeIds.map(id => (manifest.nodes[id].phase || 1)));
+  // During phase advancement, future-phase interface-only specs must agree with
+  // the current-phase contracts they depend on. Any mismatch is a hard failure.
   if (maxPhase > buildPhase) {
+    const addCrossPhaseFailure = (source, target, type, contract, detail) => {
+      results.push({
+        source,
+        target,
+        type: type || "unknown",
+        contract: contract || "(no contract)",
+        status: "FAIL",
+        fault: "CROSS_PHASE",
+        detail,
+      });
+    };
+
+    const seenPairs = new Set();
+    const compareCrossPhasePair = (sourceId, targetId, iface, reciprocal, directionLabel) => {
+      const pairKey = `${sourceId}->${targetId}`;
+      if (seenPairs.has(pairKey)) return;
+      seenPairs.add(pairKey);
+
+      if (!reciprocal) {
+        addCrossPhaseFailure(
+          sourceId,
+          targetId,
+          iface && iface.type,
+          iface && iface.contract,
+          `Cross-phase FAIL: ${directionLabel} requires "${sourceId}" and "${targetId}" to agree on the interface, but no reciprocal entry was found.`
+        );
+        return;
+      }
+
+      if ((iface.type || "unknown") !== (reciprocal.type || "unknown")) {
+        addCrossPhaseFailure(
+          sourceId,
+          targetId,
+          iface.type,
+          iface.contract,
+          `Cross-phase FAIL: Interface type mismatch. "${sourceId}" declares "${iface.type}", but "${targetId}" declares "${reciprocal.type}".`
+        );
+        return;
+      }
+
+      const sourceContract = normalizeContract(iface.contract);
+      const targetContract = normalizeContract(reciprocal.contract);
+
+      // Empty contracts on cross-phase boundaries MUST be documented before phase advancement
+      if (!sourceContract || !targetContract) {
+        addCrossPhaseFailure(
+          sourceId,
+          targetId,
+          iface.type,
+          iface.contract,
+          `Cross-phase FAIL: "${sourceId}" <-> "${targetId}" interface has missing/empty contract. Both sides must document the contract before phase advancement.`
+        );
+        return;
+      }
+
+      if (sourceContract !== targetContract) {
+        addCrossPhaseFailure(
+          sourceId,
+          targetId,
+          iface.type,
+          iface.contract,
+          `Cross-phase FAIL: Contract mismatch. "${sourceId}" says: "${iface.contract}". "${targetId}" says: "${reciprocal.contract}".`
+        );
+        return;
+      }
+
+      results.push({
+        source: sourceId,
+        target: targetId,
+        type: iface.type || "unknown",
+        contract: iface.contract || "(no contract)",
+        status: "PASS",
+        fault: null,
+        detail: `Cross-phase: "${sourceId}" <-> "${targetId}" interface verified.`,
+      });
+    };
+
     for (const nodeId of nodeIds) {
       const nodePhase = (manifest.nodes[nodeId] && manifest.nodes[nodeId].phase) || 1;
       if (nodePhase > buildPhase) continue; // Only check current-phase nodes' outgoing interfaces
@@ -223,23 +309,54 @@ function main() {
         if (targetPhase <= buildPhase) continue; // Same-phase: handled above
         const targetSpec = specs[targetId];
         if (!targetSpec) {
-          results.push({
-            source: nodeId, target: targetId, type: iface.type || "unknown",
-            contract: iface.contract || "(no contract)", status: "WARN", fault: "CROSS_PHASE",
-            detail: `Cross-phase: "${nodeId}" (phase ${nodePhase}) connects to "${targetId}" (phase ${targetPhase}) but "${targetId}" has no spec yet. Interface-only spec needed before phase advancement.`,
-          });
+          addCrossPhaseFailure(
+            nodeId,
+            targetId,
+            iface.type,
+            iface.contract,
+            `Cross-phase FAIL: "${nodeId}" (phase ${nodePhase}) connects to "${targetId}" (phase ${targetPhase}) but "${targetId}" has no spec yet. Interface-only spec REQUIRED before phase advancement.`
+          );
         } else {
-          // Verify the target's interface-only spec has a reciprocal
           const targetInterfaces = targetSpec.interfaces || [];
           const reciprocal = targetInterfaces.find(ti => ti.target_node === nodeId);
-          if (!reciprocal) {
-            results.push({
-              source: nodeId, target: targetId, type: iface.type || "unknown",
-              contract: iface.contract || "(no contract)", status: "WARN", fault: "CROSS_PHASE",
-              detail: `Cross-phase: "${nodeId}" declares interface to future-phase "${targetId}", but "${targetId}"'s interface-only spec has no reciprocal entry.`,
-            });
-          }
+          compareCrossPhasePair(nodeId, targetId, iface, reciprocal, `"${nodeId}" declares an interface to future-phase "${targetId}"`);
         }
+      }
+    }
+
+    for (const promotedId of nodeIds) {
+      const promotedPhase = (manifest.nodes[promotedId] && manifest.nodes[promotedId].phase) || 1;
+      if (promotedPhase !== buildPhase + 1) continue;
+      const promotedSpec = specs[promotedId];
+      if (!promotedSpec || !Array.isArray(promotedSpec.interfaces)) {
+        addCrossPhaseFailure(
+          promotedId,
+          "current-phase",
+          "unknown",
+          "(no contract)",
+          `Cross-phase FAIL: Promoted node "${promotedId}" has no interface-only spec.`
+        );
+        continue;
+      }
+
+      for (const iface of promotedSpec.interfaces) {
+        const targetId = iface.target_node;
+        const targetPhase = (manifest.nodes[targetId] && manifest.nodes[targetId].phase) || 1;
+        if (targetPhase > buildPhase) continue;
+        const targetSpec = specs[targetId];
+        if (!targetSpec) {
+          addCrossPhaseFailure(
+            promotedId,
+            targetId,
+            iface.type,
+            iface.contract,
+            `Cross-phase FAIL: Promoted node "${promotedId}" declares an interface to "${targetId}", but "${targetId}" has no spec to validate against.`
+          );
+          continue;
+        }
+        const targetInterfaces = targetSpec.interfaces || [];
+        const reciprocal = targetInterfaces.find(ti => ti.target_node === promotedId);
+        compareCrossPhasePair(promotedId, targetId, iface, reciprocal, `promoted node "${promotedId}" declares an interface to current-phase "${targetId}"`);
       }
     }
   }

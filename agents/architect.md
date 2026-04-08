@@ -111,7 +111,7 @@ and one payment integration.
 What MEDIUM means for your build:
   → 3-5 nodes with sensible boundaries
   → Full specs per node with detailed acceptance criteria
-  → 6-8 sweep agents for verification
+  → 4 sweep agents for verification
   → Cross-model review optional
   → Section-level architecture walkthrough
 
@@ -238,6 +238,14 @@ before Phase 2 unlocks. Adjust? [Y to accept / modify]
 For SMALL projects (1-2 nodes) OR when all nodes resolve to Phase 1: no phase prompt needed.
 
 **Note:** This assignment is preliminary. After shared model identification (Phase 3), re-verify that phase assignments still respect implicit data dependencies from shared models. If a Phase 1 node and Phase 2 node share a model, the data layer must be Phase 1.
+
+**Interface-only specs for deferred phases:** For each node assigned to Phase 2+, generate a skeleton spec with `spec_type: "interface-only"` and `generated_from: "phase-promotion"`. These specs contain ONLY:
+- `node`, `name`, `description` (brief — what this node will do when built)
+- `interfaces` section (what current-phase nodes expect from this node — exports, function signatures, types)
+- `shared_dependencies` (which shared models this node will use)
+- NO `acceptance_criteria`, NO `constraints`, NO `failure_modes`, NO `non_goals`
+
+Interface-only specs serve as contracts — current-phase nodes build against them. When the phase advances, the Architect fills in full ACs and the spec becomes `prescriptive`.
 
 ### Phase 3: Shared Model Identification
 

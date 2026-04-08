@@ -43,7 +43,7 @@ On pass 2 and beyond, you receive the previous pass's findings from Adversary, C
 - **Read the other agents' finding lists.** Note which files, functions, and features they examined.
 - **Identify untouched areas.** Which files did no agent mention? Which features have no findings (positive or negative)? Which node specs have ACs that no agent checked?
 - **Check the negative space.** If Adversary tested auth boundaries but nobody checked the password reset flow, check it. If Contractualist verified API contracts but nobody checked webhook payloads, check them. If Pathfinder traced user flows but nobody checked the admin flow, trace it.
-- **Cross-reference agent findings.** If Red found a security issue in auth and Orange found a contract mismatch in auth, are they related? Could fixing one break the other?
+- **Cross-reference agent findings.** If Adversary found a security issue in auth and Contractualist found a contract mismatch in auth, are they related? Could fixing one break the other?
 
 ## How to Work
 
@@ -79,6 +79,15 @@ Line: [approximate line number]
 Spec-Ref: [AC ID if applicable, e.g., AC-AUTH-3]
 Fix: [specific remediation — single line]
 ```
+
+## Phase-Aware Sweep (Sprint 10B)
+
+You may sweep a codebase with phased builds. The sweep command filters which nodes you receive — only current-phase nodes are in scope.
+
+- **`spec_type: "interface-only"` specs have NO acceptance criteria.** Do NOT flag missing AC implementations for interface-only nodes. Your spec compliance tracing applies ONLY to `prescriptive` and `descriptive` specs.
+- **DO verify current-phase ACs are complete.** The fact that future phases exist doesn't excuse gaps in current-phase specs. Every current-phase AC must still be fully traceable to code and tests.
+- **Fresh-eyes review still applies at boundaries.** If current-phase code calls a stub and the logic around that call is wrong (inverted conditions, wrong error handling, missing null checks), that's a finding regardless of phases.
+- **Gap finding on pass 2+:** When reviewing what other agents missed, note that interface-only stubs are excluded from their audits too. Don't flag the same intentional stubs as gaps.
 
 ## Rules
 

@@ -1,13 +1,15 @@
 ---
 description: Sweep your entire codebase for cross-cutting issues. Tier-aware agent selection (SMALL 3, MEDIUM 4, LARGE 5) using 5 consolidated team agents (Adversary, Contractualist, Pathfinder, Structuralist, Skeptic). All opus. Progressive convergence drops clean agents. Findings fixed with node-scoped enforcement, then cross-model verified.
 user-invocable: true
-argument-hint: "[--cross-check (cross-model verification)]"
+argument-hint: "[--cross-check (cross-model verification)] [--baseline (report only, no fixes — for /forgeplan:ingest)]"
 allowed-tools: Read Write Edit Bash Glob Grep Agent
 ---
 
 # Codebase Sweep
 
 **THIS COMMAND IS AUTONOMOUS WITH ONE EXCEPTION. Execute all phases (1→7) without stopping, pausing, or asking "shall I continue?". Fix ALL findings automatically. Do not present intermediate results and wait. The ONE exception: Category C blocked decisions (architectural choices) require user input — present them all at once, get answers, then continue automatically. Aside from that, run straight through to the final report.**
+
+**Baseline mode (`--baseline`):** When `--baseline` is passed (used by `/forgeplan:ingest`), run ONLY Phases 1-3 (dispatch agents, collect findings, deduplicate). SKIP Phases 4-7 (fix cycle, convergence, cross-model). Store findings in `.forgeplan/sweeps/baseline-report.md` as an informational report. Do NOT auto-fix anything — this is a read-only assessment of an existing codebase during onboarding.
 
 Run tier-selected sweep agents (3-5) in parallel across the entire codebase: 5 consolidated agents (Adversary/Contractualist/Pathfinder/Structuralist/Skeptic), all opus. Progressive reduction: agents that return CLEAN twice converge and are retired. Cross-cutting agents re-run whenever any other agent has findings. See Phase 2 for the full dispatch precedence rules.
 
@@ -159,7 +161,7 @@ Each agent returns findings in the structured FINDING format or CLEAN.
 ### Phase 3: Merge and deduplicate findings
 
 1. Collect all findings from the dispatched agents (excluding failed agents)
-2. **Validate node IDs:** Discard any finding whose `node` field is not in `Object.keys(manifest.nodes)` AND is not the special value `"project"`. The `"project"` pseudo-node is used by agents (especially rainbow, white) for cross-cutting findings that don't belong to a single node — these go to `sweep_state.needs_manual_attention` instead of the automated fix cycle (they can't be node-scoped). For cross-node findings using `Node: [id] -> [id]` format (from sweep-contractualist), extract the first node ID (before `->`) as the primary node for fix scoping. Log a warning for each discarded finding ("Finding F[N] references unknown node '[id]' — discarding"). Apply the same validation in Phase 6 for cross-model findings.
+2. **Validate node IDs:** Discard any finding whose `node` field is not in `Object.keys(manifest.nodes)` AND is not the special value `"project"`. The `"project"` pseudo-node is used by agents (especially sweep-structuralist, sweep-skeptic) for cross-cutting findings that don't belong to a single node — these go to `sweep_state.needs_manual_attention` instead of the automated fix cycle (they can't be node-scoped). For cross-node findings using `Node: [id] -> [id]` format (from sweep-contractualist), extract the first node ID (before `->`) as the primary node for fix scoping. Log a warning for each discarded finding ("Finding F[N] references unknown node '[id]' — discarding"). Apply the same validation in Phase 6 for cross-model findings.
 3. **Re-number** all remaining findings sequentially as F1, F2, F3... (discard the agents' self-assigned IDs, which will collide across agents)
 4. Deduplicate: if two agents report the same file + same issue, keep the one with higher severity
 5. Group findings by node

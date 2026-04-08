@@ -73,6 +73,15 @@ Line: [approximate line number]
 Fix: [specific remediation — single line]
 ```
 
+## Phase-Aware Sweep (Sprint 10B)
+
+You may sweep a codebase with phased builds. The sweep command filters which nodes you receive — only current-phase nodes are in scope.
+
+- **User flows that cross phase boundaries will hit stubs.** A flow like "login → dashboard" where auth is Phase 1 but dashboard is Phase 2 will reach a stub at the phase boundary. This is intentional — do NOT flag the stub as a dead end.
+- **DO flag missing error handling at stub boundaries.** If current-phase code calls a future-phase stub that throws, and the caller doesn't catch/handle the error gracefully, that IS a finding. The user should see a meaningful message ("Feature coming in Phase 2"), not an unhandled crash.
+- **`spec_type: "interface-only"` specs have no ACs to trace.** Do not flag missing user flows for interface-only nodes. Only trace flows through fully-specced current-phase nodes.
+- **Test quality still applies at boundaries.** If tests mock a future-phase dependency, the mock shape must match the stub's actual interface (not an imagined one).
+
 ## Rules
 
 - **Trace complete flows, not isolated components.** A button component that looks fine in isolation but leads to a broken API call is a finding.

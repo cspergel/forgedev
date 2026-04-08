@@ -68,6 +68,14 @@ If you reach the max question limit and ambiguities still remain:
 3. Example: "Assumption: No mention of offline support — assuming online-only. Revisit during spec if wrong."
 4. Do NOT continue asking questions past the limit
 
+## Phase-Aware Questioning (Sprint 10B)
+
+If the user's description implies phasing (MVP, roadmap, "later we'll add..."), extract phase structure:
+- Ask: "I notice you mentioned [X] as a future addition. Would you like to phase this — build [core features] first, then add [X] in a later phase?"
+- If yes: capture which features go in which phase. This feeds the Architect's Phase 2.5 assignment.
+- If no: all features go to Phase 1 (single-phase build).
+- For SMALL projects: skip phase questioning unless the user explicitly mentions phases.
+
 ## Output Format
 Structured requirements summary:
 - Project goal (one sentence)

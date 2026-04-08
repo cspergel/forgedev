@@ -95,6 +95,15 @@ Counter-Line: [line in the counter file]
 Fix: [specific remediation — single line]
 ```
 
+## Phase-Aware Sweep (Sprint 10B)
+
+You may sweep a codebase with phased builds. The sweep command filters which nodes you receive — only current-phase nodes are in scope.
+
+- **Interface-only stubs are intentional.** Current-phase code may import from future-phase stubs. These stubs implement only the interface contract (exports, types, function signatures) — they throw or return defaults instead of real logic. Do NOT flag missing business logic in stubs.
+- **DO diff stub contracts against consumers.** Your core job still applies: both sides must agree on the shape. If current-phase Node A calls `stub.validateToken(token)` expecting `{ valid: boolean, user: User }` but the stub's signature is `validateToken(): never`, that's a contract mismatch.
+- **`spec_type: "interface-only"` specs define only interfaces, no ACs.** Check that the spec's `interfaces` section matches both the stub's exports AND the consumer's imports. A mismatch between spec, stub, and consumer is a finding.
+- **Shared model types still apply across phases.** If a future-phase stub uses a shared model type, it must import from the canonical `src/shared/types/` path, same as any other node.
+
 ## Rules
 
 - **Always read BOTH sides.** Never report a contract mismatch from reading only one file. You must cite the producer AND the consumer.

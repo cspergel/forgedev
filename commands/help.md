@@ -66,10 +66,10 @@ user-invocable: true
 
 ```
 /forgeplan:discover template:client-portal    ← Start with a template
-/forgeplan:spec --all                         ← Generate all specs
-/forgeplan:build --all                        ← Build everything
-/forgeplan:review --all                       ← Review all nodes
-/forgeplan:integrate                          ← Verify interfaces
+/forgeplan:spec --all                         ← Generate current-phase specs (+ future interfaces)
+/forgeplan:deep-build                         ← Build, review, sweep, and advance phases
+/forgeplan:status                             ← Check phase progress and next steps
+/forgeplan:integrate                          ← Verify interfaces / cross-phase handoff
 /forgeplan:measure                            ← Check quality
 /forgeplan:next                               ← What's next?
 ```
