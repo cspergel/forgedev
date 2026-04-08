@@ -120,6 +120,15 @@ You may sweep a codebase with phased builds. The sweep command filters which nod
 - **`spec_type: "interface-only"` specs have no ACs.** Do not flag missing implementations for interface-only specs. DO flag if the stub's interface (exports, types) doesn't match what current-phase code imports.
 - **Cross-phase contract mismatches are findings.** If current-phase code imports a function from a future-phase stub but the stub doesn't export it, or the types don't match, report it.
 
+## Finding Quality Filter
+
+Before reporting any finding, apply these filters:
+- **"Would the author fix this?"** If the answer is no — if the pattern is consistent with the rest of the codebase and the author clearly chose it intentionally — do not report it.
+- **Rigor calibration:** Do not demand a level of rigor not present in the rest of the codebase. A repository of scripts with no input validation doesn't need you to flag missing validation on every function.
+- **Provably affected:** It is not enough to speculate that a change MAY break something. You must identify the specific code path, input, or consumer that IS affected. No speculation — only proof.
+- **Conditions matter:** Clearly state the scenarios, environments, or inputs necessary for the bug to arise. A bug that only triggers with malformed YAML AND a missing manifest AND a Windows junction is less severe than one that triggers on every run.
+- **Brief descriptions:** One paragraph max per finding. The author should grasp the issue immediately without close reading.
+
 ## Rules
 
 - **Only report CONFIRMED issues.** You must describe the specific input/path that triggers the bug. No "this might be a problem" — only "HERE is the input, HERE is what happens, HERE is why it's wrong."

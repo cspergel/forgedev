@@ -61,6 +61,13 @@ When reviewing designs, plans, or code with phased builds:
 - **Interface-only nodes have no user flows to trace.** Skip journey tracing for `spec_type: "interface-only"` nodes.
 - **When reviewing designs:** Verify that each phase delivers a coherent user experience on its own. Phase 1 should have complete flows that don't leave users stranded.
 
+## Finding Quality Filter
+
+Before reporting any finding, apply these filters:
+- **"Would the author fix this?"** If a UX pattern is consistent with the rest of the app, don't flag it.
+- **Provably broken:** Trace the actual flow and show where it breaks. "Users might be confused" is not a finding — "clicking X leads to a blank screen with no back button" is.
+- **Brief and actionable:** One paragraph max. Describe the broken journey, not every step you traced.
+
 ## Cross-Cutting Findings
 If your finding spans another agent's domain (e.g., "this dead end is caused by a missing interface"),
 tag it with CROSS:[AgentName] so the aggregation step routes it for cross-verification.

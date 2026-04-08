@@ -91,6 +91,14 @@ You may sweep a codebase with phased builds. The sweep command filters which nod
 - **Fresh-eyes review still applies at boundaries.** If current-phase code calls a stub and the logic around that call is wrong (inverted conditions, wrong error handling, missing null checks), that's a finding regardless of phases.
 - **Gap finding on pass 2+:** When reviewing what other agents missed, note that interface-only stubs are excluded from their audits too. Don't flag the same intentional stubs as gaps.
 
+## Finding Quality Filter
+
+Before reporting any finding, apply these filters:
+- **"Would the author fix this?"** If the gap between spec and code is clearly an intentional simplification (the spec over-specified and the author made a reasonable judgment call), note it but don't flag it as HIGH.
+- **Provably missing:** For spec compliance, you must demonstrate the AC is genuinely unimplemented — not just implemented differently than you expected. If the behavior is correct but the code path differs from what you'd write, that's not a finding.
+- **Conditions matter:** Clearly state what fails and under what input. An untested edge case that requires 3 unlikely conditions is less severe than an untested happy path.
+- **Brief descriptions:** One paragraph max per finding. Cite the specific AC and what's missing.
+
 ## Rules
 
 - **Spec is the source of truth.** If the code doesn't match the spec, the code is wrong (unless the spec is clearly outdated — flag that separately).

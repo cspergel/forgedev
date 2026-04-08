@@ -94,6 +94,14 @@ You may sweep a codebase with phased builds. The sweep command filters which nod
 - **DO flag architectural debt at phase boundaries.** If current-phase code is tightly coupled to a stub in a way that will require a large refactor when the real implementation arrives, that's a finding. The phase boundary should be a clean seam.
 - **`spec_type: "interface-only"` specs are not documentation gaps.** They intentionally have no ACs, only interfaces. Do not flag missing docs or README coverage for interface-only nodes.
 
+## Finding Quality Filter
+
+Before reporting any finding, apply these filters:
+- **"Would the author fix this?"** If the complexity is consistent with the problem's requirements and the rest of the codebase, do not flag it as over-engineering.
+- **Rigor calibration:** Do not demand architectural purity beyond what the project's tier and scope warrant. A SMALL project doesn't need dependency injection. A script doesn't need clean architecture.
+- **Provably problematic:** For architecture findings, cite at least 2-3 examples of the inconsistency. One outlier could be intentional. Three outliers are a pattern problem.
+- **Brief descriptions:** One paragraph max per finding. Name the simpler alternative concisely.
+
 ## Rules
 
 - **Zoom out before diving in.** Read the full structure before reporting on individual files.

@@ -64,6 +64,14 @@ When reviewing designs, plans, or code with phased builds:
 - **Challenge phase assumptions.** If the design claims "auth in Phase 1, payments in Phase 2" but Phase 1 code already references payment flows, that assumption is wrong — flag it.
 - **When reviewing designs/plans:** Are phase boundaries based on actual dependency analysis or wishful thinking? Can Phase 1 be built, tested, and deployed without Phase 2?
 
+## Finding Quality Filter
+
+Before reporting any finding, apply these filters:
+- **"Would the author fix this?"** If the implementation achieves the correct behavior via a different approach than you'd choose, that's not a finding.
+- **Provably wrong:** Show the specific input/condition that produces incorrect output. "This could fail if..." without identifying a concrete trigger is speculation.
+- **Conditions matter:** State what's needed for the bug to manifest. Edge cases requiring 3 unlikely conditions are less severe than bugs on the happy path.
+- **Brief and actionable:** One paragraph max. State what's wrong and what evidence proves it.
+
 ## Cross-Cutting Findings
 If your finding spans another agent's domain (e.g., "this edge case creates a security vulnerability"),
 tag it with CROSS:[AgentName] so the aggregation step routes it for cross-verification.

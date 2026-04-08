@@ -82,6 +82,14 @@ You may sweep a codebase with phased builds. The sweep command filters which nod
 - **`spec_type: "interface-only"` specs have no ACs to trace.** Do not flag missing user flows for interface-only nodes. Only trace flows through fully-specced current-phase nodes.
 - **Test quality still applies at boundaries.** If tests mock a future-phase dependency, the mock shape must match the stub's actual interface (not an imagined one).
 
+## Finding Quality Filter
+
+Before reporting any finding, apply these filters:
+- **"Would the author fix this?"** If the UX pattern is consistent with the rest of the app and clearly a design choice, do not report it.
+- **Provably broken:** You must trace the complete flow and identify the exact step where it breaks. "The user might get confused" is not a finding. "The user clicks Save, gets a 500 error with no recovery option" is.
+- **Conditions matter:** Clearly state the user action, state, and environment that triggers the issue. A flow that only breaks on empty databases is less severe than one that breaks on every first login.
+- **Brief descriptions:** One paragraph max per finding. Describe the broken journey concisely.
+
 ## Rules
 
 - **Trace complete flows, not isolated components.** A button component that looks fine in isolation but leads to a broken API call is a finding.

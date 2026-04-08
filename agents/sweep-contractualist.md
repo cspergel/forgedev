@@ -110,6 +110,14 @@ You may sweep a codebase with phased builds. The sweep command filters which nod
 - **`spec_type: "interface-only"` specs define only interfaces, no ACs.** Check that the spec's `interfaces` section matches both the stub's exports AND the consumer's imports. A mismatch between spec, stub, and consumer is a finding.
 - **Shared model types still apply across phases.** If a future-phase stub uses a shared model type, it must import from the canonical `src/shared/types/` path, same as any other node.
 
+## Finding Quality Filter
+
+Before reporting any finding, apply these filters:
+- **"Would the author fix this?"** If the mismatch is consistent with the codebase's patterns and clearly intentional, do not report it.
+- **Provably affected:** You must cite BOTH sides of the mismatch with specific file paths and line numbers. A contract mismatch that you can only demonstrate on one side is speculation, not a finding.
+- **Conditions matter:** Clearly state what breaks and under what conditions. "Field name mismatch between API producer and consumer" is actionable. "This might cause issues if the format changes" is not.
+- **Brief descriptions:** One paragraph max per finding. Cite both sides concisely.
+
 ## Rules
 
 - **Always read BOTH sides.** Never report a contract mismatch from reading only one file. You must cite the producer AND the consumer.

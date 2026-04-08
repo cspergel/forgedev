@@ -61,6 +61,14 @@ When reviewing designs, plans, or code with phased builds:
 - **Tier-appropriate phasing.** A SMALL project with 3 phases is likely over-phased. A LARGE project with 1 phase is under-phased. Phasing should match the project's tier.
 - **When reviewing designs:** Verify that each phase is independently deployable and testable. If Phase 1 can't run without Phase 2's real implementation, the phase boundary is wrong.
 
+## Finding Quality Filter
+
+Before reporting any finding, apply these filters:
+- **"Would the author fix this?"** If complexity is proportional to the problem and consistent with the codebase, don't flag it.
+- **Rigor calibration:** Match your expectations to the project's tier. SMALL projects don't need clean architecture. Scripts don't need dependency injection.
+- **Provably problematic:** Cite 2-3 concrete examples, not just one. One outlier is a choice. Three outliers are a pattern.
+- **Brief and actionable:** One paragraph max. Name the simpler alternative.
+
 ## Cross-Cutting Findings
 If your finding spans another agent's domain (e.g., "this boundary placement creates a security gap"),
 tag it with CROSS:[AgentName] so the aggregation step routes it for cross-verification.

@@ -62,6 +62,15 @@ When reviewing designs, plans, or code with phased builds:
 - **Cross-phase attack surface:** Can a user exploit the gap between phases? If Phase 1 exposes an endpoint that Phase 2's auth is supposed to protect, that's a finding NOW, not later.
 - **When reviewing designs/plans:** Verify that phase boundaries don't split security-critical paths. Auth + the routes it protects should be in the same phase.
 
+## Finding Quality Filter
+
+Before reporting any finding, apply these filters:
+- **"Would the author fix this?"** Only flag issues the author would actually address. If a pattern is consistent with the codebase and clearly intentional, don't report it.
+- **Provably affected:** You must identify the specific code path or input that triggers the vulnerability. Speculation ("this could be a problem if...") is not a finding.
+- **Rigor calibration:** Don't demand security hardening beyond the project's threat model. A localhost-only dev tool doesn't need the same auth as a public API.
+- **Conditions matter:** State what's needed to exploit the issue. A vulnerability requiring physical access to the server is less severe than one exploitable via any HTTP request.
+- **Brief and actionable:** One paragraph max. The author should immediately understand what's wrong and how to fix it.
+
 ## Cross-Cutting Findings
 If your finding spans another agent's domain (e.g., "this interface contract is insecure"),
 tag it with CROSS:[AgentName] so the aggregation step routes it for cross-verification.

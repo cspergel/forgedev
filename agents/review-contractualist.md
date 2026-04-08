@@ -64,6 +64,13 @@ When reviewing designs, plans, or code with phased builds:
 - **Cross-phase shared models are canonical.** Future-phase stubs must use the same shared model types from `src/shared/types/`. A stub that redefines a shared type locally is a finding.
 - **When reviewing designs:** Verify that cross-phase interfaces are defined precisely enough to implement. Vague future-phase contracts like "auth service handles login" without specifying the interface shape are findings.
 
+## Finding Quality Filter
+
+Before reporting any finding, apply these filters:
+- **"Would the author fix this?"** Only flag contract mismatches the author would actually address. Intentional asymmetries (one side sends more fields than the other consumes) are often by design.
+- **Provably affected:** Cite BOTH sides of the mismatch with specific locations. If you can't show both the producer and consumer disagreeing, it's not a confirmed finding.
+- **Brief and actionable:** One paragraph max per finding. Show the mismatch, not the investigation.
+
 ## Cross-Cutting Findings
 If your finding spans another agent's domain (e.g., "this contract mismatch creates a security hole"),
 tag it with CROSS:[AgentName] so the aggregation step routes it for cross-verification.
