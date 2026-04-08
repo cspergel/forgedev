@@ -152,18 +152,6 @@ function evaluate(input) {
 
   const activeStatus = state.active_node.status;
 
-  // Sprint 10B: Phase enforcement — cannot build nodes outside current build phase
-  if (activeStatus === "building" || activeStatus === "review-fixing" || activeStatus === "sweeping") {
-    const buildPhase = (manifest.project && manifest.project.build_phase) || 1;
-    const nodePhase = (manifest.nodes[activeNodeId] && manifest.nodes[activeNodeId].phase) || 1;
-    if (nodePhase > buildPhase) {
-      return {
-        block: true,
-        message: `BLOCKED: Node "${activeNodeId}" is phase ${nodePhase} but current build_phase is ${buildPhase}. Complete current phase first, then advance via /forgeplan:deep-build or /forgeplan:guide.`
-      };
-    }
-  }
-
   // Reviewing: restrict to review reports and state only
   if (activeStatus === "reviewing") {
     if (
@@ -317,6 +305,18 @@ function evaluate(input) {
 
   const activeNode = manifest.nodes[activeNodeId];
   const activeScope = activeNode.file_scope;
+
+  // Sprint 10B: Phase enforcement — cannot build nodes outside current build phase
+  if (activeStatus === "building" || activeStatus === "review-fixing" || activeStatus === "sweeping") {
+    const buildPhase = (manifest.project && manifest.project.build_phase) || 1;
+    const nodePhase = (activeNode.phase) || 1;
+    if (nodePhase > buildPhase) {
+      return {
+        block: true,
+        message: `BLOCKED: Node "${activeNodeId}" is phase ${nodePhase} but current build_phase is ${buildPhase}. Complete phase ${buildPhase} nodes first (check /forgeplan:status for progress), then advance via /forgeplan:deep-build.`
+      };
+    }
+  }
 
   // --- Check 2: Does the file match the active node's file_scope? ---
   if (!activeScope) {

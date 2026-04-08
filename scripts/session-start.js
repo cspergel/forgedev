@@ -357,11 +357,11 @@ function buildAmbientStatus(forgePlanDir, manifestPath, statePath, state) {
       lines.push(`  Phase: ${buildPhase} of ${maxPhase} (${currentPhaseNodes.length} active | ${futurePhaseNodes.length} pending)`);
 
       // Staleness warning: >7 days without advancement
-      if (state.build_phase_started_at) {
+      if (state && state.build_phase_started_at) {
         const started = new Date(state.build_phase_started_at);
         const daysSince = (Date.now() - started.getTime()) / (1000 * 60 * 60 * 24);
         if (daysSince > 7) {
-          lines.push(`  WARNING: Phase ${buildPhase} has been active for ${Math.floor(daysSince)} days.`);
+          lines.push(`  WARNING: Phase ${buildPhase} has been active for ${Math.floor(daysSince)} days. Future-phase stubs are fail-closed. Run /forgeplan:status to check progress.`);
         }
       }
     }

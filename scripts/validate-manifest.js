@@ -27,7 +27,7 @@ const { NODE_ID_REGEX } = require("./lib/atomic-write");
 
 // ---------- Validation Logic ----------
 
-function validateManifest(manifest) {
+function validateManifest(manifest, manifestPath) {
   const errors = [];
   const warnings = [];
 
@@ -446,7 +446,7 @@ function main() {
     process.exit(2);
   }
 
-  const { errors, warnings } = validateManifest(manifest);
+  const { errors, warnings } = validateManifest(manifest, manifestPath);
 
   // Output results
   if (warnings.length > 0) {
