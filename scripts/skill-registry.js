@@ -165,6 +165,17 @@ function loadSkillFrontmatter(filePath) {
     }
   }
 
+  // Validate agent_filter values against known agents
+  if (frontmatter.agent_filter && frontmatter.agent_filter.length > 0) {
+    for (const agent of frontmatter.agent_filter) {
+      if (agent !== "architect" && !REGISTRY_AGENTS.includes(agent)) {
+        warnings.push(
+          `Skill ${frontmatter.name || "(unknown)"} targets unknown agent "${agent}" — will be silently excluded. Valid agents: architect, ${REGISTRY_AGENTS.join(", ")}`
+        );
+      }
+    }
+  }
+
   // Size warning
   const estimatedTokens = totalLines * TOKENS_PER_LINE;
   if (totalLines > MAX_LINES) {
@@ -334,49 +345,17 @@ function scanSkillSources(config, projectRoot) {
 
 /**
  * Compute a deterministic hash of ALL inputs that affect skill selection.
- * Hash of: tech_stack, node IDs, complexity_tier, skills config, skill-file stats.
+ * Delegates to skill-helpers.js computeManifestHash() — the CANONICAL implementation.
+ * Both the registry writer (this file) and the staleness checker (skill-helpers.js)
+ * must use the exact same hash function so registries are not falsely marked stale.
  *
  * @param {object} manifest - parsed manifest.yaml
  * @param {object} [config] - parsed config.yaml (optional, improves hash coverage)
  * @param {string} [projectRoot] - project root path (optional, enables skill-file hashing)
  */
 function computeManifestHash(manifest, config, projectRoot) {
-  const hashInput = {
-    tech_stack: (manifest.project && manifest.project.tech_stack) || {},
-    nodes: manifest.nodes ? Object.keys(manifest.nodes).sort() : [],
-    complexity_tier: (manifest.project && manifest.project.complexity_tier) || "MEDIUM",
-    skills_config: (config && config.skills) || {},
-  };
-
-  // Include a content proxy for skill files: file count + total size.
-  // A full content hash would be expensive; count+size catches adds, removes, and edits.
-  if (projectRoot) {
-    const sources = (config && config.skills && config.skills.sources) || DEFAULT_SOURCES;
-    let fileCount = 0;
-    let totalSize = 0;
-    for (const sourceDir of sources) {
-      const absDir = path.isAbsolute(sourceDir)
-        ? sourceDir
-        : path.join(projectRoot, sourceDir);
-      try {
-        const mdFiles = findMdFiles(absDir);
-        fileCount += mdFiles.length;
-        for (const f of mdFiles) {
-          try {
-            const stat = fs.statSync(f);
-            totalSize += stat.size;
-          } catch (_) { /* skip unreadable files */ }
-        }
-      } catch (_) { /* source dir may not exist */ }
-    }
-    hashInput.skill_files = { count: fileCount, total_size: totalSize };
-  }
-
-  return crypto
-    .createHash("sha256")
-    .update(JSON.stringify(hashInput))
-    .digest("hex")
-    .slice(0, 12);
+  const { computeManifestHash: canonicalHash } = require("./lib/skill-helpers");
+  return canonicalHash(manifest, config, projectRoot);
 }
 
 // ---------- Skill Matching ----------
@@ -654,10 +633,9 @@ function generateRegistry(manifest, config, projectRoot) {
           while (Date.now() < waitUntil) { /* spin wait */ }
         }
       } else {
-        // Non-EEXIST error (permission, disk full, etc.) — proceed without lock
-        log(`Warning: Could not create lock file: ${lockErr.message}. Proceeding without lock.`);
-        lockAcquired = true; // treat as acquired so we still attempt the write
-        break;
+        // Non-EEXIST error (permission, disk full, etc.) — bail out of write path entirely
+        log(`Warning: Lock acquisition failed (${lockErr.message}). Using in-memory registry.`);
+        return registry;
       }
     }
   }

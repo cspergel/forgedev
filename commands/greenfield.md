@@ -32,7 +32,7 @@ Before discover starts, ensure the Architect has its skills loaded. **Always** c
 ```bash
 node "${CLAUDE_PLUGIN_ROOT}/scripts/skill-registry.js" compile-architect
 ```
-This reads bundled skills with `agent_filter: [architect]` and outputs compiled tier-aware context. If this fails, proceed without skills — discover works without them.
+This reads skills from `${CLAUDE_PLUGIN_ROOT}/skills/core/` and `${CLAUDE_PLUGIN_ROOT}/skills/conditional/` that have `agent_filter: [architect]`, and outputs a compiled tier-aware markdown block to stdout. Inject this context into the Architect's prompt for Step 1 (discover) so the Architect has domain knowledge during decomposition. If compile-architect fails (e.g., js-yaml not installed), proceed without skills — discover works without them, skills just improve quality.
 
 ### Step 1: Discover (autonomous)
 

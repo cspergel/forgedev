@@ -110,7 +110,15 @@ function evaluate(input) {
         const yamlCheck = require(path.join(__dirname, "..", "node_modules", "js-yaml"));
         const manifestPathCheck = path.join(forgePlanDirCheck, "manifest.yaml");
         const manifestCheck = yamlCheck.load(fs.readFileSync(manifestPathCheck, "utf-8"));
-        regCheckResult = manifestCheck ? checkStale(manifestCheck, forgePlanDirCheck) : null;
+        // Must pass the same 4 args as the normal path (line 93): manifest, forgePlanDir, config, projectRoot
+        let fallbackConfig = null;
+        const configPathFallback = path.join(forgePlanDirCheck, "config.yaml");
+        try {
+          if (fs.existsSync(configPathFallback)) {
+            fallbackConfig = yamlCheck.load(fs.readFileSync(configPathFallback, "utf-8"));
+          }
+        } catch (_) { /* config missing or unparseable — proceed without it */ }
+        regCheckResult = manifestCheck ? checkStale(manifestCheck, forgePlanDirCheck, fallbackConfig, cwd) : null;
       } catch (_) {
         regCheckResult = null;
       }

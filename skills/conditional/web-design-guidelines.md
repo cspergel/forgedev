@@ -7,7 +7,7 @@ source: Anthropic
 validated_at: "2026-04-09"
 overrides: []
 tier_filter: []
-agent_filter: [builder, sweep-frontend-ux]
+agent_filter: [builder, sweep-pathfinder]
 tech_filter: [react, vue, svelte, nextjs, nuxt, sveltekit]
 ---
 
