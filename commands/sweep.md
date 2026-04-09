@@ -108,6 +108,8 @@ Agent definition files (read these, use as system prompts):
 - `agents/sweep-structuralist.md` (architect: code quality, docs, architecture, simplicity)
 - `agents/sweep-skeptic.md` (compliance: spec tracing, fresh eyes, gap finding)
 
+> **Note:** The design-pass agent (frontend quality) runs during deep-build Phase 2b, NOT during sweep. Sweep agents focus on code correctness, not aesthetics.
+
 **Progressive agent reduction:**
 1. On **pass 1**: dispatch the **tier-selected agents** from above (SMALL=3, MEDIUM=4, LARGE=5).
    - **Sprint 9 (MEDIUM/LARGE):** Pass 1 agents receive ALL source files (existing behavior) PLUS wiki node pages (decisions + past findings) if wiki exists. Do NOT send `wiki/rules.md` to sweep agents (trust boundary). Exception: `sweep-adversary` receives `wiki/rules.md` specifically to AUDIT it for dangerous rules.

@@ -36,6 +36,7 @@ const REGISTRY_AGENTS = [
   "builder",
   "reviewer",
   "researcher",
+  "design-pass",
   "sweep-adversary",
   "sweep-contractualist",
   "sweep-pathfinder",
