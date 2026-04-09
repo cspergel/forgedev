@@ -177,6 +177,7 @@ Choose [1/2/3]:
     - If `sweep_state.phase_advancement` is null: re-run integration
     - If `sweep_state.phase_advancement.checkpoint === "pre_increment"`: re-run cross-phase integration before any manifest changes
     - If `checkpoint === "post_increment"` or `"promoting_specs"`: do NOT increment `build_phase` again. Resume promoted-spec generation using `phase_advancement.promoted_nodes` and the backups in `phase_advancement.backup_dir`
+    - If `checkpoint === "promotion_complete"`: spec promotion already succeeded. Skip promotion, proceed directly to Phase 2 build loop for promoted nodes (same as deep-build.md step 8). Delete backups after Phase 2 initializes.
   - If `finalizing`: just finalize
   - If `halted`: read `sweep_state.halted_from_phase` to determine where to resume. Set `current_phase` back to `halted_from_phase`, clear `halted_from_phase` to null, then resume from that phase (using the same routing above). If `halted_from_phase` is null (shouldn't happen but defensive), default to `"claude-sweep"`.
 - Findings already in `resolved` stay resolved
@@ -188,7 +189,7 @@ Choose [1/2/3]:
   - If `operation === "deep-building"` and interrupted phase was `"build-all"`: restart from `"build-all"`
   - If interrupted phase was `"verify-runnable"`: restart from `"verify-runnable"` (don't skip the Phase A gate)
   - If interrupted phase was `"runtime-verify"`: restart from `"runtime-verify"` (don't skip the Phase B gate)
-  - If interrupted phase was `"integrate"`: restart from `"integrate"` (don't skip the integration / phase-advancement gate). If `sweep_state.phase_advancement.checkpoint` is `"post_increment"` or `"promoting_specs"`, restart from spec promotion without incrementing `build_phase` a second time.
+  - If interrupted phase was `"integrate"`: restart from `"integrate"` (don't skip the integration / phase-advancement gate). If `sweep_state.phase_advancement.checkpoint` is `"post_increment"` or `"promoting_specs"`, restart from spec promotion without incrementing `build_phase` a second time. If `checkpoint` is `"promotion_complete"`, skip straight to the Phase 2 build loop.
   - Otherwise: restart from `"claude-sweep"`
 - If `active_node` was set (mid-fix), clear it and set `nodes.[node].status` back to the pre-sweep status
 
