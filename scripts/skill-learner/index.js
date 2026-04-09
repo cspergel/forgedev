@@ -92,6 +92,15 @@ function saveDraft(projectRoot, pattern) {
     return null; // Already drafted
   }
 
+  // Don't re-draft patterns that were already approved and promoted
+  const skillsDir = path.join(projectRoot, ".forgeplan", "skills");
+  if (fs.existsSync(skillsDir)) {
+    const approvedName = (pattern.name || pattern.hash).replace(/[^a-zA-Z0-9-]/g, "-").toLowerCase() + ".md";
+    if (fs.existsSync(path.join(skillsDir, approvedName))) {
+      return null; // Already approved
+    }
+  }
+
   fs.writeFileSync(filePath, content, "utf-8");
   return filePath;
 }

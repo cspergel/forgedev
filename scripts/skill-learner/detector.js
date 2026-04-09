@@ -67,7 +67,7 @@ function extractImportClusters(content, filePath, patterns) {
   while ((match = importRegex.exec(content))) {
     imports.push(match[1] || match[2]);
   }
-  if (imports.length < 2) return;
+  if (imports.length < 4) return; // need 4+ imports to be a meaningful cluster (2-3 is just boilerplate)
 
   // Sort imports for consistent keys, take top 5
   const key = imports.sort().slice(0, 5).join("+");
