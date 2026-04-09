@@ -26,14 +26,22 @@ function findMdFiles(dir, visited) {
   try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch (_) { return results; }
   for (const entry of entries) {
     const fullPath = path.join(dir, entry.name);
-    if (entry.isDirectory()) {
+    if (entry.isDirectory() || entry.isSymbolicLink()) {
+      // For symlinks, resolve first to check if target is a directory
+      if (entry.isSymbolicLink() && !entry.isDirectory()) {
+        try {
+          const stat = fs.statSync(fullPath);
+          if (!stat.isDirectory()) continue; // symlink to a file, not a directory — skip
+        } catch (_) { continue; } // broken symlink — skip
+      }
       if (entry.name === "drafts" || entry.name === "specification") continue;
+      // Symlink/junction cycle detection: resolve real path, skip if already visited
       try {
         const realPath = fs.realpathSync(fullPath);
         const normReal = process.platform === "win32" ? realPath.toLowerCase() : realPath;
         if (visited.has(normReal)) continue;
         visited.add(normReal);
-      } catch (_) { continue; }
+      } catch (_) { continue; } // unresolvable symlink — skip
       results.push(...findMdFiles(fullPath, visited));
     } else if (entry.name.endsWith(".md") && entry.name !== "README.md") {
       results.push(fullPath);
@@ -58,27 +66,31 @@ function computeManifestHash(manifest, config, projectRoot) {
     skills_config: (config && config.skills) || {},
   };
 
-  // Include a content proxy for skill files: file count + total size.
+  // Include a content hash for skill files: sha256 of each file path + content.
+  // This ensures ANY edit (even same-size) invalidates the registry.
   if (projectRoot) {
     const sources = (config && config.skills && config.skills.sources) || DEFAULT_SOURCES;
+    const fileHasher = crypto.createHash("sha256");
     let fileCount = 0;
-    let totalSize = 0;
     for (const sourceDir of sources) {
       const absDir = path.isAbsolute(sourceDir)
         ? sourceDir
         : path.join(projectRoot, sourceDir);
       try {
         const mdFiles = findMdFiles(absDir);
+        // Sort for deterministic ordering across platforms
+        mdFiles.sort();
         fileCount += mdFiles.length;
         for (const f of mdFiles) {
           try {
-            const stat = fs.statSync(f);
-            totalSize += stat.size;
+            const relFile = path.relative(projectRoot, f).replace(/\\/g, "/");
+            const content = fs.readFileSync(f, "utf-8");
+            fileHasher.update(relFile + "\0" + content);
           } catch (_) { /* skip unreadable files */ }
         }
       } catch (_) { /* source dir may not exist */ }
     }
-    hashInput.skill_files = { count: fileCount, total_size: totalSize };
+    hashInput.skill_files = { count: fileCount, content_hash: fileHasher.digest("hex") };
   }
 
   return crypto

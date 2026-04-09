@@ -378,19 +378,41 @@ function buildAmbientStatus(forgePlanDir, manifestPath, statePath, state) {
     }
   }
 
-  // Sprint 11: Skill registry staleness check
+  // Sprint 11: Skill registry staleness check — skip if skills are disabled
+  let skillsDisabled = false;
   try {
-    const { isRegistryStale } = require("./lib/skill-helpers");
-    const regStatus = isRegistryStale(manifest, forgePlanDir);
-    if (!regStatus.exists && nodeIds.length > 0) {
-      lines.push("  Skills: no registry — will auto-generate on next build");
-    } else if (regStatus.exists && regStatus.stale) {
-      lines.push("  Skills: registry stale (manifest changed) — will auto-refresh on next build");
-    } else if (regStatus.exists && regStatus.activeCount > 0) {
-      lines.push(`  Skills: ${regStatus.activeCount} active`);
+    const configPathSkills = path.join(forgePlanDir, "config.yaml");
+    if (fs.existsSync(configPathSkills)) {
+      const skillCheckConfig = yaml.load(fs.readFileSync(configPathSkills, "utf-8"));
+      if (skillCheckConfig && skillCheckConfig.skills && skillCheckConfig.skills.enabled === false) {
+        skillsDisabled = true;
+      }
     }
-  } catch {
-    // Skill registry check must never crash session start
+  } catch { /* config read failure — proceed with default (enabled) */ }
+
+  if (!skillsDisabled) {
+    try {
+      const { isRegistryStale } = require("./lib/skill-helpers");
+      // Load config for skill-file hashing (staleness detection needs config.skills + projectRoot)
+      let skillConfig = null;
+      const configPath = path.join(forgePlanDir, "config.yaml");
+      try {
+        if (fs.existsSync(configPath)) {
+          skillConfig = yaml.load(fs.readFileSync(configPath, "utf-8"));
+        }
+      } catch (_) { /* config missing or unparseable — proceed without it */ }
+      const projectRoot = path.dirname(forgePlanDir);
+      const regStatus = isRegistryStale(manifest, forgePlanDir, skillConfig, projectRoot);
+      if (!regStatus.exists && nodeIds.length > 0) {
+        lines.push("  Skills: no registry — will auto-generate on next build");
+      } else if (regStatus.exists && regStatus.stale) {
+        lines.push("  Skills: registry stale (manifest changed) — will auto-refresh on next build");
+      } else if (regStatus.exists && regStatus.activeCount > 0) {
+        lines.push(`  Skills: ${regStatus.activeCount} active`);
+      }
+    } catch {
+      // Skill registry check must never crash session start
+    }
   }
 
   // Next command suggestion

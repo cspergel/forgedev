@@ -28,11 +28,11 @@ Log which step is being resumed: "Resuming greenfield from Step [N] — [reason]
 
 ### Step 0.5: Pre-load Architect Skills (Sprint 11)
 
-Before discover starts, ensure the Architect has its skills loaded. If `.forgeplan/skills-registry.yaml` does not exist (first run), compile architect skills directly:
+Before discover starts, ensure the Architect has its skills loaded. **Always** compile architect skills directly — the normal skill registry intentionally excludes architect assignments, so a registry check would find nothing:
 ```bash
 node "${CLAUDE_PLUGIN_ROOT}/scripts/skill-registry.js" compile-architect
 ```
-This reads bundled skills with `agent_filter: [architect]` and outputs compiled context. If this fails, proceed without skills — discover works without them.
+This reads bundled skills with `agent_filter: [architect]` and outputs compiled tier-aware context. If this fails, proceed without skills — discover works without them.
 
 ### Step 1: Discover (autonomous)
 

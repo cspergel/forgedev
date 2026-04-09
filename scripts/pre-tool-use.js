@@ -60,16 +60,37 @@ function evaluate(input) {
   }
 
   // Sprint 11: Auto-refresh skill registry before agent dispatch
+  // Skip all registry operations if skills are disabled in config
   if (toolName === "Agent") {
     try {
       const forgePlanDirAgent = path.join(cwd, ".forgeplan");
+      const configPathCheck = path.join(forgePlanDirAgent, "config.yaml");
+      let skillsEnabled = true; // default: enabled
+      const yaml = require(path.join(__dirname, "..", "node_modules", "js-yaml"));
+      try {
+        if (fs.existsSync(configPathCheck)) {
+          const cfgContent = yaml.load(fs.readFileSync(configPathCheck, "utf-8"));
+          if (cfgContent && cfgContent.skills && cfgContent.skills.enabled === false) {
+            skillsEnabled = false;
+          }
+        }
+      } catch (_) { /* config missing or unparseable — default to enabled */ }
+      if (!skillsEnabled) return { block: false };
+
       const manifestPathAgent = path.join(forgePlanDirAgent, "manifest.yaml");
       if (fs.existsSync(forgePlanDirAgent) && fs.existsSync(manifestPathAgent)) {
         const { isRegistryStale } = require("./lib/skill-helpers");
-        const yaml = require(path.join(__dirname, "..", "node_modules", "js-yaml"));
         const agentManifest = yaml.load(fs.readFileSync(manifestPathAgent, "utf-8"));
         if (agentManifest) {
-          const regStatus = isRegistryStale(agentManifest, forgePlanDirAgent);
+          // Load config for skill-file hashing (staleness detection needs config.skills + projectRoot)
+          let agentConfig = null;
+          const configPathAgent = path.join(forgePlanDirAgent, "config.yaml");
+          try {
+            if (fs.existsSync(configPathAgent)) {
+              agentConfig = yaml.load(fs.readFileSync(configPathAgent, "utf-8"));
+            }
+          } catch (_) { /* config missing or unparseable — proceed without it */ }
+          const regStatus = isRegistryStale(agentManifest, forgePlanDirAgent, agentConfig, cwd);
           if (regStatus.stale) {
             const { execSync } = require("child_process");
             const scriptPath = path.join(__dirname, "skill-registry.js");
@@ -78,28 +99,38 @@ function evaluate(input) {
         }
       }
     } catch (err) {
-      // Auto-refresh failed — check if a valid registry exists on disk
-      const registryPath = path.join(cwd, ".forgeplan", "skills-registry.yaml");
-      let hasValidRegistry = false;
+      // Auto-refresh failed — three-way check against existing registry:
+      // 1. No registry file at all → BLOCK
+      // 2. Registry exists but stale (hash mismatch) → BLOCK
+      // 3. Registry exists and fresh (hash matches) → WARN and continue
+      const forgePlanDirCheck = path.join(cwd, ".forgeplan");
+      let regCheckResult;
       try {
-        if (fs.existsSync(registryPath)) {
-          const yaml = require(path.join(__dirname, "..", "node_modules", "js-yaml"));
-          const content = yaml.load(fs.readFileSync(registryPath, "utf-8"));
-          if (content && typeof content === "object") {
-            hasValidRegistry = true;
-          }
-        }
+        const { isRegistryStale: checkStale } = require("./lib/skill-helpers");
+        const yamlCheck = require(path.join(__dirname, "..", "node_modules", "js-yaml"));
+        const manifestPathCheck = path.join(forgePlanDirCheck, "manifest.yaml");
+        const manifestCheck = yamlCheck.load(fs.readFileSync(manifestPathCheck, "utf-8"));
+        regCheckResult = manifestCheck ? checkStale(manifestCheck, forgePlanDirCheck) : null;
       } catch (_) {
-        // Registry exists but is unparseable — treat as missing
+        regCheckResult = null;
       }
-      if (!hasValidRegistry) {
+
+      if (!regCheckResult || !regCheckResult.exists) {
+        // Case 1: No registry file exists
         return {
           block: true,
-          reason: "Skill registry refresh failed and no valid registry exists. Run /forgeplan:skill refresh to fix."
+          message: "Skill registry refresh failed and no valid registry exists. Run /forgeplan:skill refresh to fix."
         };
       }
-      // Stale but valid registry exists — warn and continue
-      process.stderr.write(`[ForgePlan] Skill registry auto-refresh failed (using stale registry): ${err.message}\n`);
+      if (regCheckResult.stale) {
+        // Case 2: Registry exists but is stale (hash mismatch)
+        return {
+          block: true,
+          message: "Skill registry is stale and refresh failed. The registry does not match the current manifest. Run /forgeplan:skill refresh to fix."
+        };
+      }
+      // Case 3: Registry exists and is fresh — data is good, just couldn't refresh
+      process.stderr.write(`[ForgePlan] Skill registry auto-refresh failed (registry is fresh, continuing): ${err.message}\n`);
     }
     return { block: false };
   }

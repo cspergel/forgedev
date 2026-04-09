@@ -223,7 +223,14 @@ function findMdFiles(dir, visited = new Set()) {
 
   for (const entry of entries) {
     const fullPath = path.join(dir, entry.name);
-    if (entry.isDirectory()) {
+    if (entry.isDirectory() || entry.isSymbolicLink()) {
+      // For symlinks, resolve first to check if target is a directory
+      if (entry.isSymbolicLink() && !entry.isDirectory()) {
+        try {
+          const stat = fs.statSync(fullPath);
+          if (!stat.isDirectory()) continue; // symlink to a file, not a directory — skip
+        } catch (_) { continue; } // broken symlink — skip
+      }
       // Skip drafts directory — drafts must be approved first
       if (entry.name === "drafts") continue;
       // Skip specification directory — not a skill for registry
@@ -520,7 +527,10 @@ function matchSkillsToAgent(agentName, skills, manifest, config) {
     candidates = candidates.slice(0, maxActive);
   }
 
-  // Build assignment entries with hints and selector metadata
+  // Build assignment entries with hints and selector metadata.
+  // Always write filter/override arrays (empty [] not undefined) so YAML serialization
+  // preserves them — consumers like build.md read tech_filter for per-node refinement
+  // and will silently skip refinement if the field is missing from the registry entry.
   return candidates.map((skill) => ({
     path: skill.path,
     name: skill.name,
@@ -528,11 +538,10 @@ function matchSkillsToAgent(agentName, skills, manifest, config) {
     priority: skill.priority,
     tier: skill.tier,
     hint: computeHint(skill, manifest),
-    // Selector metadata — builder uses tech_filter for per-node skill refinement
-    tech_filter: skill.tech_filter && skill.tech_filter.length > 0 ? skill.tech_filter : undefined,
-    tier_filter: skill.tier_filter && skill.tier_filter.length > 0 ? skill.tier_filter : undefined,
-    agent_filter: skill.agent_filter && skill.agent_filter.length > 0 ? skill.agent_filter : undefined,
-    overrides: skill.overrides && skill.overrides.length > 0 ? skill.overrides : undefined,
+    tech_filter: Array.isArray(skill.tech_filter) ? skill.tech_filter : [],
+    tier_filter: Array.isArray(skill.tier_filter) ? skill.tier_filter : [],
+    agent_filter: Array.isArray(skill.agent_filter) ? skill.agent_filter : [],
+    overrides: Array.isArray(skill.overrides) ? skill.overrides : [],
   }));
 }
 
@@ -599,43 +608,64 @@ function generateRegistry(manifest, config, projectRoot) {
   const yamlContent = header + yaml.dump(registry, { lineWidth: 120, noRefs: true, sortKeys: false });
 
   // Atomic write with lock: write .tmp → rename old to .bak → rename .tmp to target → delete .bak
-  // Lock mechanism: .lock file prevents concurrent refreshes from clobbering .tmp/.bak paths
+  // Lock mechanism: exclusive file creation (wx flag) prevents concurrent refreshes
   const lockPath = registryPath + ".lock";
   const tmpPath = registryPath + ".tmp";
   const bakPath = registryPath + ".bak";
 
-  // Acquire lock: if .lock or .tmp exists, another refresh is in progress
+  // Acquire lock via exclusive creation — wx flag atomically creates and fails if file exists
   const MAX_LOCK_RETRIES = 3;
   const LOCK_WAIT_MS = 100;
+  let lockAcquired = false;
   for (let attempt = 0; attempt < MAX_LOCK_RETRIES; attempt++) {
-    if (fs.existsSync(lockPath) || fs.existsSync(tmpPath)) {
-      debug(`Registry write lock detected (attempt ${attempt + 1}/${MAX_LOCK_RETRIES}), waiting ${LOCK_WAIT_MS}ms...`);
-      const waitUntil = Date.now() + LOCK_WAIT_MS;
-      while (Date.now() < waitUntil) { /* spin wait */ }
-    } else {
+    try {
+      fs.writeFileSync(lockPath, String(process.pid), { flag: "wx" });
+      lockAcquired = true;
       break;
-    }
-    if (attempt === MAX_LOCK_RETRIES - 1) {
-      // Still locked after retries — check for stale lock (older than 30s)
-      try {
-        const lockStat = fs.existsSync(lockPath) ? fs.statSync(lockPath) : null;
-        if (lockStat && Date.now() - lockStat.mtimeMs > 30000) {
-          log("Warning: Stale registry lock detected (>30s), removing and proceeding.");
-          try { fs.unlinkSync(lockPath); } catch (_) {}
-          try { fs.unlinkSync(tmpPath); } catch (_) {}
+    } catch (lockErr) {
+      if (lockErr.code === "EEXIST") {
+        // Another process holds the lock — check for stale lock on last attempt
+        if (attempt === MAX_LOCK_RETRIES - 1) {
+          try {
+            const lockStat = fs.statSync(lockPath);
+            if (Date.now() - lockStat.mtimeMs > 30000) {
+              log("Warning: Stale registry lock detected (>30s), removing and proceeding.");
+              try { fs.unlinkSync(lockPath); } catch (_) {}
+              try { fs.unlinkSync(tmpPath); } catch (_) {}
+              // Try one more exclusive create after clearing stale lock
+              try {
+                fs.writeFileSync(lockPath, String(process.pid), { flag: "wx" });
+                lockAcquired = true;
+              } catch (_) {
+                log("Warning: Registry write lock held by another process. Using existing registry.");
+                return registry;
+              }
+            } else {
+              log("Warning: Registry write lock held by another process. Using existing registry.");
+              return registry;
+            }
+          } catch (_) {
+            log("Warning: Could not check lock state. Using existing registry.");
+            return registry;
+          }
         } else {
-          log("Warning: Registry write lock held by another process. Using existing registry.");
-          return registry;
+          debug(`Registry write lock detected (attempt ${attempt + 1}/${MAX_LOCK_RETRIES}), waiting ${LOCK_WAIT_MS}ms...`);
+          const waitUntil = Date.now() + LOCK_WAIT_MS;
+          while (Date.now() < waitUntil) { /* spin wait */ }
         }
-      } catch (_) {
-        log("Warning: Could not check lock state. Using existing registry.");
-        return registry;
+      } else {
+        // Non-EEXIST error (permission, disk full, etc.) — proceed without lock
+        log(`Warning: Could not create lock file: ${lockErr.message}. Proceeding without lock.`);
+        lockAcquired = true; // treat as acquired so we still attempt the write
+        break;
       }
     }
   }
 
-  // Write lock file
-  try { fs.writeFileSync(lockPath, String(process.pid), "utf-8"); } catch (_) {}
+  if (!lockAcquired) {
+    log("Warning: Could not acquire registry lock. Using existing registry.");
+    return registry;
+  }
 
   try {
     fs.writeFileSync(tmpPath, yamlContent, "utf-8");
@@ -716,10 +746,12 @@ function validateSkills(config, projectRoot) {
 function compileArchitect(config, projectRoot, manifest) {
   const skills = scanSkillSources(config, projectRoot);
 
-  // Filter to architect-relevant skills
-  // Architect skills have agent_filter containing "architect" or no agent_filter
+  // Filter to architect-relevant skills — core-only (skills/core/ and skills/conditional/).
+  // Non-core skills (project-local .forgeplan/skills/, user-installed) are excluded from
+  // architect compilation to prevent untrusted content from influencing architecture decisions.
   const architectSkills = skills.filter((s) => {
     if (!s.valid) return false;
+    if (s.tier !== "curated") return false; // core-only: curated = skills/core/ or skills/conditional/
     if (s.agent_filter && s.agent_filter.length > 0) {
       return s.agent_filter.map((a) => a.toLowerCase()).includes("architect");
     }
