@@ -132,23 +132,72 @@ Every agent in ForgePlan gets domain-specific skills that make it better at its 
 | differential-review | Trail of Bits | Git-history-aware review, cross-function data flow tracking |
 | code-review | awesome-skills | 280+ structured checks, 4-phase review, boundary condition checklists |
 
-### Skill Loading Mechanism
+### Skill Loading Mechanism — Progressive Disclosure
+
+Skills load in two phases to control context cost:
+
+**Phase 1 — Metadata at dispatch (~100 tokens per skill):**
+The orchestrator reads all candidate skills' frontmatter (`name`, `description`, `when_to_use`, `priority`) and includes them as a skill index in the Agent tool prompt. The agent sees what skills are available but not their full content.
+
+**Phase 2 — Full content on-demand (~2000-5000 tokens per skill):**
+During execution, the agent reads the full SKILL.md content via the Read tool when it determines a skill is relevant to the current task. Typically 1-2 skills are fully loaded, not all 5.
+
+This caps context cost at ~500 tokens (metadata) + 2000-5000 tokens (1-2 activated) instead of 10K-25K (all skills fully loaded).
 
 **For agents dispatched via Agent tool (builder, sweep agents, reviewer, researcher):**
 ```
-build.md orchestrator:
+Orchestrator:
   1. Read node type + tech_stack from manifest
   2. Read config.yaml skills section (enabled? explicit? disabled? max_active?)
-  3. Determine tier → select skill count
-  4. Read relevant SKILL.md files from skills/ directories
-  5. Embed skill content in Agent tool prompt alongside spec + manifest
-  6. Dispatch builder with skills pre-loaded
+  3. Run the Skill Cascade (see below) to select skills
+  4. Include skill metadata index in Agent tool prompt
+  5. Include instruction: "Read full skill content from [path] when needed"
+  6. Dispatch agent
 ```
 
 **For the architect agent (invoked directly by discover.md):**
-- Skills are COMPILED into `agents/architect.md` as tier-aware reasoning sections
+- Tier-aware reasoning sections are COMPILED into `agents/architect.md`
 - No runtime loading — the prompt already contains the methodology
 - Keeps the discovery conversation fast (no skill lookup overhead)
+
+### Skill Cascade — Unified Selection
+
+When an agent needs skills, the orchestrator runs a 4-tier cascade. Each tier is tried in order; the cascade stops when `max_active` skills are selected.
+
+```
+Tier 1: CURATED (built-in, vetted by us)
+  → Read skills/core/ and skills/conditional/
+  → Match by tech_stack, node type, agent role
+  → These are the 28 curated skills from the Skill Map above
+  → Priority: 80-100
+
+Tier 2: PROJECT-SPECIFIC (from learner or manual install)
+  → Read .forgeplan/skills/ (not drafts/)
+  → Match by when_to_use metadata
+  → Priority: 50-79
+
+Tier 3: AUTO-RESEARCH (on-the-fly generation)
+  → If Tiers 1-2 don't cover a detected need (e.g., tech_stack has
+    "drizzle" but no drizzle skill exists), dispatch Researcher agent
+    to generate a lightweight SKILL.md
+  → Save to .forgeplan/skills/ with validated_at timestamp
+  → Priority: 40-49
+  → Only triggers during /forgeplan:greenfield or /forgeplan:research,
+    NOT during individual builds (too slow)
+
+Tier 4: LEARNED (from skill learner module)
+  → Read .forgeplan/skills/ for learner-generated skills
+  → These have been reviewed and promoted from drafts/
+  → Priority: 20-39
+```
+
+**Conflict resolution:** When two skills contradict (e.g., "never use classes" vs class-based auth patterns), the higher-priority skill wins. Priority is set in SKILL.md frontmatter. Built-in curated skills (80-100) always override learned skills (20-39).
+
+**Quality gate before loading:** Before any skill enters an agent's context:
+- Required frontmatter: `name`, `description`, `when_to_use` (reject if missing)
+- Size limit: 5000 tokens max (reject if over)
+- Freshness: `validated_at` field, warn if >90 days stale for Tier 2-4 skills
+- Not in config.yaml `disabled` list
 
 ### Per-Project Configuration
 
@@ -157,40 +206,17 @@ build.md orchestrator:
 skills:
   enabled: true                    # Master toggle (default: true for MEDIUM/LARGE, false for SMALL)
   auto_detect: true                # Orchestrator auto-detects relevant skills (default: true)
+  auto_research: true              # Tier 3: auto-generate skills for unrecognized tech (default: true)
   explicit:                        # Always activate these skills regardless of detection
     - frontend-design
     - api-patterns
   disabled:                        # Never activate these skills even if detected
     - tailwind                     # User prefers vanilla CSS
-  max_active: 5                    # Maximum concurrent skills to prevent context bloat
-```
-
-### Skill Expansion — How Agents Get New Skills
-
-**Path 1: Research-to-Skill Pipeline (automatic)**
-```
-/forgeplan:research finds patterns → auto-generates lightweight SKILL.md
-  → saved to .forgeplan/skills/
-  → next build picks it up automatically
-  → sweep validates the pattern worked
-  → if validated, promote to shared skill
-```
-
-**Path 2: Skill Learner Module (semi-automatic)**
-```
-PostToolUse hook monitors code generation patterns
-  → detects when similar patterns appear 3+ times
-  → suggests: "You've built 3 Stripe webhook handlers this way. Save as a skill?"
-  → generates SKILL.md from the pattern
-  → saved to .forgeplan/skills/
-  → auto-activates on similar future work
-```
-
-**Path 3: Manual Install (user-driven)**
-```
-User finds a skill on ClawHub / GitHub / npm
-  → installs to ~/.claude/skills/ or .forgeplan/skills/
-  → config.yaml explicit: section can force-load it
+  max_active: 5                    # Maximum concurrent skills per agent to prevent context bloat
+  sources:                         # Skill search paths (searched in order)
+    - .forgeplan/skills            # Project-specific (learner, manual, research-generated)
+    - skills                       # Plugin built-in (curated, vendored)
+    # - ~/.claude/skills           # User global (cross-project)
 ```
 
 ---
@@ -204,16 +230,17 @@ Watches coding patterns, detects repetition, and helps users build a personal SK
 ### Core Loop
 
 ```
-Monitor → Detect → Suggest → Save → Activate → Validate → Promote
+Monitor → Detect → Suggest → Draft → Review → Activate → Validate → Promote
 ```
 
 1. **Monitor:** PostToolUse hook tracks file writes during builds — what patterns are being generated
 2. **Detect:** After 3+ occurrences of similar structure (same imports, same error handling shape, same middleware pattern), flag it
 3. **Suggest:** "You've built 3 Express route handlers with Zod validation + try/catch + error response. Save as a skill?"
-4. **Save:** Generate a SKILL.md with the pattern + examples from actual code → `.forgeplan/skills/`
-5. **Activate:** Next build with similar node type, the skill is auto-detected and loaded
-6. **Validate:** Sweep agents verify the generated code quality — if sweep finds issues in skill-guided code, downrank the skill
-7. **Promote:** After 5+ successful uses with no sweep issues, suggest promoting to `~/.claude/skills/` (cross-project)
+4. **Draft:** Generate a SKILL.md with the pattern + examples from actual code → `.forgeplan/skills/drafts/` (NOT active yet)
+5. **Review:** User runs `/forgeplan:skill review [name]` to inspect the draft. Can edit, approve, or discard. Only approved skills move to `.forgeplan/skills/`
+6. **Activate:** Next build with similar node type, the approved skill is auto-detected and loaded via the Skill Cascade (Tier 4, priority 20-39)
+7. **Validate:** Sweep agents verify the generated code quality — if sweep finds issues in skill-guided code, downrank the skill (reduce priority, add `quality_issues` field)
+8. **Promote:** After 5+ successful uses with no sweep issues, suggest promoting to `~/.claude/skills/` (cross-project). User confirms.
 
 ### Architecture: Portable Microservice
 
@@ -227,6 +254,37 @@ Monitor → Detect → Suggest → Save → Activate → Validate → Promote
 - Does not automatically modify agent behavior without user consent (always suggests, never forces)
 - Does not couple to manifest/nodes/state — works with just a codebase + skills directory
 - Does not replace curated skills — it supplements them with project-specific patterns
+
+---
+
+## SKILL.md Format Specification
+
+All skills use standard SKILL.md with extended frontmatter for the cascade system:
+
+```markdown
+---
+name: coding-standards
+description: KISS/DRY/YAGNI enforcement, TypeScript naming, Zod validation
+when_to_use: Always for TypeScript projects during build and review
+priority: 85                          # 0-100. Curated: 80-100, Project: 50-79, Research: 40-49, Learned: 20-39
+source: affaan-m/everything-claude-code  # Where this skill came from (for attribution + updates)
+validated_at: "2026-04-08"            # Last verified as current/correct
+overrides: []                         # Skill names this one takes precedence over on conflict
+tier_filter: [MEDIUM, LARGE]          # Only load for these tiers (empty = all tiers)
+agent_filter: [builder, reviewer]     # Only load for these agents (empty = all agents)
+tech_filter: [typescript, javascript] # Only load when tech_stack matches (empty = all stacks)
+---
+
+# Coding Standards
+
+[Full skill content — rules, examples, patterns]
+[Max 5000 tokens]
+```
+
+**Required fields:** `name`, `description`, `when_to_use`
+**Optional fields:** `priority` (default 50), `source`, `validated_at`, `overrides`, `tier_filter`, `agent_filter`, `tech_filter`
+
+The `tier_filter`, `agent_filter`, and `tech_filter` fields enable precise matching during the Skill Cascade without loading every skill's full content. The orchestrator reads only frontmatter to build the skill index.
 
 ---
 
@@ -408,35 +466,43 @@ In the standalone ForgePlan Workstation, users will watch the build happening in
 
 ## Implementation Order
 
-### Batch 1: Skill Infrastructure (foundation)
-1. Install/vendor the 28 core skill SKILL.md files into `skills/` directory structure
-2. Add `skills:` frontmatter to ALL 10 agent `.md` files with their curated skills
-3. Add skills section to `templates/schemas/config-schema.yaml`
-4. Update `commands/build.md` — orchestrator reads config, selects skills, embeds in builder prompt
-5. Update `commands/sweep.md` — orchestrator loads sweep agent skills before dispatch
+### Batch 1: Skill Infrastructure + Cascade Engine (foundation)
+1. Create `scripts/skill-cascade.js` — the core selection engine:
+   - Reads config.yaml skills section
+   - Scans skill sources (`.forgeplan/skills/`, `skills/`)
+   - Parses SKILL.md frontmatter only (name, description, when_to_use, priority, filters)
+   - Runs the 4-tier cascade: curated → project → auto-research → learned
+   - Applies quality gate (required frontmatter, size limit, freshness check)
+   - Resolves conflicts via priority
+   - Returns ordered list of skill paths capped at `max_active`
+2. Write/vendor the first 10 core skills into `skills/core/` (coding-standards, backend-patterns, tdd-workflow, authentication-patterns, owasp-security, mastering-typescript, react-best-practices, api-contract-auditor, deep-research, code-review)
+3. ~~Add skills section to config-schema.yaml~~ (DONE — shipped in Sprint 10B hardening)
+4. Update `commands/build.md` — call skill-cascade.js, include metadata index in builder prompt
+5. Update `commands/sweep.md` — call skill-cascade.js per sweep agent before dispatch
 
-### Batch 2: Architect + Dynamic Selection
-6. Compile architect skills into `agents/architect.md` as tier-aware reasoning sections
-7. Update `commands/discover.md` — tier-aware architect skill sections activate
-8. Build dynamic skill selection: orchestrator reads node type + tech_stack → picks conditional skills
-9. Update `commands/review.md` — reviewer skill loading
+### Batch 2: Full Skill Set + Dynamic Selection
+6. Write/vendor remaining 18 curated skills + 5 conditional skills into `skills/core/` and `skills/conditional/`
+7. Compile architect skills into `agents/architect.md` as tier-aware reasoning sections
+8. Update `commands/discover.md` and `commands/review.md` — skill loading
+9. Add `skills:` metadata reference to all 10 agent `.md` files (pointer to available skills, not embedded content)
 
 ### Batch 3: Design Quality + Anti-Slop
-10. Create `skills/frontend-design/SKILL.md` with anti-slop rules + clean design patterns
+10. Create `skills/core/frontend-design.md` with anti-slop rules + clean design patterns
 11. Create `agents/design-pass.md` — post-build design agent for visual consistency
 12. Update `commands/deep-build.md` — add design pass phase after build, before review
 13. Add user steering prompt — one round of aesthetic feedback after design pass
 
 ### Batch 4: Skill Learner Module
-14. Create `scripts/skill-learner/` module — pattern detection engine
+14. Create `scripts/skill-learner/` module — pattern detection engine (detect, generate draft)
 15. Wire into PostToolUse hook — monitor code generation patterns
-16. Build SKILL.md generator — transform detected patterns into standard format
-17. Add `/forgeplan:skill` command — manage skills (list, create, promote, delete)
+16. Build SKILL.md generator — transform detected patterns into standard format with proper frontmatter
+17. Add `/forgeplan:skill` command — list, review (from drafts/), approve, promote, delete
+18. Add Tier 3 auto-research trigger to skill-cascade.js — when cascade finds a gap, flag it for research
 
 ### Batch 5: Blueprints
-18. Create `deps.lock.yaml` for existing blueprints (client-portal, saas-starter, internal-dashboard)
-19. Update builder to read `deps.lock.yaml` for dependency versions
-20. Create `/forgeplan:blueprint` command (create from research, update, list)
+19. Create `deps.lock.yaml` for existing blueprints (client-portal, saas-starter, internal-dashboard)
+20. Update builder to read `deps.lock.yaml` for dependency versions
+21. Create `/forgeplan:blueprint` command (create from research, update, list)
 21. Add `blueprint-origin.yaml` tracking + update flow
 22. Add `template:github:user/repo` support to discover.md
 
