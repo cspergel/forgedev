@@ -66,7 +66,7 @@ const DEFAULT_PRIORITY = 50;
 const DEFAULT_MAX_ACTIVE = 5;
 
 /** Default skill sources (searched in order). */
-const DEFAULT_SOURCES = [".forgeplan/skills", "skills"];
+const DEFAULT_SOURCES = [".forgeplan/skills", "skill-library"];
 
 // ---------- Logging ----------
 
@@ -202,13 +202,13 @@ function loadSkillFrontmatter(filePath) {
 
 /**
  * Determine tier label for a skill based on its source directory.
- * skills/core/ and skills/conditional/ → "curated"
+ * skill-library/core/ and skill-library/conditional/ → "curated"
  * .forgeplan/skills/ → "project" or "learned"
  * Everything else → "project"
  */
 function classifyTier(relPath) {
   const normalized = relPath.replace(/\\/g, "/");
-  if (normalized.startsWith("skills/core/") || normalized.startsWith("skills/conditional/")) {
+  if (normalized.startsWith("skill-library/core/") || normalized.startsWith("skill-library/conditional/")) {
     return "curated";
   }
   if (normalized.startsWith(".forgeplan/skills/drafts/")) {
@@ -793,24 +793,24 @@ function validateSkills(config, projectRoot) {
 // ---------- Compile Architect Subcommand ----------
 
 /**
- * Read architect skills from skills/core/, extract full content,
+ * Read architect skills from skill-library/core/, extract full content,
  * compile into a single tier-aware markdown block.
  * Outputs to stdout for embedding or piping.
  */
 function compileArchitect(config, projectRoot, manifest) {
   const skills = scanSkillSources(config, projectRoot);
 
-  // Filter to architect-relevant skills — core-only (skills/core/ and skills/conditional/).
+  // Filter to architect-relevant skills — core-only (skill-library/core/ and skill-library/conditional/).
   // Non-core skills (project-local .forgeplan/skills/, user-installed) are excluded from
   // architect compilation to prevent untrusted content from influencing architecture decisions.
   const architectSkills = skills.filter((s) => {
     if (!s.valid) return false;
-    if (s.tier !== "curated") return false; // core-only: curated = skills/core/ or skills/conditional/
+    if (s.tier !== "curated") return false; // core-only: curated = skill-library/core/ or skill-library/conditional/
     if (s.agent_filter && s.agent_filter.length > 0) {
       return s.agent_filter.map((a) => a.toLowerCase()).includes("architect");
     }
     // Skills with no agent_filter are available to all agents, but for architect compile
-    // we only include skills from skills/core/ that are explicitly architect-targeted
+    // we only include skills from skill-library/core/ that are explicitly architect-targeted
     // to prevent bloat. Return false for non-filtered skills.
     return false;
   });

@@ -167,7 +167,7 @@ Choose [1/2/3]:
 - Re-read any sweep/crosscheck reports already on disk in `.forgeplan/sweeps/`
 - Continue from `current_phase`:
   - If `build-all`: resume the build-all loop — run `next-node.js`, continue building/reviewing remaining nodes. If `active_node` is stuck, recover it first (run per-node building recovery inline), then continue the loop.
-  - If `design-pass`: re-run the design pass (deep-build.md Phase 2b). Read `agents/design-pass.md` and `skills/core/frontend-design.md`, dispatch the design-pass agent on frontend nodes. If no frontend nodes exist, skip to `verify-runnable`.
+  - If `design-pass`: re-run the design pass (deep-build.md Phase 2b). Read `agents/design-pass.md` and `skill-library/core/frontend-design.md`, dispatch the design-pass agent on frontend nodes. If no frontend nodes exist, skip to `verify-runnable`.
   - If `verify-runnable`: re-run `node "${CLAUDE_PLUGIN_ROOT}/scripts/verify-runnable.js"` (Phase A gate was interrupted)
   - If `claude-sweep`: re-run the sweep agents
   - If `claude-fix`: re-fix all pending findings (restart the fix loop for this pass)
