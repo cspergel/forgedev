@@ -64,6 +64,7 @@ function main() {
   let completed = 0;
   let builtAwaitingReview = 0;
   let revisedNeedsRebuild = 0;
+  let specced = 0;
   let inProgress = 0;
 
   for (const id of nodeIds) {
@@ -78,7 +79,7 @@ function main() {
     else if (status === "revised") { icon = "[~]"; revisedNeedsRebuild++; }
     else if (builtStatuses.includes(status)) { icon = "[>]"; }
     else if (inProgressStatuses.includes(status)) { icon = "[.]"; inProgress++; }
-    else if (status === "specced") { icon = "[-]"; }
+    else if (status === "specced") { icon = "[-]"; specced++; }
 
     nodes.push({
       id,
@@ -127,8 +128,9 @@ function main() {
       completed,
       builtAwaitingReview,
       revisedNeedsRebuild,
+      specced,
       inProgress,
-      pending: nodeIds.length - completed - builtAwaitingReview - revisedNeedsRebuild - inProgress,
+      pending: nodeIds.length - completed - builtAwaitingReview - revisedNeedsRebuild - specced - inProgress,
     },
     nodes,
     dependencyGraph: graphLines,

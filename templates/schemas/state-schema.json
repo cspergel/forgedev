@@ -195,7 +195,7 @@
           "properties": {
             "from_build_phase": { "type": "integer", "minimum": 1 },
             "to_build_phase": { "type": "integer", "minimum": 1 },
-            "checkpoint": { "type": "string", "enum": ["pre_increment", "post_increment", "promoting_specs"] },
+            "checkpoint": { "type": "string", "enum": ["pre_increment", "post_increment", "promoting_specs", "promotion_complete"] },
             "promoted_nodes": { "type": "array", "items": { "type": "string" }, "default": [] },
             "backup_dir": { "type": "string" }
           },

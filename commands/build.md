@@ -99,4 +99,4 @@ If `/forgeplan:review` issues REQUEST CHANGES, re-run `/forgeplan:build [node-id
 - The current code (as-is on disk)
 - The specific review findings to address
 
-This fresh-agent pattern prevents the Builder from getting stuck in its own reasoning loop. The cycle is: specced → building → built → reviewed → building → built → reviewed (until APPROVE). Similarly after revision: revised → building → built.
+This fresh-agent pattern prevents the Builder from getting stuck in its own reasoning loop. The cycle is: specced → building → built → reviewed (until APPROVE). After revision: revised → building → built → reviewed (review is required after every rebuild).
