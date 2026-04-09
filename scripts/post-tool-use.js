@@ -217,6 +217,15 @@ function processHook(input) {
     }
   }
 
+  // --- Skill Learner: increment write counter during builds ---
+  // Counter is persisted in the atomic state write below; scan triggers at end of function
+  let skillLearnerWriteCount = 0;
+  if (state.active_node && state.active_node.status === "building" && state.nodes && state.nodes[activeNodeId]) {
+    skillLearnerWriteCount = (state.nodes[activeNodeId]._skill_learner_writes || 0) + 1;
+    state.nodes[activeNodeId]._skill_learner_writes = skillLearnerWriteCount;
+    stateModified = true;
+  }
+
   // Single write: flush all state changes at once (avoids TOCTOU race from multiple reads)
   if (stateModified) {
     state.last_updated = new Date().toISOString();
@@ -344,5 +353,41 @@ function processHook(input) {
   } catch (wikiErr) {
     // Wiki appending is best-effort — never block the build
     // Silent catch: wiki will be rebuilt by compile-wiki.js later
+  }
+
+  // --- Skill Learner: periodic pattern scan ---
+  // Only run during builds (not reviews/sweeps) and only every 20 file writes.
+  // Check config.yaml — skip entirely if skills are disabled.
+  if (skillLearnerWriteCount > 0 && skillLearnerWriteCount % 20 === 0) {
+    try {
+      // Read config.yaml to check if skills are enabled
+      const configPath = path.join(forgePlanDir, "config.yaml");
+      let skillsEnabled = true; // default: enabled
+      if (fs.existsSync(configPath)) {
+        const configData = yaml.load(fs.readFileSync(configPath, "utf-8"));
+        if (configData && configData.skills && configData.skills.enabled === false) {
+          skillsEnabled = false;
+        }
+      }
+
+      if (skillsEnabled) {
+        const skillLearner = require("./skill-learner");
+        const result = skillLearner.scan(cwd, { minOccurrences: 3 });
+        if (result.patterns.length > 0) {
+          let draftsCreated = 0;
+          for (const pattern of result.patterns) {
+            const saved = skillLearner.saveDraft(cwd, pattern);
+            if (saved) draftsCreated++;
+          }
+          if (draftsCreated > 0) {
+            process.stderr.write(
+              `[ForgePlan] Skill Learner: ${draftsCreated} new pattern(s) detected. Review with /forgeplan:skill review\n`
+            );
+          }
+        }
+      }
+    } catch {
+      // Skill learner is non-blocking — failures are silent
+    }
   }
 }
