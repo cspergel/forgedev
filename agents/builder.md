@@ -190,6 +190,13 @@ Read `spec_type` from the node spec at `.forgeplan/specs/[node-id].yaml`. Build 
 
 For `interface-only` builds, create the node's `index.ts` with all exports matching the spec's `interfaces` section. Other nodes will import from this file. The stub must be type-correct so current-phase consumers compile.
 
+## Skills (Sprint 11)
+
+You may receive skill assignments from the orchestrator when dispatched. Skills are domain-specific instruction sets that enhance your capabilities:
+- **READ NOW** skills: Read the full content from the given path BEFORE starting work. These are directly relevant to your current task.
+- **REFERENCE** skills: Available if needed. Read only when you encounter a specific question the skill addresses.
+- If no skills are provided, proceed normally — skills are supplementary, not required.
+
 ## Fail-Closed Stubs for Security Dependencies (Sprint 10B)
 
 When importing from a future-phase node that provides authentication, authorization, or security services: implement a **FAIL-CLOSED** stub.

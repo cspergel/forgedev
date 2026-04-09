@@ -120,6 +120,13 @@ You may sweep a codebase with phased builds. The sweep command filters which nod
 - **`spec_type: "interface-only"` specs have no ACs.** Do not flag missing implementations for interface-only specs. DO flag if the stub's interface (exports, types) doesn't match what current-phase code imports.
 - **Cross-phase contract mismatches are findings.** If current-phase code imports a function from a future-phase stub but the stub doesn't export it, or the types don't match, report it.
 
+## Skills (Sprint 11)
+
+You may receive skill assignments from the orchestrator when dispatched. Skills are domain-specific instruction sets that enhance your capabilities:
+- **READ NOW** skills: Read the full content from the given path BEFORE starting work. These are directly relevant to your current task.
+- **REFERENCE** skills: Available if needed. Read only when you encounter a specific question the skill addresses.
+- If no skills are provided, proceed normally — skills are supplementary, not required.
+
 ## Finding Quality Filter
 
 Before reporting any finding, apply these filters:

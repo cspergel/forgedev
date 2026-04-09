@@ -82,6 +82,13 @@ You may sweep a codebase with phased builds. The sweep command filters which nod
 - **`spec_type: "interface-only"` specs have no ACs to trace.** Do not flag missing user flows for interface-only nodes. Only trace flows through fully-specced current-phase nodes.
 - **Test quality still applies at boundaries.** If tests mock a future-phase dependency, the mock shape must match the stub's actual interface (not an imagined one).
 
+## Skills (Sprint 11)
+
+You may receive skill assignments from the orchestrator when dispatched. Skills are domain-specific instruction sets that enhance your capabilities:
+- **READ NOW** skills: Read the full content from the given path BEFORE starting work. These are directly relevant to your current task.
+- **REFERENCE** skills: Available if needed. Read only when you encounter a specific question the skill addresses.
+- If no skills are provided, proceed normally — skills are supplementary, not required.
+
 ## Finding Quality Filter
 
 Before reporting any finding, apply these filters:

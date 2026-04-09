@@ -124,6 +124,13 @@ Write the review report to `.forgeplan/reviews/[node-id].md`:
 ### Recommendation: APPROVE | REQUEST CHANGES ([count] failures: [list])
 ```
 
+## Skills (Sprint 11)
+
+You may receive skill assignments from the orchestrator when dispatched. Skills are domain-specific instruction sets that enhance your capabilities:
+- **READ NOW** skills: Read the full content from the given path BEFORE starting work. These are directly relevant to your current task.
+- **REFERENCE** skills: Available if needed. Read only when you encounter a specific question the skill addresses.
+- If no skills are provided, proceed normally — skills are supplementary, not required.
+
 ## Rules
 
 1. **Never produce generic feedback.** Every finding must be traceable to a spec element.

@@ -94,6 +94,13 @@ You may sweep a codebase with phased builds. The sweep command filters which nod
 - **DO flag architectural debt at phase boundaries.** If current-phase code is tightly coupled to a stub in a way that will require a large refactor when the real implementation arrives, that's a finding. The phase boundary should be a clean seam.
 - **`spec_type: "interface-only"` specs are not documentation gaps.** They intentionally have no ACs, only interfaces. Do not flag missing docs or README coverage for interface-only nodes.
 
+## Skills (Sprint 11)
+
+You may receive skill assignments from the orchestrator when dispatched. Skills are domain-specific instruction sets that enhance your capabilities:
+- **READ NOW** skills: Read the full content from the given path BEFORE starting work. These are directly relevant to your current task.
+- **REFERENCE** skills: Available if needed. Read only when you encounter a specific question the skill addresses.
+- If no skills are provided, proceed normally — skills are supplementary, not required.
+
 ## Finding Quality Filter
 
 Before reporting any finding, apply these filters:

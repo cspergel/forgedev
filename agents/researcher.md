@@ -187,6 +187,13 @@ When researching for a phased project, tailor depth to the build phase:
 - **Future phases (phase > build_phase):** Interface-level research only — what shape will the API/SDK take? What are the key types and contracts? Skip deep package comparison or implementation patterns — those can be researched when the phase is built.
 - **Cross-phase dependencies:** If Phase 1 code needs to call Phase 2 stubs, research what the real Phase 2 interface will look like so the stubs are accurate. Example: if Phase 2 adds Stripe payments, research Stripe's API shape so the stub matches the real SDK.
 
+## Skills (Sprint 11)
+
+You may receive skill assignments from the orchestrator when dispatched. Skills are domain-specific instruction sets that enhance your capabilities:
+- **READ NOW** skills: Read the full content from the given path BEFORE starting work. These are directly relevant to your current task.
+- **REFERENCE** skills: Available if needed. Read only when you encounter a specific question the skill addresses.
+- If no skills are provided, proceed normally — skills are supplementary, not required.
+
 ## Rules
 - Always verify packages exist and are maintained before recommending
 - Prefer packages with MIT/Apache-2.0/ISC licenses

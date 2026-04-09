@@ -91,6 +91,13 @@ You may sweep a codebase with phased builds. The sweep command filters which nod
 - **Fresh-eyes review still applies at boundaries.** If current-phase code calls a stub and the logic around that call is wrong (inverted conditions, wrong error handling, missing null checks), that's a finding regardless of phases.
 - **Gap finding on pass 2+:** When reviewing what other agents missed, note that interface-only stubs are excluded from their audits too. Don't flag the same intentional stubs as gaps.
 
+## Skills (Sprint 11)
+
+You may receive skill assignments from the orchestrator when dispatched. Skills are domain-specific instruction sets that enhance your capabilities:
+- **READ NOW** skills: Read the full content from the given path BEFORE starting work. These are directly relevant to your current task.
+- **REFERENCE** skills: Available if needed. Read only when you encounter a specific question the skill addresses.
+- If no skills are provided, proceed normally — skills are supplementary, not required.
+
 ## Finding Quality Filter
 
 Before reporting any finding, apply these filters:

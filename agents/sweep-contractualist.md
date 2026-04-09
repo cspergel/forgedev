@@ -110,6 +110,13 @@ You may sweep a codebase with phased builds. The sweep command filters which nod
 - **`spec_type: "interface-only"` specs define only interfaces, no ACs.** Check that the spec's `interfaces` section matches both the stub's exports AND the consumer's imports. A mismatch between spec, stub, and consumer is a finding.
 - **Shared model types still apply across phases.** If a future-phase stub uses a shared model type, it must import from the canonical `src/shared/types/` path, same as any other node.
 
+## Skills (Sprint 11)
+
+You may receive skill assignments from the orchestrator when dispatched. Skills are domain-specific instruction sets that enhance your capabilities:
+- **READ NOW** skills: Read the full content from the given path BEFORE starting work. These are directly relevant to your current task.
+- **REFERENCE** skills: Available if needed. Read only when you encounter a specific question the skill addresses.
+- If no skills are provided, proceed normally — skills are supplementary, not required.
+
 ## Finding Quality Filter
 
 Before reporting any finding, apply these filters:
