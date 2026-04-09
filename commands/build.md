@@ -28,6 +28,20 @@ Before building, verify `node.phase <= project.build_phase` (read from manifest)
 "Node [id] is phase [N] but current build_phase is [M]. Complete phase [M] nodes first (check /forgeplan:status for progress), then advance via /forgeplan:deep-build."
 This is also enforced by pre-tool-use.js Layer 1, but checking here prevents stuck-state scenarios.
 
+## Skill Loading (Sprint 11)
+
+Before dispatching the Builder agent, load skills from the registry:
+
+1. Read `.forgeplan/skills-registry.yaml`. If missing or stale, run `node "${CLAUDE_PLUGIN_ROOT}/scripts/skill-registry.js" refresh` first.
+2. Look up `assignments.builder` — get the list of skill paths, names, descriptions, and hints.
+3. For the specific node being built, refine hints: if a skill's `tech_filter` specifically matches the node's type or interfaces (e.g., `supabase-postgres` for a database node), upgrade its hint to `read_now`. Otherwise keep as `reference`.
+4. Include in the Agent tool prompt for the Builder:
+   - For each `read_now` skill: "READ NOW: [path] — [description]. Directly relevant to this node. Read the full skill before writing code."
+   - For each `reference` skill: "REFERENCE: [path] — [description]. Read if you need guidance on this topic during implementation."
+5. The Builder agent reads full skill content via the Read tool during execution.
+
+**For SMALL tier:** Skip skill loading entirely (skills disabled by default for SMALL).
+
 ## Single Node Mode
 
 Build the specified node following its spec with layered enforcement:

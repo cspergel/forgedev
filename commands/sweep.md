@@ -141,6 +141,16 @@ Agent definition files (read these, use as system prompts):
 2. Always include shared types (`src/shared/types/index.ts`) and manifest for context with every agent.
 3. If a single node's files exceed 100KB, instruct the agent to use Read/Grep tools on-demand instead of receiving file content upfront. Provide only file paths and the manifest so the agent knows what to inspect.
 
+**Skill loading (Sprint 11):** Before dispatching each sweep agent:
+1. Read `.forgeplan/skills-registry.yaml`. If missing, the pre-tool-use hook will auto-generate it.
+2. Look up `assignments.[agent-name]` for each agent being dispatched.
+3. Include skill metadata (path, name, description, hint) in each agent's dispatch prompt:
+   - `read_now` skills: "READ NOW: [path] — [description]. Read before starting your audit."
+   - `reference` skills: "REFERENCE: [path] — [description]. Consult if needed."
+4. Each agent reads full skill content on-demand during execution via the Read tool.
+
+**For SMALL tier:** Skip skill loading (skills disabled by default for SMALL).
+
 **How to dispatch:** Use the Agent tool to dispatch all active agents **in parallel** (single message, N Agent tool calls).
 
 For each agent, provide as context in the Agent tool prompt:
