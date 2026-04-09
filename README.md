@@ -26,6 +26,31 @@ The pipeline: **discover** → **spec** → **build** → **verify** → **revie
 
 Each step scales to your project. A simple app gets 3 sweep agents and finishes in one session. A complex app gets all 5 agents, cross-model verification, and convergence certification.
 
+## What you actually do
+
+```
+You:  /forgeplan:greenfield "A task manager with teams, permissions, and Supabase"
+
+      ForgePlan runs autonomously:
+      → Architect decomposes into nodes, assesses complexity, picks stack
+      → Researcher vets packages, checks licenses, finds patterns
+
+You:  Confirm architecture once. Walk away.
+
+      → Specs all nodes with acceptance criteria
+      → Builds each node (skills loaded per node type)
+      → Verifies it compiles, tests pass, dev server starts
+      → Design pass checks frontend for AI-slop patterns
+
+You:  Optional — "make it darker" / "use green accent" / [enter to skip]
+
+      → Reviews every node against its spec
+      → 5 sweep agents audit the full codebase
+      → Certifies. Done.
+```
+
+Three interactions: confirm the architecture, steer the design (optional), and pick up your certified app. Everything else is autonomous.
+
 ## Install
 
 ```bash
