@@ -525,6 +525,45 @@ function matchSkillsToAgent(agentName, skills, manifest, config) {
   }));
 }
 
+// ---------- Skill Gap Detection ----------
+
+/**
+ * Detect agents in REGISTRY_AGENTS that ended up with 0 skills after cascade.
+ * Skips "architect" (compiled separately) and agents not dispatched for the current tier.
+ *
+ * @param {Object} assignments - agent → skill[] map from matchSkillsToAgent
+ * @param {Object} manifest - parsed manifest.yaml
+ * @returns {{ agent: string, reason: string }[]}
+ */
+function detectSkillGaps(assignments, manifest) {
+  const gaps = [];
+  const tier = (manifest.project && manifest.project.complexity_tier) || "MEDIUM";
+
+  // Agents dispatched per tier (architect excluded — compiled separately):
+  //   SMALL:  builder, reviewer, sweep-adversary, sweep-contractualist, sweep-skeptic
+  //   MEDIUM: all REGISTRY_AGENTS
+  //   LARGE:  all REGISTRY_AGENTS
+  const smallAgents = ["builder", "reviewer", "sweep-adversary", "sweep-contractualist", "sweep-skeptic"];
+
+  for (const agent of REGISTRY_AGENTS) {
+    // Architect is not in REGISTRY_AGENTS, but guard anyway
+    if (agent === "architect") continue;
+
+    // Skip agents not dispatched for SMALL tier
+    if (tier === "SMALL" && !smallAgents.includes(agent)) continue;
+
+    const agentSkills = assignments[agent];
+    if (!agentSkills || agentSkills.length === 0) {
+      gaps.push({
+        agent,
+        reason: `No skills assigned. Consider /forgeplan:research for ${agent}-relevant patterns.`,
+      });
+    }
+  }
+
+  return gaps;
+}
+
 // ---------- Registry Generation ----------
 
 /**
@@ -553,6 +592,12 @@ function generateRegistry(manifest, config, projectRoot) {
     debug(`  ${agent}: ${matched.length} skills assigned`);
   }
 
+  // Detect skill gaps (agents with 0 skills after cascade)
+  const skillGaps = detectSkillGaps(assignments, manifest);
+  if (skillGaps.length > 0) {
+    log(`  ${skillGaps.length} agent(s) have no skills assigned: ${skillGaps.map(g => g.agent).join(", ")}`);
+  }
+
   // Collect quality warnings
   const qualityWarnings = [];
   for (const skill of validSkills) {
@@ -570,6 +615,7 @@ function generateRegistry(manifest, config, projectRoot) {
     manifest_hash: computeManifestHash(manifest, config, projectRoot),
     tech_stack_snapshot: techStack,
     assignments,
+    skill_gaps: skillGaps,
     quality_warnings: qualityWarnings,
   };
 
@@ -936,6 +982,7 @@ module.exports = {
   scanSkillSources,
   computeManifestHash,
   matchSkillsToAgent,
+  detectSkillGaps,
   generateRegistry,
   compileArchitect,
   REGISTRY_AGENTS,

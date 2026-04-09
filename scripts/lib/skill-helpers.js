@@ -102,10 +102,11 @@ function computeManifestHash(manifest, config, projectRoot) {
 
 /**
  * Check if the skill registry is stale or missing.
- * Returns { exists: boolean, stale: boolean, activeCount: number } .
+ * Returns { exists: boolean, stale: boolean, activeCount: number, skillGapCount: number } .
  * - exists=false means no registry file
  * - stale=true means manifest_hash doesn't match
  * - activeCount is total skill assignments (0 if missing/unreadable)
+ * - skillGapCount is number of agents with 0 skills assigned (0 if missing/unreadable)
  *
  * @param {object} manifest - parsed manifest.yaml
  * @param {string} forgePlanDir - path to .forgeplan/ directory
@@ -117,18 +118,18 @@ function isRegistryStale(manifest, forgePlanDir, config, projectRoot) {
   const registryPath = path.join(forgePlanDir, "skills-registry.yaml");
 
   if (!fs.existsSync(registryPath)) {
-    return { exists: false, stale: true, activeCount: 0 };
+    return { exists: false, stale: true, activeCount: 0, skillGapCount: 0 };
   }
 
   let registry;
   try {
     registry = yaml.load(fs.readFileSync(registryPath, "utf-8"));
   } catch {
-    return { exists: true, stale: true, activeCount: 0 };
+    return { exists: true, stale: true, activeCount: 0, skillGapCount: 0 };
   }
 
   if (!registry || typeof registry !== "object") {
-    return { exists: true, stale: true, activeCount: 0 };
+    return { exists: true, stale: true, activeCount: 0, skillGapCount: 0 };
   }
 
   const currentHash = computeManifestHash(manifest, config, projectRoot);
@@ -142,7 +143,13 @@ function isRegistryStale(manifest, forgePlanDir, config, projectRoot) {
     }
   }
 
-  return { exists: true, stale, activeCount };
+  // Count skill gaps (agents with 0 skills)
+  let skillGapCount = 0;
+  if (Array.isArray(registry.skill_gaps)) {
+    skillGapCount = registry.skill_gaps.length;
+  }
+
+  return { exists: true, stale, activeCount, skillGapCount };
 }
 
 module.exports = { computeManifestHash, isRegistryStale };

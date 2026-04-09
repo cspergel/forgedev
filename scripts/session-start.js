@@ -408,7 +408,13 @@ function buildAmbientStatus(forgePlanDir, manifestPath, statePath, state) {
       } else if (regStatus.exists && regStatus.stale) {
         lines.push("  Skills: registry stale (manifest, config, or skill files changed) — will auto-refresh on next build");
       } else if (regStatus.exists && regStatus.activeCount > 0) {
-        lines.push(`  Skills: ${regStatus.activeCount} active`);
+        let skillLine = `  Skills: ${regStatus.activeCount} active`;
+        if (regStatus.skillGapCount > 0) {
+          skillLine += `, ${regStatus.skillGapCount} agent(s) have no skills — run /forgeplan:research to find relevant patterns`;
+        }
+        lines.push(skillLine);
+      } else if (regStatus.exists && regStatus.skillGapCount > 0) {
+        lines.push(`  Skills: ${regStatus.skillGapCount} agent(s) have no skills — run /forgeplan:research to find relevant patterns`);
       }
     } catch {
       // Skill registry check must never crash session start
