@@ -250,7 +250,58 @@ For each node that has findings, in dependency order (use topological sort from 
 6. **Pre-fix validation for each finding:**
    - **Confirm finding exists:** Before applying any fix, verify the referenced code pattern actually exists at the cited file and approximate line. Use Grep or Read to check. If the finding's description doesn't match the current code (e.g., the code was already fixed by a prior fix in this pass), mark the finding as `"resolved_by": "false-positive"` and skip it. Log: "Finding F[N] no longer present in code — marking as false-positive."
    - **Validate file exists:** Before dispatching a fix agent, confirm the referenced file still exists. If it was deleted or renamed by a prior fix, mark the finding as `"resolved_by": "resolved-by-deletion"` and skip it. Log: "Finding F[N] references deleted file [path] — marking as resolved-by-deletion."
-7. Fix each validated finding — writes are enforced by PreToolUse (node's file_scope) + Layer 1 deterministic. Layer 2 is bypassed for sweeping (see hooks.json update in Task 14).
+7. **Batch findings by file and fix together (Sprint 11 — reduces fix regressions):**
+
+   **Why batching matters:** The #1 cause of multi-cycle sweeps is fix regressions — fixing F3 breaks something that becomes F18 on the next pass. This happens because fix agents see one finding in isolation. Batching related findings into one fix dispatch gives the agent full context to make coherent fixes that don't conflict.
+
+   **Grouping rules:**
+   - Group all validated findings for the same file into one batch
+   - If findings span 2-3 files in the same node that import each other, combine into one batch
+   - Each batch gets ONE fix agent dispatch (not one per finding)
+   - Maximum 8 findings per batch — if more, split by severity (HIGH first, then MEDIUM)
+
+   **Fix Context Package — what each fix agent receives:**
+   ```
+   You are fixing [N] findings in [node-id].
+
+   FINDINGS TO FIX:
+   [All findings in this batch with full descriptions]
+
+   FULL SOURCE FILES:
+   [Complete content of every file referenced by any finding in the batch]
+
+   NODE SPEC EXCERPT:
+   [Relevant acceptance criteria + interfaces from the node's spec]
+
+   CONSUMERS:
+   [Files from other nodes that import from files being fixed — read-only context, do NOT modify these]
+
+   TEST FILE:
+   [The node's test file(s) — fix agents MUST update tests if the fix changes behavior]
+
+   RELATED FINDINGS FROM OTHER AGENTS (read-only):
+   [Other findings in the same file from different agents — helps avoid conflicting fixes]
+
+   INSTRUCTIONS:
+   - Fix ALL findings in this batch together. Consider interactions between fixes.
+   - Run the node's tests after fixing. If tests fail, adjust the fix.
+   - Do NOT modify files outside this node's file_scope (except shared types if needed).
+   - If fixing one finding necessarily conflicts with another, note the conflict — don't silently break the other.
+   ```
+
+   **Token cost comparison:**
+   - Old: 15 findings × 15K tokens/agent = 225K tokens, 3-5 regressions → 2+ extra passes
+   - New: 5 batched dispatches × 25K tokens/agent = 125K tokens, 0-1 regressions → 0-1 extra passes
+
+   **Deterministic pre-verification after fixes:**
+   After ALL fix agents complete for a node (before the next sweep pass):
+   1. Run `node "${CLAUDE_PLUGIN_ROOT}/scripts/integrate-check.js"` — catches contract breaks
+   2. Run `node "${CLAUDE_PLUGIN_ROOT}/scripts/verify-cross-phase.js"` — catches cross-phase export breaks (if applicable)
+   3. If either script fails: the fix introduced a regression. Log which fix batch caused it and re-dispatch that batch's fix agent with the regression details added to its context.
+   4. Only proceed to re-sweep (Phase 2) after deterministic checks pass — this catches regressions at script cost (~0 tokens) instead of full sweep cost (~300K tokens).
+
+   Writes are enforced by PreToolUse (node's file_scope) + Layer 1 deterministic. Layer 2 is bypassed for sweeping.
+
    - **If the fix agent returns BLOCKED (file scope, cross-node write, etc.):** Classify the blocked finding:
 
      **Category A — Needs spec update (auto-resolvable):**
@@ -322,7 +373,19 @@ For each node that has findings, in dependency order (use topological sort from 
 
 This mirrors the save/restore pattern used for building and reviewing — recovery and integrate-check both depend on `nodes.[id].status` being correct.
 
-**IMPORTANT:** Use a FRESH agent for each node fix (Agent tool). Do not fix in the same context that found the issue. This is the "Fresh Agent on Fix" principle.
+**IMPORTANT:** Use a FRESH agent for each fix batch (Agent tool). Do not fix in the same context that found the issue. This is the "Fresh Agent on Fix" principle. With batching, one fresh agent handles all findings for a file/node — but it's still a fresh agent, not the one that found the issues.
+
+### Phase 4.5: Deterministic Pre-Verification (Sprint 11 — catches regressions cheaply)
+
+After ALL fix agents complete for the current pass, run deterministic checks BEFORE dispatching the next sweep pass:
+
+1. Run `node "${CLAUDE_PLUGIN_ROOT}/scripts/integrate-check.js"` — verifies contract consistency
+2. If the project has phases: run `node "${CLAUDE_PLUGIN_ROOT}/scripts/verify-cross-phase.js"` — verifies cross-phase exports
+3. **If either script returns FAIL:** A fix introduced a regression. Identify which fix batch's files overlap with the failure, and re-dispatch that batch's fix agent with the regression details added to context. Do NOT run a full sweep pass — deterministic scripts caught the issue at ~0 token cost.
+4. Repeat steps 1-3 until deterministic checks pass (max 3 retries per batch, then force-converge the finding to `needs_manual_attention`).
+5. **Only proceed to Phase 5 (re-sweep) after deterministic checks pass.**
+
+This gate catches 30-50% of fix regressions at script cost instead of sweep cost. A regression caught here costs ~0 tokens. The same regression caught in the next sweep pass costs ~300K tokens.
 
 ### Phase 5: Re-integrate
 
