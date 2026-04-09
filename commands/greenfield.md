@@ -43,6 +43,14 @@ This will:
 
 If discover fails or the user rejects the architecture, halt greenfield. The user can modify and re-run.
 
+#### Skill Registry Generation (Sprint 11)
+
+After discover completes successfully, generate the project's skill registry:
+```bash
+node "${CLAUDE_PLUGIN_ROOT}/scripts/skill-registry.js" generate
+```
+This pre-computes skill assignments for all agents based on the manifest's tech_stack and node types. The registry is read instantly during builds and sweeps — no per-dispatch computation needed.
+
 ### Step 1.5: Design Review (Sprint 10A)
 
 After discover produces the manifest and skeleton specs, dispatch the universal review panel to review the design.

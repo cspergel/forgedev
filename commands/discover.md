@@ -227,6 +227,14 @@ After writing the manifest, always run validation:
 node "${CLAUDE_PLUGIN_ROOT}/scripts/validate-manifest.js" .forgeplan/manifest.yaml
 ```
 
+### Skill Registry Generation (Sprint 11)
+
+After manifest validation passes, generate the project's skill registry:
+```bash
+node "${CLAUDE_PLUGIN_ROOT}/scripts/skill-registry.js" generate
+```
+This pre-computes skill assignments for all agents based on the manifest's tech_stack and node types. The registry is read instantly during builds and sweeps — no per-dispatch computation needed.
+
 ## Completion
 
 When discovery is complete:

@@ -48,6 +48,17 @@ Read `complexity_tier` from `.forgeplan/manifest.yaml` to adapt review depth:
 - **MEDIUM:** Full 7-dimension review but compressed output (per-criterion PASS/FAIL without extensive narrative).
 - **LARGE (or no tier set):** Full 7-dimension review with detailed evidence and recommendations.
 
+## Skill Loading (Sprint 11)
+
+Before dispatching the Reviewer agent, load skills from the registry:
+1. Read `.forgeplan/skills-registry.yaml`. If missing, the pre-tool-use hook auto-generates it.
+2. Look up `assignments.reviewer` for skill paths, descriptions, and hints.
+3. Include skill hints in the Reviewer agent's dispatch prompt:
+   - `read_now` skills: "READ NOW: [path] — [description]. Read before starting review."
+   - `reference` skills: "REFERENCE: [path] — [description]. Consult if relevant."
+
+**For SMALL tier:** Skip skill loading.
+
 ## Step 1: Native Review (always runs)
 
 Perform a spec-diff review. The depth is tier-dependent (see above), but every finding must reference a specific spec element and cite specific code evidence regardless of tier.
