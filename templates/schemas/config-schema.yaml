@@ -84,3 +84,18 @@ models:
 complexity:
   tier_override: ""    # Set to SMALL, MEDIUM, or LARGE to override the Architect's assessment.
                        # Takes effect at the next command invocation. Leave empty to use manifest tier.
+
+# --- Skills Configuration (Sprint 11) ---
+skills:
+  enabled: true                    # Master toggle (default: true for MEDIUM/LARGE, false for SMALL)
+  auto_detect: true                # Orchestrator auto-detects relevant skills from tech_stack + node type
+  explicit:                        # Always activate these skills regardless of detection
+    # - frontend-design
+    # - api-patterns
+  disabled:                        # Never activate these skills even if detected
+    # - tailwind                   # User prefers vanilla CSS
+  max_active: 5                    # Maximum concurrent skills per agent to prevent context bloat
+  sources:                         # Where to look for skills (searched in order)
+    - .forgeplan/skills            # Project-specific skills (from skill learner or manual)
+    - skills                       # Plugin built-in skills (curated, vendored)
+    # - ~/.claude/skills           # User global skills (cross-project)
