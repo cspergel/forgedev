@@ -11,15 +11,76 @@ const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
 
+/** Default skill sources (must match skill-registry.js). */
+const DEFAULT_SOURCES = [".forgeplan/skills", "skills"];
+
 /**
- * Compute a deterministic hash of the manifest inputs that affect skill selection.
- * Must match the logic in skill-registry.js computeManifestHash().
+ * Recursively find all .md files in a directory (lightweight copy from skill-registry.js).
+ * Needed for skill-file content proxy hashing.
  */
-function computeManifestHash(manifest) {
+function findMdFiles(dir, visited) {
+  if (!visited) visited = new Set();
+  const results = [];
+  if (!fs.existsSync(dir)) return results;
+  let entries;
+  try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch (_) { return results; }
+  for (const entry of entries) {
+    const fullPath = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      if (entry.name === "drafts" || entry.name === "specification") continue;
+      try {
+        const realPath = fs.realpathSync(fullPath);
+        const normReal = process.platform === "win32" ? realPath.toLowerCase() : realPath;
+        if (visited.has(normReal)) continue;
+        visited.add(normReal);
+      } catch (_) { continue; }
+      results.push(...findMdFiles(fullPath, visited));
+    } else if (entry.name.endsWith(".md") && entry.name !== "README.md") {
+      results.push(fullPath);
+    }
+  }
+  return results;
+}
+
+/**
+ * Compute a deterministic hash of ALL inputs that affect skill selection.
+ * Must match the logic in skill-registry.js computeManifestHash().
+ *
+ * @param {object} manifest - parsed manifest.yaml
+ * @param {object} [config] - parsed config.yaml (optional, improves hash coverage)
+ * @param {string} [projectRoot] - project root path (optional, enables skill-file hashing)
+ */
+function computeManifestHash(manifest, config, projectRoot) {
   const hashInput = {
     tech_stack: (manifest.project && manifest.project.tech_stack) || {},
     nodes: manifest.nodes ? Object.keys(manifest.nodes).sort() : [],
+    complexity_tier: (manifest.project && manifest.project.complexity_tier) || "MEDIUM",
+    skills_config: (config && config.skills) || {},
   };
+
+  // Include a content proxy for skill files: file count + total size.
+  if (projectRoot) {
+    const sources = (config && config.skills && config.skills.sources) || DEFAULT_SOURCES;
+    let fileCount = 0;
+    let totalSize = 0;
+    for (const sourceDir of sources) {
+      const absDir = path.isAbsolute(sourceDir)
+        ? sourceDir
+        : path.join(projectRoot, sourceDir);
+      try {
+        const mdFiles = findMdFiles(absDir);
+        fileCount += mdFiles.length;
+        for (const f of mdFiles) {
+          try {
+            const stat = fs.statSync(f);
+            totalSize += stat.size;
+          } catch (_) { /* skip unreadable files */ }
+        }
+      } catch (_) { /* source dir may not exist */ }
+    }
+    hashInput.skill_files = { count: fileCount, total_size: totalSize };
+  }
+
   return crypto
     .createHash("sha256")
     .update(JSON.stringify(hashInput))
@@ -33,8 +94,13 @@ function computeManifestHash(manifest) {
  * - exists=false means no registry file
  * - stale=true means manifest_hash doesn't match
  * - activeCount is total skill assignments (0 if missing/unreadable)
+ *
+ * @param {object} manifest - parsed manifest.yaml
+ * @param {string} forgePlanDir - path to .forgeplan/ directory
+ * @param {object} [config] - parsed config.yaml (optional, improves staleness detection)
+ * @param {string} [projectRoot] - project root path (optional, enables skill-file hashing)
  */
-function isRegistryStale(manifest, forgePlanDir) {
+function isRegistryStale(manifest, forgePlanDir, config, projectRoot) {
   const yaml = require(path.join(__dirname, "..", "..", "node_modules", "js-yaml"));
   const registryPath = path.join(forgePlanDir, "skills-registry.yaml");
 
@@ -53,7 +119,7 @@ function isRegistryStale(manifest, forgePlanDir) {
     return { exists: true, stale: true, activeCount: 0 };
   }
 
-  const currentHash = computeManifestHash(manifest);
+  const currentHash = computeManifestHash(manifest, config, projectRoot);
   const stale = !registry.manifest_hash || registry.manifest_hash !== currentHash;
 
   // Count active assignments

@@ -2,7 +2,7 @@
 description: Build a node (or all nodes). Generates code following the spec with automatic enforcement — files stay in scope, shared types are protected, and acceptance criteria are verified before completion. Use --all to build everything in dependency order.
 user-invocable: true
 argument-hint: "[node-id | --all]"
-allowed-tools: Read Write Edit Bash Glob Grep
+allowed-tools: Read Write Edit Bash Glob Grep Agent
 agent: builder
 ---
 

@@ -47,11 +47,12 @@ Show before/after diff: "Registry refreshed. [N] assignments changed."
 
 Add a skill from a file path or URL to the project's skill directory.
 
-1. Copy the SKILL.md file to `.forgeplan/skills/`
-2. Run quality validation: `node "${CLAUDE_PLUGIN_ROOT}/scripts/skill-registry.js" validate`
-3. If validation passes: run `node "${CLAUDE_PLUGIN_ROOT}/scripts/skill-registry.js" refresh`
-4. If validation fails: remove the file and report errors
-5. Show: "Installed [name] (priority [N]). Assigned to: [agent list]"
+1. Create `.forgeplan/skills/` directory if it doesn't exist: `mkdir -p .forgeplan/skills/`
+2. Copy the SKILL.md file to `.forgeplan/skills/`
+3. Run quality validation: `node "${CLAUDE_PLUGIN_ROOT}/scripts/skill-registry.js" validate`
+4. If validation passes: run `node "${CLAUDE_PLUGIN_ROOT}/scripts/skill-registry.js" refresh`
+5. If validation fails: remove the file and report errors
+6. Show: "Installed [name] (priority [N]). Assigned to: [agent list]"
 
 ### `/forgeplan:skill validate`
 

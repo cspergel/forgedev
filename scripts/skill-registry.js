@@ -326,14 +326,45 @@ function scanSkillSources(config, projectRoot) {
 // ---------- Manifest Hash ----------
 
 /**
- * Compute a deterministic hash of the manifest inputs that affect skill selection.
- * Hash of: { tech_stack, nodes: Object.keys(nodes) }
+ * Compute a deterministic hash of ALL inputs that affect skill selection.
+ * Hash of: tech_stack, node IDs, complexity_tier, skills config, skill-file stats.
+ *
+ * @param {object} manifest - parsed manifest.yaml
+ * @param {object} [config] - parsed config.yaml (optional, improves hash coverage)
+ * @param {string} [projectRoot] - project root path (optional, enables skill-file hashing)
  */
-function computeManifestHash(manifest) {
+function computeManifestHash(manifest, config, projectRoot) {
   const hashInput = {
     tech_stack: (manifest.project && manifest.project.tech_stack) || {},
     nodes: manifest.nodes ? Object.keys(manifest.nodes).sort() : [],
+    complexity_tier: (manifest.project && manifest.project.complexity_tier) || "MEDIUM",
+    skills_config: (config && config.skills) || {},
   };
+
+  // Include a content proxy for skill files: file count + total size.
+  // A full content hash would be expensive; count+size catches adds, removes, and edits.
+  if (projectRoot) {
+    const sources = (config && config.skills && config.skills.sources) || DEFAULT_SOURCES;
+    let fileCount = 0;
+    let totalSize = 0;
+    for (const sourceDir of sources) {
+      const absDir = path.isAbsolute(sourceDir)
+        ? sourceDir
+        : path.join(projectRoot, sourceDir);
+      try {
+        const mdFiles = findMdFiles(absDir);
+        fileCount += mdFiles.length;
+        for (const f of mdFiles) {
+          try {
+            const stat = fs.statSync(f);
+            totalSize += stat.size;
+          } catch (_) { /* skip unreadable files */ }
+        }
+      } catch (_) { /* source dir may not exist */ }
+    }
+    hashInput.skill_files = { count: fileCount, total_size: totalSize };
+  }
+
   return crypto
     .createHash("sha256")
     .update(JSON.stringify(hashInput))
@@ -447,7 +478,8 @@ function matchSkillsToAgent(agentName, skills, manifest, config) {
     }
   }
 
-  // Apply overrides: remove any skill that another candidate's overrides list names
+  // Apply overrides: collect ALL overriders for each target, apply highest-priority one.
+  // A lower-priority overrider encountered first must not shadow a higher-priority one.
   const overrideTargets = new Set();
   for (const c of candidates) {
     if (Array.isArray(c.overrides)) {
@@ -457,11 +489,18 @@ function matchSkillsToAgent(agentName, skills, manifest, config) {
   if (overrideTargets.size > 0) {
     candidates = candidates.filter(c => {
       if (overrideTargets.has(c.name)) {
-        // Only remove if the overriding skill has higher priority
-        const overrider = candidates.find(o => Array.isArray(o.overrides) && o.overrides.includes(c.name));
-        if (overrider && overrider.priority >= c.priority) {
-          debug(`  Skill "${c.name}" overridden by "${overrider.name}"`);
-          return false;
+        // Collect ALL candidates that claim to override this skill
+        const allOverriders = candidates.filter(
+          o => o !== c && Array.isArray(o.overrides) && o.overrides.includes(c.name)
+        );
+        if (allOverriders.length > 0) {
+          // Sort by priority descending; highest-priority overrider wins
+          allOverriders.sort((a, b) => b.priority - a.priority);
+          const bestOverrider = allOverriders[0];
+          if (bestOverrider.priority >= c.priority) {
+            debug(`  Skill "${c.name}" overridden by "${bestOverrider.name}" (priority ${bestOverrider.priority}, checked ${allOverriders.length} overrider(s))`);
+            return false;
+          }
         }
       }
       return true;
@@ -481,7 +520,7 @@ function matchSkillsToAgent(agentName, skills, manifest, config) {
     candidates = candidates.slice(0, maxActive);
   }
 
-  // Build assignment entries with hints
+  // Build assignment entries with hints and selector metadata
   return candidates.map((skill) => ({
     path: skill.path,
     name: skill.name,
@@ -489,6 +528,11 @@ function matchSkillsToAgent(agentName, skills, manifest, config) {
     priority: skill.priority,
     tier: skill.tier,
     hint: computeHint(skill, manifest),
+    // Selector metadata — builder uses tech_filter for per-node skill refinement
+    tech_filter: skill.tech_filter && skill.tech_filter.length > 0 ? skill.tech_filter : undefined,
+    tier_filter: skill.tier_filter && skill.tier_filter.length > 0 ? skill.tier_filter : undefined,
+    agent_filter: skill.agent_filter && skill.agent_filter.length > 0 ? skill.agent_filter : undefined,
+    overrides: skill.overrides && skill.overrides.length > 0 ? skill.overrides : undefined,
   }));
 }
 
@@ -534,7 +578,7 @@ function generateRegistry(manifest, config, projectRoot) {
   // Build registry object
   const registry = {
     generated_at: new Date().toISOString(),
-    manifest_hash: computeManifestHash(manifest),
+    manifest_hash: computeManifestHash(manifest, config, projectRoot),
     tech_stack_snapshot: techStack,
     assignments,
     quality_warnings: qualityWarnings,
@@ -554,9 +598,45 @@ function generateRegistry(manifest, config, projectRoot) {
     "# Re-run: node scripts/skill-registry.js generate\n";
   const yamlContent = header + yaml.dump(registry, { lineWidth: 120, noRefs: true, sortKeys: false });
 
-  // Atomic write: write .tmp → rename old to .bak → rename .tmp to target → delete .bak
+  // Atomic write with lock: write .tmp → rename old to .bak → rename .tmp to target → delete .bak
+  // Lock mechanism: .lock file prevents concurrent refreshes from clobbering .tmp/.bak paths
+  const lockPath = registryPath + ".lock";
   const tmpPath = registryPath + ".tmp";
   const bakPath = registryPath + ".bak";
+
+  // Acquire lock: if .lock or .tmp exists, another refresh is in progress
+  const MAX_LOCK_RETRIES = 3;
+  const LOCK_WAIT_MS = 100;
+  for (let attempt = 0; attempt < MAX_LOCK_RETRIES; attempt++) {
+    if (fs.existsSync(lockPath) || fs.existsSync(tmpPath)) {
+      debug(`Registry write lock detected (attempt ${attempt + 1}/${MAX_LOCK_RETRIES}), waiting ${LOCK_WAIT_MS}ms...`);
+      const waitUntil = Date.now() + LOCK_WAIT_MS;
+      while (Date.now() < waitUntil) { /* spin wait */ }
+    } else {
+      break;
+    }
+    if (attempt === MAX_LOCK_RETRIES - 1) {
+      // Still locked after retries — check for stale lock (older than 30s)
+      try {
+        const lockStat = fs.existsSync(lockPath) ? fs.statSync(lockPath) : null;
+        if (lockStat && Date.now() - lockStat.mtimeMs > 30000) {
+          log("Warning: Stale registry lock detected (>30s), removing and proceeding.");
+          try { fs.unlinkSync(lockPath); } catch (_) {}
+          try { fs.unlinkSync(tmpPath); } catch (_) {}
+        } else {
+          log("Warning: Registry write lock held by another process. Using existing registry.");
+          return registry;
+        }
+      } catch (_) {
+        log("Warning: Could not check lock state. Using existing registry.");
+        return registry;
+      }
+    }
+  }
+
+  // Write lock file
+  try { fs.writeFileSync(lockPath, String(process.pid), "utf-8"); } catch (_) {}
+
   try {
     fs.writeFileSync(tmpPath, yamlContent, "utf-8");
     // Move existing registry to .bak (if it exists)
@@ -566,14 +646,16 @@ function generateRegistry(manifest, config, projectRoot) {
     }
     // Move .tmp to target — target doesn't exist now so rename is safe on Windows
     fs.renameSync(tmpPath, registryPath);
-    // Clean up .bak
+    // Clean up .bak and lock
     try { fs.unlinkSync(bakPath); } catch (_) {}
+    try { fs.unlinkSync(lockPath); } catch (_) {}
   } catch (err) {
     // Recovery: if target is gone but .bak exists, restore it
     if (!fs.existsSync(registryPath) && fs.existsSync(bakPath)) {
       try { fs.renameSync(bakPath, registryPath); } catch (_) {}
     }
     try { fs.unlinkSync(tmpPath); } catch (_) {}
+    try { fs.unlinkSync(lockPath); } catch (_) {}
     throw err;
   }
 

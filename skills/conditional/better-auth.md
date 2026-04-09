@@ -8,7 +8,7 @@ validated_at: "2026-04-09"
 overrides: []
 tier_filter: []
 agent_filter: [builder]
-tech_filter: [custom-auth]
+tech_filter: [custom]
 ---
 
 # Better Auth — Custom Authentication Patterns

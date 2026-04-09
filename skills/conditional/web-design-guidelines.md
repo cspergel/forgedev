@@ -7,8 +7,8 @@ source: Anthropic
 validated_at: "2026-04-09"
 overrides: []
 tier_filter: []
-agent_filter: [builder]
-tech_filter: []
+agent_filter: [builder, sweep-frontend-ux]
+tech_filter: [react, vue, svelte, nextjs, nuxt, sveltekit]
 ---
 
 # Web Design Guidelines

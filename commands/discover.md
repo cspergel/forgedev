@@ -1,7 +1,7 @@
 ---
 description: Start architecture discovery — guided conversation that produces a validated manifest with nodes, shared models, and dependency graph. This is the entry point for every new ForgePlan project.
 user-invocable: true
-argument-hint: "[project description or 'template:client-portal']"
+argument-hint: "[project description | 'template:name' | --from file.md | --autonomous]"
 allowed-tools: Read Write Edit Bash Glob Grep Agent
 agent: architect
 ---
@@ -27,7 +27,8 @@ git init
 ├── conversations/
 │   └── nodes/
 ├── reviews/
-└── sweeps/
+├── sweeps/
+└── skills/
 ```
 
 **3. Set up ForgePlan CLAUDE.md:**
@@ -42,6 +43,20 @@ dist/
 .env
 .env.*
 ```
+
+## Architect Skill Loading (Sprint 11)
+
+Before any architecture conversation begins (template, document import, autonomous, or guided), load architect-specific skills so the Architect has domain knowledge during discovery:
+
+1. If `.forgeplan/skills-registry.yaml` exists, read architect skills from it (the registry includes compiled architect assignments).
+2. If the registry does NOT exist yet (first run — no manifest to generate from), compile architect skills directly from the plugin's bundled skills directory:
+   ```bash
+   node "${CLAUDE_PLUGIN_ROOT}/scripts/skill-registry.js" compile-architect
+   ```
+   This reads skills from `${CLAUDE_PLUGIN_ROOT}/skills/core/` and `${CLAUDE_PLUGIN_ROOT}/skills/conditional/` that have `agent_filter: [architect]`, and outputs a compiled markdown block to stdout. Inject this context into the Architect's prompt.
+3. If both the registry and compile-architect fail (e.g., js-yaml not installed), proceed without skills — discovery works without them, skills just improve quality.
+
+The Architect uses these skills during decomposition (e.g., DDD strategic design for LARGE tier projects).
 
 ## Template Mode
 

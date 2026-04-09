@@ -26,6 +26,14 @@ Read the project directory to determine where to start:
 
 Log which step is being resumed: "Resuming greenfield from Step [N] — [reason]."
 
+### Step 0.5: Pre-load Architect Skills (Sprint 11)
+
+Before discover starts, ensure the Architect has its skills loaded. If `.forgeplan/skills-registry.yaml` does not exist (first run), compile architect skills directly:
+```bash
+node "${CLAUDE_PLUGIN_ROOT}/scripts/skill-registry.js" compile-architect
+```
+This reads bundled skills with `agent_filter: [architect]` and outputs compiled context. If this fails, proceed without skills — discover works without them.
+
 ### Step 1: Discover (autonomous)
 
 Run the discover command in autonomous mode. Pass through the user's arguments (project description or --from flag):
@@ -45,7 +53,7 @@ If discover fails or the user rejects the architecture, halt greenfield. The use
 
 #### Skill Registry Generation (Sprint 11)
 
-After discover completes successfully, generate the project's skill registry:
+After discover completes successfully, generate the full project skill registry (now that a manifest with tech_stack exists):
 ```bash
 node "${CLAUDE_PLUGIN_ROOT}/scripts/skill-registry.js" generate
 ```

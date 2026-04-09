@@ -78,8 +78,28 @@ function evaluate(input) {
         }
       }
     } catch (err) {
-      // Auto-refresh failure should warn, not block
-      process.stderr.write(`[ForgePlan] Skill registry auto-refresh failed: ${err.message}\n`);
+      // Auto-refresh failed — check if a valid registry exists on disk
+      const registryPath = path.join(cwd, ".forgeplan", "skills-registry.yaml");
+      let hasValidRegistry = false;
+      try {
+        if (fs.existsSync(registryPath)) {
+          const yaml = require(path.join(__dirname, "..", "node_modules", "js-yaml"));
+          const content = yaml.load(fs.readFileSync(registryPath, "utf-8"));
+          if (content && typeof content === "object") {
+            hasValidRegistry = true;
+          }
+        }
+      } catch (_) {
+        // Registry exists but is unparseable — treat as missing
+      }
+      if (!hasValidRegistry) {
+        return {
+          block: true,
+          reason: "Skill registry refresh failed and no valid registry exists. Run /forgeplan:skill refresh to fix."
+        };
+      }
+      // Stale but valid registry exists — warn and continue
+      process.stderr.write(`[ForgePlan] Skill registry auto-refresh failed (using stale registry): ${err.message}\n`);
     }
     return { block: false };
   }
