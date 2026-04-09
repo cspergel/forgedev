@@ -51,6 +51,8 @@ Every agent in ForgePlan gets domain-specific skills that make it better at its 
 
 **Integration:** These are COMPILED into `agents/architect.md` as reasoning sections, not loaded at runtime. The architect's prompt grows ~500-1000 tokens depending on tier. This avoids runtime skill loading overhead for the most context-sensitive agent.
 
+**Auto-regeneration:** The compiled sections in `architect.md` are generated from source SKILL.md files by `scripts/skill-registry.js compile-architect`. This runs during `skill refresh` and is tracked via a `compiled_from_hash` comment in architect.md. If source skills are updated but the compiled hash doesn't match, `session-start.js` warns: "Architect skills are stale — run /forgeplan:skill refresh." Never edit the compiled sections manually — edit the source SKILL.md and regenerate.
+
 #### Builder (6 core + 5 conditional — frontmatter + dynamic)
 
 **Core skills (always loaded via frontmatter):**
@@ -269,18 +271,22 @@ This means:
 
 Even with the registry pre-computed, full skill content is NOT dumped into agent prompts. Two-phase loading:
 
-**At dispatch:** Agent receives skill metadata index from registry (~100 tokens per skill × 3-5 skills = 300-500 tokens):
+**At dispatch:** The orchestrator provides explicit task-to-skill hints — don't leave it to agent judgment. The registry has the skill assignments; the orchestrator reads the node's spec to determine WHICH skills the agent should prioritize:
+
 ```
-Available skills:
-  1. coding-standards (priority 85) — KISS/DRY/YAGNI, TypeScript naming. Path: skills/core/coding-standards.md
-  2. backend-patterns (priority 85) — Repository/service layers, N+1 prevention. Path: skills/core/backend-patterns.md
-  3. supabase-postgres (priority 75) — Schema design, RLS, migrations. Path: skills/conditional/supabase-postgres.md
-Read full skill content when relevant to your current task.
+Your assigned skills for building "auth" (database node, supabase):
+  1. READ NOW: skills/conditional/supabase-postgres.md — Schema design, RLS, migrations. Directly relevant to this node.
+  2. READ NOW: skills/core/backend-patterns.md — Repository/service layers. Relevant to database service patterns.
+  3. REFERENCE: skills/core/coding-standards.md — KISS/DRY/YAGNI, TypeScript naming. Read if you need a style check.
 ```
 
-**During execution:** Agent reads 1-2 full skills via Read tool when they're relevant to the specific code being written. A builder working on a database migration reads supabase-postgres. A builder working on route handlers reads backend-patterns. Not both at once.
+The orchestrator categorizes skills into two tiers based on node type + spec content:
+- **READ NOW** (1-2 skills): directly relevant to this specific node. Agent reads these before writing any code. The orchestrator picks these by matching skill `tech_filter` against the node's `type`, `interfaces`, and `shared_dependencies`.
+- **REFERENCE** (1-3 skills): generally useful but not task-critical. Agent reads only if a specific question arises during implementation.
 
-Context budget per agent: ~500 tokens (metadata) + 2000-5000 tokens (1-2 full skills) = **2500-5500 tokens total**, not 10K-25K.
+This removes agent judgment from skill selection. The orchestrator decides; the agent follows the instruction.
+
+**Context budget per agent:** ~200 tokens (categorized index) + 2000-5000 tokens (1-2 READ NOW skills loaded upfront) = **2200-5200 tokens total**. REFERENCE skills add 0 tokens unless actually read.
 
 ### Per-Project Configuration
 
@@ -318,8 +324,8 @@ Monitor → Detect → Suggest → Draft → Review → Activate → Validate �
 ```
 
 1. **Monitor:** PostToolUse hook tracks file writes during builds — what patterns are being generated
-2. **Detect:** After 3+ occurrences of similar structure (same imports, same error handling shape, same middleware pattern), flag it
-3. **Suggest:** "You've built 3 Express route handlers with Zod validation + try/catch + error response. Save as a skill?"
+2. **Detect:** After 5+ occurrences of similar structure across 2+ different nodes (same imports, same error handling shape, same middleware pattern), flag it. The cross-node requirement prevents codifying local patterns that only apply to one node. 3 occurrences in the same node is copy-paste, not a reusable pattern.
+3. **Suggest:** "You've built 5 Express route handlers with Zod validation + try/catch + error response across 3 nodes. Save as a skill?"
 4. **Draft:** Generate a SKILL.md with the pattern + examples from actual code → `.forgeplan/skills/drafts/` (NOT active yet)
 5. **Review:** User runs `/forgeplan:skill review [name]` to inspect the draft. Can edit, approve, or discard. Only approved skills move to `.forgeplan/skills/`
 6. **Activate:** Next build with similar node type, the approved skill is auto-detected and loaded via the Skill Cascade (Tier 4, priority 20-39)
@@ -595,6 +601,41 @@ In the standalone ForgePlan Workstation, users will watch the build happening in
 25. Add `template:github:user/repo` support to discover.md
 
 ---
+
+## Must-Ship vs Stretch
+
+The foundation is the registry + skill loading. Everything else stacks on top. If execution gets messy, protect the core.
+
+**Must-Ship (Batches 1-2):**
+- `skill-registry.js` with generate/refresh/validate/compile-architect subcommands
+- Auto-refresh hooks in session-start.js and pre-tool-use.js
+- 28 curated core + 5 conditional SKILL.md files vendored
+- Orchestrator wiring in build.md, sweep.md, review.md, discover.md (task-to-skill hints)
+- Architect compiled skill sections with auto-regeneration
+- `/forgeplan:skill` command (list, refresh, install)
+
+**Stretch (Batches 3-5 — can defer to Sprint 12-14 without losing value):**
+- Design pass agent + anti-slop pipeline step
+- Skill learner module (pattern detection, draft generation, review/approve flow)
+- Blueprint deps.lock.yaml + `/forgeplan:blueprint` command
+- Community blueprint versioning
+- Tier 3 auto-research skill generation
+
+## Measurement — How We Know Sprint 11 Worked
+
+Without measurement, it's impossible to tell whether skills improved the system or just made it more elaborate. Track these metrics starting from the first dogfood after Sprint 11:
+
+| Metric | How to Measure | Target |
+|--------|---------------|--------|
+| **Dispatch latency** | Time from command invocation to agent dispatch (registry read should add <50ms) | <100ms added |
+| **Skill selection precision** | % of READ NOW skills the agent actually reads during execution (log via PostToolUse) | >80% |
+| **Average active skills per agent** | Count from registry assignments section | 2-4 per agent |
+| **Token cost delta** | Compare pre/post Sprint 11 agent prompt sizes | <5000 tokens added per agent |
+| **Sweep defect rate** | Compare sweep findings per node with vs without skills (A/B on a dogfood project) | 20%+ reduction in code-quality findings |
+| **Learner draft quality** | % of drafted skills that pass user review (approved / total drafts) | >50% approval rate |
+| **Skill freshness** | % of active skills with validated_at within 90 days | >90% |
+
+These metrics are collected by adding lightweight logging to `skill-registry.js` (selection precision, active counts) and comparing sweep reports before/after. The dogfood sprint (Sprint 13) is the natural measurement point.
 
 ## What This Sprint Does NOT Include
 
