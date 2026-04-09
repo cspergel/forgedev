@@ -590,6 +590,9 @@ function evaluateBash(toolInput, cwd) {
     /^\s*node\s+[^\s]*worktree-manager\.js/,     // our own worktree manager
     /^\s*node\s+[^\s]*compact-context\.js/,      // our own compaction context script
     /^\s*node\s+[^\s]*compile-wiki\.js/,         // Sprint 9: wiki knowledge compilation
+    /^\s*node\s+[^\s]*verify-cross-phase\.js/,   // Sprint 10B: cross-phase implementation verification
+    /^\s*node\s+[^\s]*blast-radius\.js/,          // Sprint 11: dependency graph + blast radius analysis
+    /^\s*node\s+[^\s]*skill-registry\.js/,        // Sprint 11: skill registry generation/refresh/validation
     /^\s*git\s+worktree\s+(add|remove|list|prune)\b/, // worktree: only safe subcommands
     /^\s*deno\s+(cache|--version|test|task\s+(dev|build|test|start))\b/, // Deno: safe subcommands only (no eval, no run)
     /^\s*bun\s+(install|--version|test|run\s+(dev|build|test|start))\b/, // Bun: safe subcommands only (no -e, no eval)

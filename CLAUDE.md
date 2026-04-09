@@ -165,7 +165,12 @@ Deliverables: `phase` field on nodes, `build_phase` on project, phase enforcemen
 
 **Design docs:** `docs/plans/2026-04-07-sprint10b-design.md`, `docs/plans/2026-04-07-sprint10b-implementation.md`
 
-### Sprint 11: Preset Workflows + MCP Integrations
+### Sprint 11: Skills for All Agents + Token Efficiency (COMPLETE)
+`skill-registry.js` (event-driven skill registry with 4-tier cascade, quality gate, priority-based conflict resolution), `blast-radius.js` (dependency graph + impact analysis for fix agents), 30 curated SKILL.md files (25 core + 5 conditional), progressive disclosure (metadata at dispatch, full on-demand), auto-refresh hooks (session-start staleness detection + pre-tool-use active refresh), skill-aware commands (build/sweep/review/discover/greenfield), architect compiled skills (auto-regenerated from source), `/forgeplan:skill` command (list/refresh/install/validate). Token efficiency: batched fix context (grouped by file with blast radius), Phase 4.5 deterministic pre-verification (catches regressions at script cost), Phase 1.5 understanding pass + wiki feeding.
+
+**Design docs:** `docs/plans/2026-04-07-sprint11-design.md`, `docs/plans/2026-04-09-sprint11-implementation.md`
+
+### Sprint 12: MCP Integrations
 Pre-configured MCP connections (Supabase, Stripe, Vercel), live API validation during builds, integration templates.
 
 ### Standalone App: Visual Features (Post-Plugin)

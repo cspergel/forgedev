@@ -118,7 +118,10 @@ Promote a draft skill to the project's active skill directory.
 Promote a project-local skill to user-global scope.
 
 1. Read the skill from `.forgeplan/skills/[name].md`
-2. Verify it has been used successfully (check if it's been in the registry for 5+ builds without being disabled or causing issues)
-3. Copy to `~/.claude/skills/[name].md` (user-global directory)
-4. Show: "Promoted [name] to global skills. It will be available in all your ForgePlan projects."
-5. Run `skill-registry.js refresh`
+2. Copy to `~/.claude/skills/[name].md` (user-global directory)
+3. Check if `~/.claude/skills` is in the project's `config.yaml` `skills.sources` list. If not, warn:
+   ```
+   Promoted [name] to ~/.claude/skills/. To use global skills in new projects,
+   add "~/.claude/skills" to config.yaml skills.sources (it's commented out by default).
+   ```
+4. Run `skill-registry.js refresh`

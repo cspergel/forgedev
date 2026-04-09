@@ -507,10 +507,31 @@ function matchSkillsToAgent(agentName, skills, manifest, config) {
     return (tierOrder[a.tier] || 3) - (tierOrder[b.tier] || 3);
   });
 
-  // Cap at max_active
+  // Cap at max_active with reserved slots for tech-matched conditional skills.
+  // Without this, generic core skills (priority 85) always fill the cap before
+  // conditional skills (priority 70-75) that specifically match the tech stack.
   if (candidates.length > maxActive) {
-    debug(`  ${agentName}: capping from ${candidates.length} to ${maxActive} skills`);
-    candidates = candidates.slice(0, maxActive);
+    // Separate tech-matched (hint would be read_now) from generic (reference)
+    const techMatched = candidates.filter(c => computeHint(c, manifest) === "read_now");
+    const generic = candidates.filter(c => computeHint(c, manifest) !== "read_now");
+
+    // Reserve up to 2 slots for tech-matched skills, fill rest with generic by priority
+    const reservedSlots = Math.min(2, techMatched.length);
+    const genericSlots = maxActive - reservedSlots;
+
+    const selected = [
+      ...generic.slice(0, genericSlots),
+      ...techMatched.slice(0, reservedSlots),
+    ];
+
+    // Re-sort the combined selection by priority for consistent ordering
+    selected.sort((a, b) => {
+      if (b.priority !== a.priority) return b.priority - a.priority;
+      return (tierOrder[a.tier] || 3) - (tierOrder[b.tier] || 3);
+    });
+
+    debug(`  ${agentName}: capping from ${candidates.length} to ${selected.length} (${reservedSlots} tech-matched reserved)`);
+    candidates = selected;
   }
 
   // Build assignment entries with hints and selector metadata.

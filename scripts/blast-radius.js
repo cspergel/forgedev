@@ -58,9 +58,17 @@ function buildGraph() {
     }
   }
 
-  // Scan all source files
+  // Scan all source files (with symlink cycle detection)
+  const normPath = (s) => process.platform === "win32" ? s.toLowerCase() : s;
   const sourceFiles = [];
+  const visited = new Set();
   function walk(dir) {
+    // Resolve real path for cycle detection (handles junctions + symlinks)
+    let resolvedDir;
+    try { resolvedDir = normPath(fs.realpathSync(dir)); } catch { return; }
+    if (visited.has(resolvedDir)) return;
+    visited.add(resolvedDir);
+
     let entries;
     try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
     for (const entry of entries) {
@@ -69,9 +77,11 @@ function buildGraph() {
       const full = path.join(dir, entry.name);
       if (entry.isDirectory()) { walk(full); continue; }
       if (/\.[jt]sx?$/.test(entry.name)) {
-        const stat = fs.statSync(full);
-        if (stat.size > 512 * 1024) continue; // skip files >512KB
-        sourceFiles.push(full);
+        try {
+          const stat = fs.statSync(full);
+          if (stat.size > 512 * 1024) continue; // skip files >512KB
+          sourceFiles.push(full);
+        } catch { continue; }
       }
     }
   }
@@ -296,6 +306,9 @@ function trace(graph, target) {
 // ── Fix Context: Generate rich context for fix agents ──────────────
 
 function generateFixContext(graph, targetFiles) {
+  // Normalize all target file paths to forward slashes (graph uses forward slashes internally)
+  targetFiles = targetFiles.map(f => f.replace(/\\/g, "/"));
+
   const context = {
     targetFiles: [],
     consumers: [],       // files that import from target files (read-only context for fix agent)
