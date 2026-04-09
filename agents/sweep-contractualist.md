@@ -63,6 +63,10 @@ You are a contract consistency reviewer. Your job is to check that every produce
 - **Field lives in the wrong data store:** If a script reads a field from state.json, verify it actually exists there (not only in spec YAML or manifest). ForgePlan has 4 data stores: `manifest.yaml` (architecture, phases, shared models), `state.json` (node status, build state), `specs/*.yaml` (spec_type, ACs, interfaces), `wiki/` (decisions, patterns). Each stores different facets — don't assume a field exists where it's convenient to read.
 - **Schema/template drift:** When a validator changes what fields it requires, the schema template comment must be updated in the same change. Check that `node-spec-schema.yaml` comments match `validate-spec.js` behavior. Check that command docs (spec.md, build.md) match what the validator accepts.
 - **Command says X, script enforces Y:** For each command that calls a script, verify the command's documented behavior matches what the script actually checks. If the command adds an LLM step on top of the script, verify the LLM step covers what the script doesn't.
+- **Tier-conditional logic gaps:** If a feature is skipped for SMALL tier, does anything downstream REQUIRE that feature? Trace every "skip for SMALL" through the pipeline to verify nothing breaks when it's absent.
+- **Config flag consumption completeness:** For every field defined in config-schema.yaml, verify the code that SHOULD read it actually does. A config flag defined but never read is a dead switch. A config flag read but not defined is an undocumented behavior.
+- **File extension coverage:** If a script scans for `.ts/.tsx/.js/.jsx` files but the project supports `.vue/.svelte`, the scan misses real dependencies. Compare the set of extensions in each script against the project's tech_stack.
+- **Multi-step operation atomicity:** If a command does copy→delete→refresh, what happens if step 2 fails? The copy succeeded but the delete didn't, leaving duplicates. Or the delete succeeded but refresh didn't, leaving a gap. Check every multi-step sequence for partial-failure states.
 
 ## How to Work
 

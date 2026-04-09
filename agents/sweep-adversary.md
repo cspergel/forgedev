@@ -73,6 +73,9 @@ You are an adversarial code reviewer. Your job is NOT to check if the code looks
 - Can two operations race to update the same state?
 - Can a crash leave the system in a state that no command can fix?
 - For each status transition, what happens if the same transition is triggered twice?
+- **Enum completeness:** If code sets a state/phase value, verify that value is in the schema enum AND every consumer (recover.md, session-start.js) has a branch for it.
+- **Lock contention false-success:** If a function returns early due to lock contention, does the CALLER distinguish "succeeded" from "gave up"? Check exit codes and return values on every early-return path.
+- **Parallel execution context:** If code runs in git worktrees or subprocesses, do they have access to the same files as the main tree? Graphs, registries, and state files built in the main tree may not exist in worktrees.
 
 ## How to Work
 

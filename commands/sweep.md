@@ -239,7 +239,8 @@ When multiple nodes need fixes and their file_scopes don't overlap, fix agents c
    - Set `nodes.[node-id].previous_status` to current status
    - Set `nodes.[node-id].status` to `"sweeping"`
    - Write state.json (all state updates are serialized in the main tree BEFORE parallel dispatch)
-2. For each node, create an isolated worktree:
+2. **Copy dependency graph into worktrees:** If `.forgeplan/dependency-graph.json` exists, copy it to each worktree's `.forgeplan/` directory after creation. Fix agents in worktrees need the blast-radius context, and `blast-radius.js fix-context` reads from `process.cwd()/.forgeplan/`. Without this copy, parallel fix agents lose blast-radius context.
+3. For each node, create an isolated worktree:
    ```bash
    node "${CLAUDE_PLUGIN_ROOT}/scripts/worktree-manager.js" create [node-id]
    ```
@@ -291,11 +292,13 @@ For each node that has findings, in dependency order (use topological sort from 
 
    **Fix Context Package — what each fix agent receives:**
 
-   Before building the context, run blast radius analysis on the target files:
+   Before building the context, run blast radius analysis on the target files (if the dependency graph exists — SMALL tier may not have built it in Phase 1.5):
    ```bash
    node "${CLAUDE_PLUGIN_ROOT}/scripts/blast-radius.js" fix-context [file1] [file2] ...
    ```
-   This returns: target file exports, consumer files (who imports from these files), cross-node dependencies, and total blast radius count.
+   If the graph file (`.forgeplan/dependency-graph.json`) doesn't exist, skip the blast-radius call and omit the BLAST RADIUS and CONSUMER FILES sections from the fix context. The fix agent still gets findings, source files, spec, and tests — blast-radius is additive context, not required.
+
+   This returns (when available): target file exports, consumer files (who imports from these files), cross-node dependencies, and total blast radius count.
 
    ```
    You are fixing [N] findings in [node-id].

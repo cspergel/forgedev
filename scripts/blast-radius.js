@@ -76,7 +76,7 @@ function buildGraph() {
       if (entry.name.startsWith(".tmp-")) continue;
       const full = path.join(dir, entry.name);
       if (entry.isDirectory()) { walk(full); continue; }
-      if (/\.[jt]sx?$/.test(entry.name)) {
+      if (/\.[jt]sx?$|\.vue$|\.svelte$/.test(entry.name)) {
         try {
           const stat = fs.statSync(full);
           if (stat.size > 512 * 1024) continue; // skip files >512KB
@@ -242,7 +242,7 @@ function resolveImport(source, fromFile) {
   }
 
   // Try extensions
-  const extensions = [".ts", ".tsx", ".js", ".jsx", "/index.ts", "/index.tsx", "/index.js"];
+  const extensions = [".ts", ".tsx", ".js", ".jsx", "/index.ts", "/index.tsx", "/index.js", "/index.jsx"];
   const relBase = path.relative(cwd, resolved).replace(/\\/g, "/");
 
   // Exact match first

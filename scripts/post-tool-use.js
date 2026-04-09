@@ -365,8 +365,9 @@ function processHook(input) {
       let skillsEnabled = true; // default: enabled
       if (fs.existsSync(configPath)) {
         const configData = yaml.load(fs.readFileSync(configPath, "utf-8"));
-        if (configData && configData.skills && configData.skills.enabled === false) {
-          skillsEnabled = false;
+        if (configData && configData.skills) {
+          if (configData.skills.enabled === false) skillsEnabled = false;
+          if (configData.skills.auto_detect === false) skillsEnabled = false; // auto_detect governs learner
         }
       }
 

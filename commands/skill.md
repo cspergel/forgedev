@@ -108,9 +108,11 @@ Show draft skills detected by the Skill Learner, pending human review.
 Promote a draft skill to the project's active skill directory.
 
 1. Read the draft from `.forgeplan/skill-drafts/[hash].md`
-2. Present the full skill content for final review
-3. Ask: "Approve this skill? It will be added to .forgeplan/skills/ and included in future builds. (y/n/edit)"
-4. If `y`: copy to `.forgeplan/skills/[name].md`, delete the draft, run `skill-registry.js refresh`
+2. **Validate the draft first:** run `node "${CLAUDE_PLUGIN_ROOT}/scripts/skill-registry.js" validate` on the draft file. If it fails validation (missing fields, too large, bad agent_filter), show errors and abort — do NOT delete the draft.
+3. **Check for name collision:** extract `name` from frontmatter, sanitize to filesystem name. If `.forgeplan/skills/[name].md` already exists, warn: "A skill named [name] already exists. Overwrite? (y/n)" Only proceed if user confirms.
+4. Present the full skill content for final review
+5. Ask: "Approve this skill? It will be added to .forgeplan/skills/ and included in future builds. (y/n/edit)"
+6. If `y`: copy to `.forgeplan/skills/[name].md`, THEN delete the draft (copy-before-delete ensures the draft survives if copy fails), run `skill-registry.js refresh`
 5. If `edit`: open the content for editing, then re-confirm
 6. If `n`: leave as draft
 

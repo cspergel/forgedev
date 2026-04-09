@@ -636,8 +636,9 @@ function generateRegistry(manifest, config, projectRoot) {
   // Build tech_stack_snapshot
   const techStack = (manifest.project && manifest.project.tech_stack) || {};
 
-  // Build registry object
+  // Build registry object (_written starts false — set true only after successful disk write)
   const registry = {
+    _written: false,
     generated_at: new Date().toISOString(),
     manifest_hash: computeManifestHash(manifest, config, projectRoot),
     tech_stack_snapshot: techStack,
