@@ -59,6 +59,31 @@ function evaluate(input) {
     return evaluateBash(toolInput, cwd);
   }
 
+  // Sprint 11: Auto-refresh skill registry before agent dispatch
+  if (toolName === "Agent") {
+    try {
+      const forgePlanDirAgent = path.join(cwd, ".forgeplan");
+      const manifestPathAgent = path.join(forgePlanDirAgent, "manifest.yaml");
+      if (fs.existsSync(forgePlanDirAgent) && fs.existsSync(manifestPathAgent)) {
+        const { isRegistryStale } = require("./lib/skill-helpers");
+        const yaml = require(path.join(__dirname, "..", "node_modules", "js-yaml"));
+        const agentManifest = yaml.load(fs.readFileSync(manifestPathAgent, "utf-8"));
+        if (agentManifest) {
+          const regStatus = isRegistryStale(agentManifest, forgePlanDirAgent);
+          if (regStatus.stale) {
+            const { execSync } = require("child_process");
+            const scriptPath = path.join(__dirname, "skill-registry.js");
+            execSync(`node "${scriptPath}" refresh`, { cwd, stdio: "pipe", timeout: 15000 });
+          }
+        }
+      }
+    } catch (err) {
+      // Auto-refresh failure should warn, not block
+      process.stderr.write(`[ForgePlan] Skill registry auto-refresh failed: ${err.message}\n`);
+    }
+    return { block: false };
+  }
+
   if (toolName !== "Write" && toolName !== "Edit") {
     return { block: false };
   }

@@ -378,6 +378,21 @@ function buildAmbientStatus(forgePlanDir, manifestPath, statePath, state) {
     }
   }
 
+  // Sprint 11: Skill registry staleness check
+  try {
+    const { isRegistryStale } = require("./lib/skill-helpers");
+    const regStatus = isRegistryStale(manifest, forgePlanDir);
+    if (!regStatus.exists && nodeIds.length > 0) {
+      lines.push("  Skills: no registry — will auto-generate on next build");
+    } else if (regStatus.exists && regStatus.stale) {
+      lines.push("  Skills: registry stale (manifest changed) — will auto-refresh on next build");
+    } else if (regStatus.exists && regStatus.activeCount > 0) {
+      lines.push(`  Skills: ${regStatus.activeCount} active`);
+    }
+  } catch {
+    // Skill registry check must never crash session start
+  }
+
   // Next command suggestion
   if (suggestion) {
     lines.push(`Next: ${suggestion}`);
