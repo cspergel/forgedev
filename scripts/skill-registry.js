@@ -210,7 +210,7 @@ function classifyTier(relPath) {
 /**
  * Recursively find all .md files in a directory.
  */
-function findMdFiles(dir) {
+function findMdFiles(dir, visited = new Set()) {
   const results = [];
   if (!fs.existsSync(dir)) return results;
 
@@ -228,7 +228,14 @@ function findMdFiles(dir) {
       if (entry.name === "drafts") continue;
       // Skip specification directory — not a skill for registry
       if (entry.name === "specification") continue;
-      results.push(...findMdFiles(fullPath));
+      // Symlink/junction cycle detection: resolve real path, skip if already visited
+      try {
+        const realPath = fs.realpathSync(fullPath);
+        const normReal = process.platform === "win32" ? realPath.toLowerCase() : realPath;
+        if (visited.has(normReal)) continue;
+        visited.add(normReal);
+      } catch (_) { continue; } // unresolvable symlink — skip
+      results.push(...findMdFiles(fullPath, visited));
     } else if (entry.name.endsWith(".md") && entry.name !== "README.md") {
       results.push(fullPath);
     }
@@ -274,10 +281,19 @@ function scanSkillSources(config, projectRoot) {
       const skillName = fm.name || path.basename(filePath, ".md");
       const tier = classifyTier(relPath);
 
-      // Dedupe: higher tier (curated) wins over lower (project/learned)
+      // Dedupe: highest priority wins (curated 80-100 beats learned 20-39)
       if (seen.has(skillName)) {
-        debug(`  Skipping duplicate skill "${skillName}" from ${relPath}`);
-        continue;
+        const existing = skills.find(s => s.name === skillName);
+        const newPriority = (typeof fm.priority === "number" && isFinite(fm.priority))
+          ? Math.max(0, Math.min(100, Math.round(fm.priority)))
+          : DEFAULT_PRIORITY;
+        if (existing && newPriority > existing.priority) {
+          debug(`  Replacing skill "${skillName}" (priority ${existing.priority} → ${newPriority})`);
+          skills.splice(skills.indexOf(existing), 1);
+        } else {
+          debug(`  Skipping duplicate skill "${skillName}" from ${relPath} (lower priority)`);
+          continue;
+        }
       }
       seen.add(skillName);
 
@@ -286,7 +302,9 @@ function scanSkillSources(config, projectRoot) {
         name: skillName,
         description: fm.description || "",
         when_to_use: fm.when_to_use || "",
-        priority: typeof fm.priority === "number" ? fm.priority : DEFAULT_PRIORITY,
+        priority: (typeof fm.priority === "number" && isFinite(fm.priority))
+          ? Math.max(0, Math.min(100, Math.round(fm.priority)))
+          : DEFAULT_PRIORITY,
         tier,
         source: fm.source || null,
         validated_at: fm.validated_at || null,
@@ -429,6 +447,27 @@ function matchSkillsToAgent(agentName, skills, manifest, config) {
     }
   }
 
+  // Apply overrides: remove any skill that another candidate's overrides list names
+  const overrideTargets = new Set();
+  for (const c of candidates) {
+    if (Array.isArray(c.overrides)) {
+      for (const name of c.overrides) overrideTargets.add(name);
+    }
+  }
+  if (overrideTargets.size > 0) {
+    candidates = candidates.filter(c => {
+      if (overrideTargets.has(c.name)) {
+        // Only remove if the overriding skill has higher priority
+        const overrider = candidates.find(o => Array.isArray(o.overrides) && o.overrides.includes(c.name));
+        if (overrider && overrider.priority >= c.priority) {
+          debug(`  Skill "${c.name}" overridden by "${overrider.name}"`);
+          return false;
+        }
+      }
+      return true;
+    });
+  }
+
   // Sort by priority descending; within same priority, curated > project > learned
   const tierOrder = { curated: 0, project: 1, learned: 2 };
   candidates.sort((a, b) => {
@@ -515,24 +554,26 @@ function generateRegistry(manifest, config, projectRoot) {
     "# Re-run: node scripts/skill-registry.js generate\n";
   const yamlContent = header + yaml.dump(registry, { lineWidth: 120, noRefs: true, sortKeys: false });
 
-  // Atomic write: write to .tmp then rename
+  // Atomic write: write .tmp → rename old to .bak → rename .tmp to target → delete .bak
   const tmpPath = registryPath + ".tmp";
+  const bakPath = registryPath + ".bak";
   try {
     fs.writeFileSync(tmpPath, yamlContent, "utf-8");
-    try {
-      fs.renameSync(tmpPath, registryPath);
-    } catch (renameErr) {
-      // Windows: target may be locked; retry once after 200ms
-      if (renameErr.code === "EPERM" || renameErr.code === "EBUSY" || renameErr.code === "EACCES") {
-        const start = Date.now();
-        while (Date.now() - start < 200) { /* busy wait */ }
-        fs.renameSync(tmpPath, registryPath);
-      } else {
-        throw renameErr;
-      }
+    // Move existing registry to .bak (if it exists)
+    if (fs.existsSync(registryPath)) {
+      try { fs.unlinkSync(bakPath); } catch (_) {} // clean stale .bak
+      fs.renameSync(registryPath, bakPath);
     }
+    // Move .tmp to target — target doesn't exist now so rename is safe on Windows
+    fs.renameSync(tmpPath, registryPath);
+    // Clean up .bak
+    try { fs.unlinkSync(bakPath); } catch (_) {}
   } catch (err) {
-    try { fs.unlinkSync(tmpPath); } catch (_) { /* ignore */ }
+    // Recovery: if target is gone but .bak exists, restore it
+    if (!fs.existsSync(registryPath) && fs.existsSync(bakPath)) {
+      try { fs.renameSync(bakPath, registryPath); } catch (_) {}
+    }
+    try { fs.unlinkSync(tmpPath); } catch (_) {}
     throw err;
   }
 
@@ -669,15 +710,17 @@ function compileArchitect(config, projectRoot, manifest) {
     }
   }
 
+  // Compute hash from skill content (before adding hash to output — hash is of the skills, not of itself)
+  const contentForHash = sections.join("\n\n---\n\n");
+  const hash = crypto.createHash("sha256").update(contentForHash).digest("hex").slice(0, 12);
+
   const compiled =
     `<!-- compiled-architect-skills: ${skillNames.join(", ")} -->\n` +
+    `<!-- compiled_from_hash: ${hash} -->\n` +
     `<!-- compiled-at: ${new Date().toISOString()} -->\n` +
     `<!-- project-tier: ${tier} -->\n\n` +
     `## Architect Skills (Tier: ${tier})\n\n` +
-    sections.join("\n\n---\n\n");
-
-  // Hash of the compiled content for staleness detection
-  const hash = crypto.createHash("sha256").update(compiled).digest("hex").slice(0, 12);
+    contentForHash;
 
   return {
     compiled,
