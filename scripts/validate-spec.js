@@ -91,10 +91,10 @@ function validateSpec(spec, manifest) {
     }
   }
 
-  // Validate spec_type enum if present
+  // Validate spec_type enum if present — error, not warning, because routing depends on exact values
   const validSpecTypes = ["prescriptive", "descriptive", "interface-only"];
   if (spec.spec_type && !validSpecTypes.includes(spec.spec_type)) {
-    warnings.push(`Unrecognized spec_type "${spec.spec_type}". Valid values: ${validSpecTypes.join(", ")}.`);
+    errors.push(`Invalid spec_type "${spec.spec_type}". Must be one of: ${validSpecTypes.join(", ")}. Session-start, next-node, and phase routing depend on exact values.`);
   }
 
   // Sprint 10B: Interface-only specs (phase > build_phase) only require interfaces

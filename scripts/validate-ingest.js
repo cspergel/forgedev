@@ -42,7 +42,12 @@ const normPath = (s) => process.platform === "win32" ? s.toLowerCase() : s;
 const projectRoot = path.resolve(cwd);
 const normProjectRoot = normPath(projectRoot);
 const normCwd = normPath(projectRoot + path.sep);
-const EXCLUDE_DIRS = ["node_modules", "dist", "build", ".next", ".git", ".forgeplan"];
+const EXCLUDE_DIRS = ["node_modules", "dist", "build", ".next", ".git", ".forgeplan",
+  "templates", "blueprints", "fixtures", "__fixtures__", "__mocks__", "testdata"];
+// Also exclude temp/review directories by prefix pattern
+const EXCLUDE_PREFIXES = [".tmp-"];
+const shouldExcludeDir = (name) =>
+  EXCLUDE_DIRS.includes(name) || EXCLUDE_PREFIXES.some(p => name.startsWith(p));
 
 const isWithinProject = (candidate) => {
   const resolved = path.resolve(candidate);
@@ -198,7 +203,7 @@ function findNestedSymlinkEscape(rootDir) {
       return null;
     }
     for (const entry of entries) {
-      if (EXCLUDE_DIRS.includes(entry.name)) continue;
+      if (shouldExcludeDir(entry.name)) continue;
       const fullPath = path.join(dir, entry.name);
       let stat;
       try {
@@ -284,7 +289,7 @@ const countFilesIn = (dir, visited = new Set()) => {
     visited.add(resolved);
     const entries = fs.readdirSync(dir, { withFileTypes: true });
     for (const entry of entries) {
-      if (EXCLUDE_DIRS.includes(entry.name)) continue;
+      if (shouldExcludeDir(entry.name)) continue;
       if (entry.isDirectory()) count += countFilesIn(path.join(dir, entry.name), visited);
       else count++;
     }
@@ -301,7 +306,7 @@ const countFilesMatchingGlob = (dir, globPattern, visited = new Set()) => {
     visited.add(resolved);
     const entries = fs.readdirSync(dir, { withFileTypes: true });
     for (const entry of entries) {
-      if (EXCLUDE_DIRS.includes(entry.name)) continue;
+      if (shouldExcludeDir(entry.name)) continue;
       const full = path.join(dir, entry.name);
       if (entry.isDirectory()) {
         count += countFilesMatchingGlob(full, globPattern, visited);
@@ -364,7 +369,7 @@ for (const model of (mapping.shared_models || [])) {
       if (walkVisited.has(resolved)) return; // cycle detection
       walkVisited.add(resolved);
       for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-        if (EXCLUDE_DIRS.includes(entry.name)) continue;
+        if (shouldExcludeDir(entry.name)) continue;
         const full = path.join(dir, entry.name);
         if (entry.isDirectory()) { walk(full); continue; }
 

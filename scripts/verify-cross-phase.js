@@ -225,7 +225,9 @@ function main() {
     checks,
   }, null, 2));
 
-  process.exit(failures > 0 || warned > 0 ? 1 : 0);
+  // Exit 1 only on FAIL (blocks advancement). WARNs are informational — the LLM
+  // step in integrate.md handles them via deep check, they don't block auto-advance.
+  process.exit(failures > 0 ? 1 : 0);
 }
 
 // Shared helpers imported from lib/contract-helpers.js — no local duplicates

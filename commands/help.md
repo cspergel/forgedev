@@ -10,7 +10,7 @@ user-invocable: true
 | Command | What it does |
 |---------|-------------|
 | `/forgeplan:discover [description\|template:name\|--from doc.md]` | **Start here.** Describe your project, pick a template, or import an existing document (`--from`). The Translator maps documents to ForgePlan methodology, the Interviewer resolves ambiguities, then the Architect creates your architecture. |
-| `/forgeplan:spec [node\|--all]` | Generate detailed specs for each node — acceptance criteria, constraints, interfaces. The spec is the contract your build follows. |
+| `/forgeplan:spec [node\|--all]` | Generate or refine node specs. Full specs (ACs, constraints, interfaces) for current-phase nodes; interface-only specs for next-phase nodes. Also handles descriptive-to-prescriptive refinement after ingest. |
 
 ## Building
 

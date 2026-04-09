@@ -100,12 +100,12 @@ The autonomous spec won't be as nuanced as a user-refined spec, but it will be c
 
 ## Spec Quality Gates
 
-Before finalizing any spec, verify:
+Before finalizing any spec, verify. **These gates apply to `prescriptive` and `descriptive` specs only. Interface-only specs (phase > build_phase) skip gates 1-4 — they have no ACs, non-goals, or failure modes by design.**
 
-- [ ] Every acceptance criterion has `id` (AC1, AC2...) AND `test` field
+- [ ] Every acceptance criterion has `id` (AC1, AC2...) AND `test` field *(prescriptive/descriptive only)*
 - [ ] Every interface has `type` (read/write | outbound | inbound) AND `contract`
-- [ ] At least 1 `non_goal` present
-- [ ] At least 1 `failure_mode` present
+- [ ] At least 1 `non_goal` present *(prescriptive/descriptive only)*
+- [ ] At least 1 `failure_mode` present *(prescriptive/descriptive only)*
 - [ ] `shared_dependencies` lists every shared model from the manifest that this node uses
 - [ ] `file_scope` matches the manifest entry and doesn't overlap with other nodes
 - [ ] `depends_on` matches the manifest entry
