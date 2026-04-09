@@ -7,7 +7,7 @@ source: ratacat/claude-skills
 validated_at: "2026-04-09"
 overrides: []
 tier_filter: []
-agent_filter: []
+agent_filter: [architect]
 tech_filter: []
 ---
 

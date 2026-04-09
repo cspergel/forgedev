@@ -7,7 +7,7 @@ source: CodeMachine0121/Claude-Code-Skill-DDD
 validated_at: "2026-04-09"
 overrides: []
 tier_filter: [LARGE]
-agent_filter: []
+agent_filter: [architect]
 tech_filter: []
 ---
 
