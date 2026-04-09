@@ -294,10 +294,14 @@ function buildAmbientStatus(forgePlanDir, manifestPath, statePath, state) {
   lines.push("");
   lines.push("--- ForgePlan ---");
 
-  // One-line summary
-  const reviewedCount = counts.reviewed;
-  const builtOrReviewed = counts.built + counts.reviewed;
-  let summaryLine = `${projectName} -- ${counts.total} nodes (${builtOrReviewed} built, ${reviewedCount} reviewed)`;
+  // One-line summary — show built and reviewed separately for clarity
+  let summaryLine = `${projectName} -- ${counts.total} nodes`;
+  const parts = [];
+  if (counts.reviewed > 0) parts.push(`${counts.reviewed} reviewed`);
+  if (counts.built > 0) parts.push(`${counts.built} built`);
+  if (counts.specced > 0) parts.push(`${counts.specced} specced`);
+  if (counts.pending > 0) parts.push(`${counts.pending} pending`);
+  if (parts.length > 0) summaryLine += ` (${parts.join(", ")})`;
   if (counts.revised > 0) {
     summaryLine += `, ${counts.revised} revised (needs rebuild)`;
   }

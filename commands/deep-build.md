@@ -299,8 +299,8 @@ After Phase 8 certification completes:
 4. If integrate passes (both scripts exit 0): increment `build_phase` in manifest, set `build_phase_started_at` in state, and update `sweep_state.phase_advancement.checkpoint` to `"post_increment"`.
 5. Before promoting specs, update `sweep_state.phase_advancement.checkpoint` to `"promoting_specs"`.
 6. Run /forgeplan:spec for promoted nodes — detect interface-only specs (specs with `interfaces` section but no `acceptance_criteria` section) and re-run spec generation to promote to full specs. **If any promoted node's spec generation fails:** halt with error, preserve `sweep_state` (still has `current_phase: "integrate"` plus `phase_advancement` checkpoint state), and present: "Phase advancement failed during spec promotion for [node-id]. Run /forgeplan:recover to resume."
-7. On success, delete `.forgeplan/phase-advance-backup/`, clear `sweep_state.phase_advancement`, then clear `sweep_state` to null (phase advancement is now complete — safe to clear the breadcrumb).
-8. Start new build cycle for promoted nodes (loop back to Phase 2)
+7. On success, delete `.forgeplan/phase-advance-backup/` and clear `sweep_state.phase_advancement`.
+8. Start new build cycle for promoted nodes (loop back to Phase 2). **Only clear `sweep_state` to null AFTER Phase 2 re-initializes it** with `operation: "deep-building"` and `current_phase: "build-all"`. Do NOT clear sweep_state between step 7 and step 8 — a crash in that window would lose the breadcrumb that deep-build should continue into the next phase. Phase 2's initialization (step 5 in the Phase 1 section) overwrites sweep_state anyway.
 
 ## Error Handling
 

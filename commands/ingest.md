@@ -1,5 +1,5 @@
 ---
-description: Scan an existing codebase and bring it under ForgePlan governance. Generates manifest, descriptive specs, wiki, and runs baseline sweep. Fully autonomous with one confirmation gate.
+description: Bootstrap ForgePlan governance on an existing codebase. Generates manifest, descriptive specs (auto-generated from code — not real requirements), wiki skeleton, and baseline sweep. Specs need manual refinement via /forgeplan:spec before the project is fully governed.
 user-invocable: true
 argument-hint: "[--force (re-ingest existing project)] [--confirm-auto (skip confirmation, for autonomous pipelines)]"
 allowed-tools: Read Write Edit Bash Glob Grep Agent
@@ -7,7 +7,7 @@ allowed-tools: Read Write Edit Bash Glob Grep Agent
 
 # /forgeplan:ingest
 
-Bring an existing codebase under ForgePlan governance.
+Bootstrap ForgePlan governance on an existing codebase. This is step 1 — it generates descriptive specs (what the code does) not prescriptive specs (what it should do). Run `/forgeplan:spec` on each node after ingest to add real requirements.
 
 ## Prerequisites
 - Must be run from the project root directory

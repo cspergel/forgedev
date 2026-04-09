@@ -20,7 +20,7 @@ If the argument is `--all`, build all eligible nodes sequentially in dependency 
    - Run the single-node build flow below
    - After each build completes and the Stop hook verifies ACs, move to the next node
    - If any node fails (Stop hook bounces 3 times), stop the batch and report progress
-4. After all nodes are built, suggest running `/forgeplan:review` on each or `/forgeplan:integrate` for full verification
+4. After all nodes are built, suggest running `/forgeplan:review` on each built node first, then `/forgeplan:integrate` after all are reviewed. Built-but-unreviewed nodes must be reviewed before integration.
 
 ## Phase Gate (Sprint 10B) — MANDATORY, runs BEFORE any state writes
 

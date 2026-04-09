@@ -70,7 +70,7 @@ You haven't started a project yet. Here's how to begin:
     Tell me what you want to build and I'll create the architecture.
 
   → /forgeplan:ingest
-    Already have code? Bring an existing codebase under ForgePlan governance.
+    Already have code? Bootstrap ForgePlan on an existing codebase (generates descriptive specs — refine them after).
 
   → /forgeplan:discover template:client-portal
     Start from a template (also: saas-starter, internal-dashboard)

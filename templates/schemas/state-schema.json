@@ -199,7 +199,7 @@
             "promoted_nodes": { "type": "array", "items": { "type": "string" }, "default": [] },
             "backup_dir": { "type": "string" }
           },
-          "required": ["from_build_phase", "checkpoint", "backup_dir"]
+          "required": ["from_build_phase", "to_build_phase", "checkpoint", "promoted_nodes", "backup_dir"]
         },
         "consecutive_clean_passes": {
           "type": "integer",

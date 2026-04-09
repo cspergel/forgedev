@@ -17,9 +17,9 @@ If the argument starts with `--model`, this is a shared model cascade:
 1. Run `node "${CLAUDE_PLUGIN_ROOT}/scripts/regenerate-shared-types.js"` to update `src/shared/types/index.ts` with the new model fields
 2. Run `node "${CLAUDE_PLUGIN_ROOT}/scripts/find-affected-nodes.js" [model-name]` to identify all affected nodes
 3. Present the full list of affected nodes and remediation plan to the user for confirmation
-4. For each affected node (in dependency order), run `/forgeplan:spec [node]` then `/forgeplan:build [node]` — wait for user confirmation between nodes
-5. If any node fails during the cascade, stop and report which nodes were successfully updated and which remain
-6. After all nodes are revised, run `/forgeplan:integrate` to verify coherence
+4. For each affected node (in dependency order), run `/forgeplan:spec [node]` then `/forgeplan:build [node]` then `/forgeplan:review [node]` — wait for user confirmation between nodes. The review step is required: rebuilt code must be verified against the updated spec before integration.
+5. If any node fails during the cascade (build fails, review returns REQUEST CHANGES), stop and report which nodes were successfully updated and which remain
+6. After all nodes are revised and reviewed, run `/forgeplan:integrate` to verify coherence
 
 ## Single Node Mode
 
@@ -92,7 +92,8 @@ For shared model revision (--model):
 ```
 Shared model updated. [N] nodes affected. Next:
   → /forgeplan:build [node-id]    Rebuild each affected node (in dependency order)
-  → /forgeplan:integrate          Verify all interfaces after rebuilding
+  → /forgeplan:review [node-id]   Review each rebuilt node against its updated spec
+  → /forgeplan:integrate          Verify all interfaces after all nodes are reviewed
   → /forgeplan:next               See the recommended order
 ```
 

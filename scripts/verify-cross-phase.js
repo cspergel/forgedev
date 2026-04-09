@@ -94,11 +94,12 @@ function main() {
         } catch {}
       }
 
-      if (!exportFile) {
+      if (!exportFile || !exportContent) {
+        const fileScope = node.file_scope || "(no file_scope)";
         checks.push({
           source: nodeId, target: targetId,
           status: "FAIL",
-          detail: `Current-phase node "${nodeId}" has no index.ts/js in ${scopeDir} — cannot verify cross-phase exports`,
+          detail: `Current-phase node "${nodeId}" has no canonical export file (checked ${fileScope}) — cannot verify cross-phase exports`,
         });
         failures++;
         continue;
