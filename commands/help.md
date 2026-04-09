@@ -59,6 +59,7 @@ user-invocable: true
 | `/forgeplan:affected [model]` | Which nodes use this data model? Shows dependencies and update steps. |
 | `/forgeplan:regen-types` | Rebuild shared TypeScript types from the manifest. |
 | `/forgeplan:validate [manifest\|spec node\|all]` | Is my architecture valid? Checks for cycles, orphans, and consistency. |
+| `/forgeplan:skill [list\|refresh\|install\|validate]` | Manage skills — list agent assignments, refresh registry, install new skills, validate quality. |
 | `/forgeplan:guide` | Where am I? Evaluates project state and recommends your best next step with explanations. |
 | `/forgeplan:help` | This screen. |
 
