@@ -15,14 +15,13 @@
 const fs = require("fs");
 const path = require("path");
 const yaml = require("js-yaml");
+const {
+  escapeRegex, normalizeType, extractFunctionNames, extractTypeNames,
+  findCanonicalExportFile, readFileSafe, fileContainsPattern,
+} = require(path.join(__dirname, "lib", "contract-helpers"));
 
 function normalizeContract(text) {
   return String(text || "").trim().replace(/\s+/g, " ").toLowerCase();
-}
-
-/** Escape a string for use in RegExp */
-function escapeRegex(s) {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 /** Extract a brace-delimited block from content starting at startIndex */
@@ -41,32 +40,8 @@ function extractBlock(content, startIndex) {
   return content.slice(startIndex, startIndex + maxLen); // bounded fallback
 }
 
-function normalizeType(text) {
-  return String(text || "").replace(/\s+/g, "").toLowerCase();
-}
+// normalizeType, extractFunctionNames, extractTypeNames imported from lib/contract-helpers.js
 
-function extractFunctionNames(contract) {
-  const names = [];
-  const regex = /\b([a-zA-Z_$][a-zA-Z0-9_$]*)\s*\(/g;
-  let match;
-  while ((match = regex.exec(contract || "")) !== null) {
-    const name = match[1];
-    if (!["if", "for", "while", "switch", "catch", "function", "return", "new", "typeof", "instanceof"].includes(name)) {
-      names.push(name);
-    }
-  }
-  return [...new Set(names)];
-}
-
-function extractTypeNames(contract) {
-  const names = [];
-  const regex = /(?::\s*|->?\s*|returns?\s+)([A-Z][a-zA-Z0-9_]*)/g;
-  let match;
-  while ((match = regex.exec(contract || "")) !== null) {
-    names.push(match[1]);
-  }
-  return [...new Set(names)];
-}
 
 /**
  * Extract shared model field names that a spec references.
@@ -186,49 +161,16 @@ function resolveNodeFiles(cwd, node) {
     .filter((file) => fs.existsSync(file));
 }
 
-function findCanonicalExportFile(cwd, node) {
-  const nodeFiles = resolveNodeFiles(cwd, node);
-  const preferred = nodeFiles.find((file) => /(^|[\\/])index\.(ts|tsx|js)$/.test(file));
-  if (preferred) return preferred;
-
-  const fileScope = node.file_scope || "";
-  const scopeDir = fileScope.replace(/\*\*.*$/, "").replace(/[\\/]+$/, "");
-  const candidates = [
-    path.join(cwd, scopeDir, "index.ts"),
-    path.join(cwd, scopeDir, "index.tsx"),
-    path.join(cwd, scopeDir, "index.js"),
-  ];
-  return candidates.find((file) => fs.existsSync(file)) || null;
-}
+// findCanonicalExportFile, readFileSafe, fileContainsPattern imported from lib/contract-helpers.js
 
 /** Strip single-line comments, block comments, and string literals from source */
 function stripCommentsAndStrings(content) {
-  // Replace block comments (/* ... */), single-line comments (// ...),
-  // template literals (`...`), double-quoted strings, single-quoted strings
-  // with whitespace to preserve line structure for other checks.
   return content
-    .replace(/\/\*[\s\S]*?\*\//g, " ")       // block comments
-    .replace(/\/\/[^\n]*/g, " ")              // single-line comments
-    .replace(/`(?:[^`\\]|\\.)*`/g, '""')      // template literals → empty string
-    .replace(/"(?:[^"\\]|\\.)*"/g, '""')       // double-quoted strings → empty
-    .replace(/'(?:[^'\\]|\\.)*'/g, '""');      // single-quoted strings → empty
-}
-
-/** Read file content with size guard, returns null on failure */
-function readFileSafe(filePath) {
-  try {
-    const stat = fs.statSync(filePath);
-    if (stat.size > 1024 * 1024) return null;
-    return fs.readFileSync(filePath, "utf-8");
-  } catch (_) {
-    return null;
-  }
-}
-
-function fileContainsPattern(filePath, pattern) {
-  const content = readFileSafe(filePath);
-  if (content === null) return false;
-  return pattern.test(content);
+    .replace(/\/\*[\s\S]*?\*\//g, " ")
+    .replace(/\/\/[^\n]*/g, " ")
+    .replace(/`(?:[^`\\]|\\.)*`/g, '""')
+    .replace(/"(?:[^"\\]|\\.)*"/g, '""')
+    .replace(/'(?:[^'\\]|\\.)*'/g, '""');
 }
 
 /**

@@ -287,7 +287,7 @@ For each node that has findings, in dependency order (use topological sort from 
    - Group all validated findings for the same file into one batch
    - If findings span 2-3 files in the same node that import each other, combine into one batch
    - Each batch gets ONE fix agent dispatch (not one per finding)
-   - Maximum 8 findings per batch — if more, split by severity (HIGH first, then MEDIUM)
+   - Maximum 8 findings per batch — if more, split by severity (HIGH first, then MEDIUM). If a single severity sub-batch still exceeds 8, split further into 8-finding chunks ordered by file then line number.
 
    **Fix Context Package — what each fix agent receives:**
 
@@ -427,7 +427,7 @@ After ALL fix agents complete for the current pass, run deterministic checks BEF
 2. If the project has phases: run `node "${CLAUDE_PLUGIN_ROOT}/scripts/verify-cross-phase.js"` — verifies cross-phase exports
 3. **If either script returns FAIL:** A fix introduced a regression. Identify which fix batch's files overlap with the failure, and re-dispatch that batch's fix agent with the regression details added to context. Do NOT run a full sweep pass — deterministic scripts caught the issue at ~0 token cost.
 4. Repeat steps 1-3 until deterministic checks pass (max 3 retries per batch, then force-converge the finding to `needs_manual_attention`).
-5. **Only proceed to Phase 5 (re-sweep) after deterministic checks pass.**
+5. **Only proceed to Phase 2 (re-sweep) after deterministic checks pass.** Phase 4.5 is an optimization that catches regressions before a full re-sweep. If checks pass, loop back to Phase 2 for the next sweep pass. Phase 5 (re-integrate) runs after the sweep converges.
 
 This gate catches 30-50% of fix regressions at script cost instead of sweep cost. A regression caught here costs ~0 tokens. The same regression caught in the next sweep pass costs ~300K tokens.
 

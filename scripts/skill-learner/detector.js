@@ -22,6 +22,8 @@ function detectPatterns(files, options = {}) {
   for (const filePath of files) {
     let content;
     try {
+      const stat = fs.statSync(filePath);
+      if (stat.size > 100 * 1024) continue; // skip files >100KB (generated/bundled)
       content = fs.readFileSync(filePath, "utf-8");
     } catch {
       continue; // skip unreadable files

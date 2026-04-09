@@ -101,10 +101,20 @@ function saveDraft(projectRoot, pattern) {
  */
 function collectSourceFiles(projectRoot) {
   const files = [];
+  const MAX_FILES = 500; // cap to prevent unbounded scan in large projects
   const exclude = new Set(["node_modules", "dist", "build", ".forgeplan", ".git", ".next", ".nuxt", "coverage"]);
   const extensions = new Set([".js", ".ts", ".jsx", ".tsx", ".vue", ".svelte"]);
+  const normPath = (s) => process.platform === "win32" ? s.toLowerCase() : s;
+  const visited = new Set();
 
   function walk(dir) {
+    if (files.length >= MAX_FILES) return;
+    // Symlink cycle detection
+    let resolvedDir;
+    try { resolvedDir = normPath(fs.realpathSync(dir)); } catch { return; }
+    if (visited.has(resolvedDir)) return;
+    visited.add(resolvedDir);
+
     let entries;
     try {
       entries = fs.readdirSync(dir, { withFileTypes: true });
@@ -112,7 +122,9 @@ function collectSourceFiles(projectRoot) {
       return;
     }
     for (const entry of entries) {
+      if (files.length >= MAX_FILES) return;
       if (exclude.has(entry.name)) continue;
+      if (entry.name.startsWith(".tmp-")) continue;
       const fullPath = path.join(dir, entry.name);
       if (entry.isDirectory()) {
         walk(fullPath);
