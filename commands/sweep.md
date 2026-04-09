@@ -86,6 +86,33 @@ Run tier-selected sweep agents (3-5) in parallel across the entire codebase: 5 c
 7. **Compile wiki** (Sprint 9, MEDIUM/LARGE only, skip for SMALL):
    Run `node "${CLAUDE_PLUGIN_ROOT}/scripts/compile-wiki.js"` to build/refresh the knowledge base before dispatching agents. This generates wiki node pages, rules.md, and decisions.md from current specs, source, and sweep reports.
 
+### Phase 1.5: Build Dependency Graph + Understanding Pass (Sprint 11)
+
+**Dependency graph (runs once per sweep, persists across passes):**
+```bash
+node "${CLAUDE_PLUGIN_ROOT}/scripts/blast-radius.js" index
+```
+This builds `.forgeplan/dependency-graph.json` — maps every import/export relationship in the codebase. Used by Phase 4 fix agents to understand blast radius before making changes. Skip for SMALL tier (few files, low interconnection).
+
+**Understanding extraction (pass 1 only):**
+Before dispatching agents on pass 1, generate a lightweight codebase summary to help agents focus:
+- Read the manifest (node descriptions, shared models, tech stack)
+- Read the latest sweep report if one exists (`.forgeplan/sweeps/` — most recent file)
+- Read `.forgeplan/wiki/decisions.md` if it exists (accumulated project knowledge)
+- Compile into a 500-token "codebase understanding" block:
+  ```
+  PROJECT: [name] ([tier], [N] nodes, [tech_stack summary])
+  SHARED MODELS: [names + key fields]
+  KNOWN ISSUES: [top 3-5 findings from previous sweep, if any]
+  PAST DECISIONS: [key decisions from wiki, if any]
+  HOTSPOTS: [files with most findings historically]
+  ```
+- Include this block in EVERY agent's dispatch prompt on pass 1 (cheap, high-value context)
+- On pass 2+, update the understanding with the current pass's findings
+
+**Past findings context (all passes):**
+If previous sweep reports exist in `.forgeplan/sweeps/`, extract a summary of past findings (categories, hotspot files, recurring patterns) and include as "HISTORICAL CONTEXT" in each agent's prompt. This is the wiki-feeding pattern — agents learn from the project's specific failure history. Cap at 1000 tokens.
+
 ### Phase 2: Dispatch sweep agents (progressive reduction)
 
 **Tier-aware agent selection:** Read `complexity_tier` from `.forgeplan/manifest.yaml`. **Also check** `.forgeplan/config.yaml` for `complexity.tier_override` — if set and non-empty, use the override instead of the manifest tier:
@@ -263,6 +290,13 @@ For each node that has findings, in dependency order (use topological sort from 
    - Maximum 8 findings per batch — if more, split by severity (HIGH first, then MEDIUM)
 
    **Fix Context Package — what each fix agent receives:**
+
+   Before building the context, run blast radius analysis on the target files:
+   ```bash
+   node "${CLAUDE_PLUGIN_ROOT}/scripts/blast-radius.js" fix-context [file1] [file2] ...
+   ```
+   This returns: target file exports, consumer files (who imports from these files), cross-node dependencies, and total blast radius count.
+
    ```
    You are fixing [N] findings in [node-id].
 
@@ -275,8 +309,14 @@ For each node that has findings, in dependency order (use topological sort from 
    NODE SPEC EXCERPT:
    [Relevant acceptance criteria + interfaces from the node's spec]
 
-   CONSUMERS:
-   [Files from other nodes that import from files being fixed — read-only context, do NOT modify these]
+   BLAST RADIUS (from dependency graph):
+   [blast-radius.js output — which files import from the files you're changing]
+   [Cross-node dependencies are HIGH RISK — changes here break other nodes]
+   [Total blast radius: N files depend on your changes]
+
+   CONSUMER FILES (read-only — do NOT modify):
+   [Content of files from other nodes that import from files being fixed]
+   [These show HOW your exports are used — don't break these call sites]
 
    TEST FILE:
    [The node's test file(s) — fix agents MUST update tests if the fix changes behavior]
@@ -284,11 +324,13 @@ For each node that has findings, in dependency order (use topological sort from 
    RELATED FINDINGS FROM OTHER AGENTS (read-only):
    [Other findings in the same file from different agents — helps avoid conflicting fixes]
 
-   INSTRUCTIONS:
+   FIX APPROACH — SURGICAL PATCHES:
+   - Prefer the smallest possible change that fixes the finding
+   - Use Edit tool with exact old_string/new_string (not Write to rewrite entire files)
+   - If changing a function signature: check the BLAST RADIUS section above and update ALL callers in this node
+   - If changing an export: check CONSUMER FILES — if cross-node consumers would break, flag it instead of silently changing
    - Fix ALL findings in this batch together. Consider interactions between fixes.
    - Run the node's tests after fixing. If tests fail, adjust the fix.
-   - Do NOT modify files outside this node's file_scope (except shared types if needed).
-   - If fixing one finding necessarily conflicts with another, note the conflict — don't silently break the other.
    ```
 
    **Token cost comparison:**
