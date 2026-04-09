@@ -16,7 +16,7 @@ const fs = require("fs");
 const path = require("path");
 const yaml = require("js-yaml");
 const {
-  escapeRegex, normalizeType, extractFunctionNames, extractTypeNames,
+  escapeRegex, extractFunctionNames, extractTypeNames,
   findCanonicalExportFile, readFileSafe, fileContainsPattern,
 } = require(path.join(__dirname, "lib", "contract-helpers"));
 
