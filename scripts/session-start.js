@@ -406,7 +406,7 @@ function buildAmbientStatus(forgePlanDir, manifestPath, statePath, state) {
       if (!regStatus.exists && nodeIds.length > 0) {
         lines.push("  Skills: no registry — will auto-generate on next build");
       } else if (regStatus.exists && regStatus.stale) {
-        lines.push("  Skills: registry stale (manifest changed) — will auto-refresh on next build");
+        lines.push("  Skills: registry stale (manifest, config, or skill files changed) — will auto-refresh on next build");
       } else if (regStatus.exists && regStatus.activeCount > 0) {
         lines.push(`  Skills: ${regStatus.activeCount} active`);
       }

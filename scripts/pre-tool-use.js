@@ -134,7 +134,7 @@ function evaluate(input) {
         // Case 2: Registry exists but is stale (hash mismatch)
         return {
           block: true,
-          message: "Skill registry is stale and refresh failed. The registry does not match the current manifest. Run /forgeplan:skill refresh to fix."
+          message: "Skill registry is stale and refresh failed. The registry does not match the current manifest, config, or skill files. Run /forgeplan:skill refresh to fix."
         };
       }
       // Case 3: Registry exists and is fresh — data is good, just couldn't refresh
