@@ -89,11 +89,7 @@ All existing enforcement (PreToolUse, PostToolUse, Builder agent, Stop hook) app
 **Skip this phase if:** no frontend nodes exist in the manifest (all nodes have `type` other than `frontend`), OR `complexity_tier` is `SMALL` and config does not explicitly enable design pass. If skipping, update `sweep_state.current_phase` to `"verify-runnable"` and proceed directly to Phase 3.
 
 1. Set `sweep_state.current_phase` to `"design-pass"` (already set by Phase 2 transition)
-2. Read the skill registry. Check if `frontend-design` skill is assigned to `design-pass` agent:
-   ```bash
-   node "${CLAUDE_PLUGIN_ROOT}/scripts/skill-registry.js" query --agent design-pass
-   ```
-   Load the skill content from `skills/core/frontend-design.md` for inclusion in the agent prompt.
+2. Load the `frontend-design` skill directly — the design-pass agent is not in the registry (it's a specialized single-use agent, not a standard sweep/build agent). Read the skill content from `${CLAUDE_PLUGIN_ROOT}/skills/core/frontend-design.md` for inclusion in the agent prompt. If the file doesn't exist, skip the design pass with a warning.
 3. Identify all frontend nodes (nodes with `type: "frontend"` or nodes whose `file_scope` contains frontend files such as `.tsx`, `.jsx`, `.vue`, `.svelte`)
 4. Dispatch the design-pass agent using the Agent tool:
    - Read `agents/design-pass.md` for the system prompt

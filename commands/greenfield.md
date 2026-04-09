@@ -26,15 +26,9 @@ Read the project directory to determine where to start:
 
 Log which step is being resumed: "Resuming greenfield from Step [N] — [reason]."
 
-### Step 0.5: Pre-load Architect Skills (Sprint 11)
-
-Before discover starts, ensure the Architect has its skills loaded. **Always** compile architect skills directly — the normal skill registry intentionally excludes architect assignments, so a registry check would find nothing:
-```bash
-node "${CLAUDE_PLUGIN_ROOT}/scripts/skill-registry.js" compile-architect
-```
-This reads skills from `${CLAUDE_PLUGIN_ROOT}/skills/core/` and `${CLAUDE_PLUGIN_ROOT}/skills/conditional/` that have `agent_filter: [architect]`, and outputs a compiled tier-aware markdown block to stdout. Inject this context into the Architect's prompt for Step 1 (discover) so the Architect has domain knowledge during decomposition. If compile-architect fails (e.g., js-yaml not installed), proceed without skills — discover works without them, skills just improve quality.
-
 ### Step 1: Discover (autonomous)
+
+**Note:** Architect skill loading is handled by `discover.md` internally — it compiles architect skills and injects them into the Architect's prompt. No pre-loading needed here.
 
 Run the discover command in autonomous mode. Pass through the user's arguments (project description or --from flag):
 

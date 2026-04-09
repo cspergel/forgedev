@@ -166,12 +166,13 @@ function loadSkillFrontmatter(filePath) {
     }
   }
 
-  // Validate agent_filter values against known agents
+  // Validate agent_filter values against known agents — error, not warning,
+  // because mistyped selectors cause silent exclusion (skill never loads)
   if (frontmatter.agent_filter && frontmatter.agent_filter.length > 0) {
     for (const agent of frontmatter.agent_filter) {
       if (agent !== "architect" && !REGISTRY_AGENTS.includes(agent)) {
-        warnings.push(
-          `Skill ${frontmatter.name || "(unknown)"} targets unknown agent "${agent}" — will be silently excluded. Valid agents: architect, ${REGISTRY_AGENTS.join(", ")}`
+        errors.push(
+          `Skill ${frontmatter.name || "(unknown)"} targets unknown agent "${agent}". Valid agents: architect, ${REGISTRY_AGENTS.join(", ")}`
         );
       }
     }
@@ -300,17 +301,22 @@ function scanSkillSources(config, projectRoot) {
       const skillName = fm.name || path.basename(filePath, ".md");
       const tier = classifyTier(relPath);
 
-      // Dedupe: highest priority wins (curated 80-100 beats learned 20-39)
+      // Dedupe: highest priority wins. On equal priority, curated > project > learned.
+      const TIER_RANK = { curated: 0, project: 1, learned: 2 };
       if (seen.has(skillName)) {
         const existing = skills.find(s => s.name === skillName);
         const newPriority = (typeof fm.priority === "number" && isFinite(fm.priority))
           ? Math.max(0, Math.min(100, Math.round(fm.priority)))
           : DEFAULT_PRIORITY;
-        if (existing && newPriority > existing.priority) {
-          debug(`  Replacing skill "${skillName}" (priority ${existing.priority} → ${newPriority})`);
+        const shouldReplace = existing && (
+          newPriority > existing.priority ||
+          (newPriority === existing.priority && (TIER_RANK[tier] || 3) < (TIER_RANK[existing.tier] || 3))
+        );
+        if (shouldReplace) {
+          debug(`  Replacing skill "${skillName}" (priority ${existing.priority}/${existing.tier} → ${newPriority}/${tier})`);
           skills.splice(skills.indexOf(existing), 1);
         } else {
-          debug(`  Skipping duplicate skill "${skillName}" from ${relPath} (lower priority)`);
+          debug(`  Skipping duplicate skill "${skillName}" from ${relPath} (lower priority or tier)`);
           continue;
         }
       }
@@ -720,6 +726,7 @@ function generateRegistry(manifest, config, projectRoot) {
     log(`  ${qualityWarnings.length} quality warning(s)`);
   }
 
+  registry._written = true;
   return registry;
 }
 
@@ -965,7 +972,11 @@ function main() {
     }
 
     try {
-      generateRegistry(manifest, config, projectRoot);
+      const result = generateRegistry(manifest, config, projectRoot);
+      if (!result._written) {
+        log("Warning: Registry was not written to disk (lock contention). Existing registry may be stale.");
+        process.exit(3); // Non-zero so pre-tool-use.js knows the refresh didn't actually land
+      }
       process.exit(0);
     } catch (err) {
       log(`Error generating registry: ${err.message}`);
