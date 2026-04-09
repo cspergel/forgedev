@@ -1,0 +1,76 @@
+---
+description: Show all ForgePlan commands with descriptions and usage.
+user-invocable: true
+---
+
+# ForgePlan Commands
+
+## Getting Started
+
+| Command | What it does |
+|---------|-------------|
+| `/forgeplan:discover [description\|template:name\|--from doc.md]` | **Start here.** Describe your project, pick a template, or import an existing document (`--from`). The Translator maps documents to ForgePlan methodology, the Interviewer resolves ambiguities, then the Architect creates your architecture. |
+| `/forgeplan:spec [node\|--all]` | Generate or refine node specs. Full specs (ACs, constraints, interfaces) for current-phase nodes; interface-only specs for next-phase nodes. Also handles descriptive-to-prescriptive refinement after ingest. |
+
+## Building
+
+| Command | What it does |
+|---------|-------------|
+| `/forgeplan:build [node\|--all]` | Build a node (or all). Code is enforced against the spec — files stay in scope, shared types are protected, criteria are verified. |
+| `/forgeplan:next` | What should I work on next? Shows the recommended node and suggests commands based on where you are. |
+| `/forgeplan:review [node\|--all]` | Review a node against its spec. 7-dimension audit with per-criterion PASS/FAIL. Optional cross-model verification. |
+
+## Autonomous
+
+| Command | What it does |
+|---------|-------------|
+| `/forgeplan:sweep [--cross-check]` | Sweep your codebase for cross-cutting issues — 3-5 consolidated agents (tier-aware, all opus): Adversary (security), Contractualist (contracts), Pathfinder (UX), Structuralist (architecture), Skeptic (compliance). Progressive convergence drops clean agents. Add `--cross-check` for cross-model verification. |
+| `/forgeplan:deep-build` | Full autonomous pipeline: build all → verify-runnable → review → sweep → certify (tier-aware). Describe what you want, walk away. |
+| `/forgeplan:greenfield [description\|--from doc.md]` | Full pipeline from idea to certified app: discover → design review → research → spec → plan review → build → code review → sweep → certify. Universal review panel (Adversary, Structuralist, Skeptic, Contractualist, Pathfinder) checks design, plan, and code. One confirmation, then walk away. |
+| `/forgeplan:research [topic]` | Search npm, GitHub, and docs for packages, licenses, reference implementations, and best practices. Consolidated Researcher agent: packages, licenses, patterns, architecture, API documentation. |
+
+## Existing Projects
+
+| Command | What it does |
+|---------|-------------|
+| `/forgeplan:ingest [--force] [--confirm-auto]` | Already have code? Scans your codebase and maps it to ForgePlan nodes with auto-generated descriptive specs. These specs capture what exists but need refinement via `/forgeplan:spec [node]` to become prescriptive requirements — until then, governance is partial (descriptive specs describe behavior, they don't enforce it). Runs a baseline sweep (informational only, no auto-fixes). `--confirm-auto` skips the mapping-acceptance gate only; it does NOT bypass the destructive `--force` overwrite warning. |
+
+## Evolving Your Project
+
+| Command | What it does |
+|---------|-------------|
+| `/forgeplan:split [node]` | Need finer governance? Decomposes a node into smaller nodes while preserving code and state. |
+| `/forgeplan:revise [node\|--model name]` | Need to change something? Finds every affected node and walks you through updating them. |
+| `/forgeplan:integrate` | Do all the pieces fit? Verifies cross-node interfaces and shared model consistency. |
+| `/forgeplan:recover` | Something went wrong? Detects stuck builds and offers resume, reset, or skip options. |
+
+## Monitoring
+
+| Command | What it does |
+|---------|-------------|
+| `/forgeplan:status` | How's my project? Node statuses, dependency graph, shared models, and what to do next. |
+| `/forgeplan:measure` | How clean is my code? Counts broken references, duplicate types, and abandoned stubs. |
+
+## Utilities
+
+| Command | What it does |
+|---------|-------------|
+| `/forgeplan:configure` | Set up cross-model review (Codex/GPT/Gemini), enforcement mode, and model tiering. Interactive setup wizard. |
+| `/forgeplan:affected [model]` | Which nodes use this data model? Shows dependencies and update steps. |
+| `/forgeplan:regen-types` | Rebuild shared TypeScript types from the manifest. |
+| `/forgeplan:validate [manifest\|spec node\|all]` | Is my architecture valid? Checks for cycles, orphans, and consistency. |
+| `/forgeplan:skill [list\|refresh\|install\|validate]` | Manage skills — list agent assignments, refresh registry, install new skills, validate quality. |
+| `/forgeplan:guide` | Where am I? Evaluates project state and recommends your best next step with explanations. |
+| `/forgeplan:help` | This screen. |
+
+## Typical Workflow
+
+```
+/forgeplan:discover template:client-portal    ← Start with a template
+/forgeplan:spec --all                         ← Generate current-phase specs (+ future interfaces)
+/forgeplan:deep-build                         ← Build, review, sweep, and advance phases
+/forgeplan:status                             ← Check phase progress and next steps
+/forgeplan:integrate                          ← Verify interfaces / cross-phase handoff
+/forgeplan:measure                            ← Check quality
+/forgeplan:next                               ← What's next?
+```
