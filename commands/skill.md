@@ -1,7 +1,7 @@
 ---
 description: Manage ForgePlan skills — list assignments, refresh registry, install new skills, validate quality. Skills enhance agent capabilities with domain-specific patterns.
 user-invocable: true
-argument-hint: "[list | refresh | install <path-or-url> | validate]"
+argument-hint: "[list | refresh | install <path-or-url> | validate | review | approve <draft-hash> | promote <name>]"
 allowed-tools: Read Write Edit Bash Glob Grep WebFetch
 ---
 
@@ -81,3 +81,44 @@ node "${CLAUDE_PLUGIN_ROOT}/scripts/skill-registry.js" validate
 ```
 
 Show results: passed, failed, warnings.
+
+### `/forgeplan:skill review`
+
+Show draft skills detected by the Skill Learner, pending human review.
+
+1. Read all `.md` files in `.forgeplan/skill-drafts/`
+2. If no drafts: "No skill drafts pending. The Skill Learner detects patterns during builds — drafts appear after 20+ file writes."
+3. For each draft, display:
+   ```
+   === Skill Drafts (pending review) ===
+
+   [N]. [name] — [description]
+       Pattern: [type] (detected [count] times)
+       Files: [first 3 file paths]...
+       Action: approve / skip / delete
+   ```
+4. Wait for user input per draft: `approve`, `skip`, or `delete`
+5. For approved drafts: move to the approve flow (see below)
+6. For deleted drafts: remove the file from `.forgeplan/skill-drafts/`
+7. For skipped: leave as-is for later review
+
+### `/forgeplan:skill approve <draft-hash>`
+
+Promote a draft skill to the project's active skill directory.
+
+1. Read the draft from `.forgeplan/skill-drafts/[hash].md`
+2. Present the full skill content for final review
+3. Ask: "Approve this skill? It will be added to .forgeplan/skills/ and included in future builds. (y/n/edit)"
+4. If `y`: copy to `.forgeplan/skills/[name].md`, delete the draft, run `skill-registry.js refresh`
+5. If `edit`: open the content for editing, then re-confirm
+6. If `n`: leave as draft
+
+### `/forgeplan:skill promote <name>`
+
+Promote a project-local skill to user-global scope.
+
+1. Read the skill from `.forgeplan/skills/[name].md`
+2. Verify it has been used successfully (check if it's been in the registry for 5+ builds without being disabled or causing issues)
+3. Copy to `~/.claude/skills/[name].md` (user-global directory)
+4. Show: "Promoted [name] to global skills. It will be available in all your ForgePlan projects."
+5. Run `skill-registry.js refresh`
