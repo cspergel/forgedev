@@ -347,12 +347,11 @@ for (const model of (mapping.shared_models || [])) {
   let importCount = 0;
   const escaped = model.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-  // JS/TS patterns — broadened to catch barrel exports, namespace imports, and generated clients
+  // JS/TS patterns — import/require/re-export detection for shared model reuse
   const typePattern = new RegExp(`\\b(type|interface|class)\\s+${escaped}\\b`);
   const importPattern = new RegExp(
-    `(?:import|require|export).*\\b${escaped}\\b|` +     // direct import/require/re-export
-    `\\bfrom\\s+['"][^'"]*${escaped.toLowerCase()}[^'"]*['"]|` + // import from path containing model name
-    `\\b${escaped}\\b\\s*[=:]`                            // usage as variable/property (for generated clients, schemas)
+    `(?:import|require)\\s*[({]?[^;]*\\b${escaped}\\b|` +  // import { Name } from ... or require(...)...Name
+    `export\\s*\\{[^}]*\\b${escaped}\\b[^}]*\\}\\s*from\\b` // re-export: export { Name } from ...
   );
 
   // Prisma pattern: model ModelName { ... }
