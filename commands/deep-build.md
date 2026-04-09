@@ -6,7 +6,7 @@ allowed-tools: Read Write Edit Bash Glob Grep Agent
 
 # Deep Build — Full Autonomous Pipeline
 
-Run the complete ForgePlan pipeline autonomously: build all → verify-runnable → review → integrate → sweep → (runtime verify, Sprint 8) → cross-model (tier-aware) → certified.
+Run the complete ForgePlan pipeline autonomously: build all → design pass (frontend) → verify-runnable → review → integrate → sweep → (runtime verify, Sprint 8) → cross-model (tier-aware) → certified.
 
 ## Prerequisites
 
@@ -58,8 +58,8 @@ This is a sequential loop using existing commands:
        2. Add each unmet AC as a sweep finding in `sweep_state.findings.pending` with all required fields: `id: "B[N]"` (sequential), `source_model: "stop-hook"`, `node: "[node-id]"`, `category: "code-quality"`, `severity: "HIGH"`, `confidence: 95`, `description: "Unverified AC from bounce exhaustion: [AC text]"`, `pass_found: 0`. Note: `confidence` MUST be included (95 = high confidence these are real issues) or the sweep's <75 filter will silently drop them.
        3. Continue the pipeline to the next node — do not break autonomy.
        4. In the Phase 8 deep-build report, include a section: "**Nodes with unverified ACs (bounce exhaustion):** Node [id] completed with unverified ACs: [list]. The sweep will re-evaluate these."
-   - `"complete"`: all nodes done, proceed to Phase 3 (verify-runnable)
-   - `"phase_complete"`: all current-phase nodes done but future phases remain. Proceed to Phase 3 (verify-runnable). Phase Advancement after Phase 8 handles incrementing `build_phase` and looping back.
+   - `"complete"`: all nodes done, proceed to Phase 2b (design pass) then Phase 3 (verify-runnable)
+   - `"phase_complete"`: all current-phase nodes done but future phases remain. Proceed to Phase 2b (design pass) then Phase 3 (verify-runnable). Phase Advancement after Phase 8 handles incrementing `build_phase` and looping back.
    - `"stuck"`: auto-recover stuck nodes based on their current status, then re-run next-node.js. Do NOT invoke interactive `/forgeplan:recover` — deep-build must stay autonomous.
      - `"building"` → reset to `"specced"` (rebuild from scratch)
      - `"reviewing"` → reset to `"built"` (re-review)
@@ -82,7 +82,46 @@ All existing enforcement (PreToolUse, PostToolUse, Builder agent, Stop hook) app
 
 **Phase transition:** After all nodes are built and reviewed:
 1. **(Sprint 9, MEDIUM/LARGE only)** Run `node "${CLAUDE_PLUGIN_ROOT}/scripts/compile-wiki.js"` to compile the knowledge base from specs + source. NOTE: This is the ONLY compile-wiki invocation on the deep-build path — sweep skips Phase 1 when invoked from deep-build (sweep.md line 26), so sweep's Phase 1 step 7 compile does NOT run here.
-2. Update `sweep_state.current_phase` from `"build-all"` to `"verify-runnable"`.
+2. Update `sweep_state.current_phase` from `"build-all"` to `"design-pass"`.
+
+### Phase 2b: Design pass (frontend quality)
+
+**Skip this phase if:** no frontend nodes exist in the manifest (all nodes have `type` other than `frontend`), OR `complexity_tier` is `SMALL` and config does not explicitly enable design pass. If skipping, update `sweep_state.current_phase` to `"verify-runnable"` and proceed directly to Phase 3.
+
+1. Set `sweep_state.current_phase` to `"design-pass"` (already set by Phase 2 transition)
+2. Read the skill registry. Check if `frontend-design` skill is assigned to `design-pass` agent:
+   ```bash
+   node "${CLAUDE_PLUGIN_ROOT}/scripts/skill-registry.js" query --agent design-pass
+   ```
+   Load the skill content from `skills/core/frontend-design.md` for inclusion in the agent prompt.
+3. Identify all frontend nodes (nodes with `type: "frontend"` or nodes whose `file_scope` contains frontend files such as `.tsx`, `.jsx`, `.vue`, `.svelte`)
+4. Dispatch the design-pass agent using the Agent tool:
+   - Read `agents/design-pass.md` for the system prompt
+   - Include the `frontend-design` skill content from `skills/core/frontend-design.md`
+   - Include all frontend node files (read from each frontend node's `file_scope`)
+   - Include the manifest for context
+   - **Tier-aware depth:** Pass the complexity tier so the agent knows which levels to check:
+     - SMALL (if explicitly enabled): Level 1 only (anti-slop rules)
+     - MEDIUM: Levels 1-2 (anti-slop rules + visual consistency)
+     - LARGE: Levels 1-3 (anti-slop rules + visual consistency + component quality)
+5. Parse the agent's response for FINDING blocks (D-prefix) or CLEAN
+6. If CLEAN: log "Design pass clean." Proceed to user steering (step 8).
+7. If findings: dispatch a fresh fix agent per finding (same pattern as sweep Phase 4 — fresh agent, node-scoped, save/restore node status). After fixes, re-run the design pass agent once to verify. If still has findings after 2 passes, move remaining to `sweep_state.needs_manual_attention` with reason "design quality — user review recommended."
+8. **User steering (one round):** Present a summary of the frontend build:
+   ```
+   Frontend design pass complete. Here's what was built:
+     - [N] pages: [list page names from frontend nodes]
+     - Palette: [detected primary colors from the code]
+     - Layout: [detected layout pattern]
+
+     Would you like to adjust anything? (e.g., 'darker', 'more minimal',
+     'use green accent instead', 'add sidebar')
+     Or press enter to continue to verification.
+   ```
+   - If user provides feedback: dispatch a fix agent with the feedback as instructions, targeting all frontend node files. Re-run design pass after.
+   - If user presses enter / says "continue" / no response: proceed.
+   - **In autonomous mode (greenfield/deep-build without user interaction):** Skip user steering. The design pass findings + fixes are sufficient.
+9. Update `sweep_state.current_phase` to `"verify-runnable"` and proceed to Phase 3.
 
 ### Phase 3: Run verify-runnable gate (was Phase 2.5)
 
