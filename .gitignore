@@ -1,2 +1,7 @@
 .claude/
 agents/archived/
+.forgeplan/
+.tmp-runtime-review*/
+compiled
+deterministic
+Planning Documents/PlacementOps_Master_Build_Plan.md
