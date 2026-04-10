@@ -1,5 +1,4 @@
 ---
-name: recover
 description: Recover from interrupted ForgePlan builds, reviews, sweeps, or splits.
 disable-model-invocation: true
 ---

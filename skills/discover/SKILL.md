@@ -1,5 +1,4 @@
 ---
-name: discover
 description: Design a new ForgePlan architecture and generate the initial manifest.
 argument-hint: "[description|template:name|--from <file>]"
 disable-model-invocation: true

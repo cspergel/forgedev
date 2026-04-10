@@ -1,5 +1,4 @@
 ---
-name: status
 description: Show node status, dependencies, phases, and suggested next steps.
 disable-model-invocation: true
 ---

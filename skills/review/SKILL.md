@@ -1,5 +1,4 @@
 ---
-name: review
 description: Review one built node or all built nodes against their specs.
 argument-hint: "[node-id|--all]"
 disable-model-invocation: true

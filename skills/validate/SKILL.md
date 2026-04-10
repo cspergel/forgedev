@@ -1,5 +1,4 @@
 ---
-name: validate
 description: Validate the manifest and specs for cycles, scope overlaps, and consistency.
 argument-hint: "[manifest|spec <node-id>|all]"
 disable-model-invocation: true

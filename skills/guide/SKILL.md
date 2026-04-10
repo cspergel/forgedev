@@ -1,5 +1,4 @@
 ---
-name: guide
 description: Show the best next ForgePlan step for the current project.
 disable-model-invocation: true
 ---

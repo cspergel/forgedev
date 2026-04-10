@@ -1,5 +1,4 @@
 ---
-name: configure
 description: Run the ForgePlan setup wizard for cross-model review and settings.
 disable-model-invocation: true
 ---

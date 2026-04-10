@@ -1,5 +1,4 @@
 ---
-name: regen-types
 description: Rebuild shared TypeScript types from the manifest.
 disable-model-invocation: true
 ---

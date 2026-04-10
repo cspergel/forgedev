@@ -1,5 +1,4 @@
 ---
-name: sweep
 description: Sweep the codebase for cross-cutting issues with ForgePlan agents.
 argument-hint: "[--cross-check|--baseline]"
 disable-model-invocation: true

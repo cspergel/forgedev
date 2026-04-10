@@ -1,5 +1,4 @@
 ---
-name: skill
 description: Manage ForgePlan skills and refresh the skill registry.
 argument-hint: "[list|refresh|install|validate|review|approve|promote]"
 disable-model-invocation: true

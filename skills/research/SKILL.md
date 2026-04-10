@@ -1,5 +1,4 @@
 ---
-name: research
 description: Research packages, patterns, and docs for a ForgePlan project.
 argument-hint: "[topic]"
 disable-model-invocation: true

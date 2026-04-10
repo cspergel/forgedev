@@ -1,5 +1,4 @@
 ---
-name: integrate
 description: Verify cross-node interfaces and shared model consistency.
 disable-model-invocation: true
 ---

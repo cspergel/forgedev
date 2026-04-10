@@ -1,5 +1,4 @@
 ---
-name: help
 description: List all ForgePlan slash commands with usage. Do not start workflows.
 disable-model-invocation: true
 ---

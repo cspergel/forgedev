@@ -1,5 +1,4 @@
 ---
-name: greenfield
 description: Run the full greenfield pipeline from idea to certified app.
 argument-hint: "[description|--from <file>]"
 disable-model-invocation: true

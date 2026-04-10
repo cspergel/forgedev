@@ -127,8 +127,11 @@ for (const [skillName, rule] of Object.entries(commandSkillRules)) {
     continue;
   }
 
-  if (frontmatter.name !== skillName) {
-    pushError(errors, `skills/${skillName}/SKILL.md: expected name ${JSON.stringify(skillName)}, got ${JSON.stringify(frontmatter.name)}`);
+  if (frontmatter.name !== undefined) {
+    pushError(
+      errors,
+      `skills/${skillName}/SKILL.md: command skills must not set frontmatter.name; that strips the forgeplan: namespace`
+    );
   }
 
   if (typeof frontmatter.description !== "string" || frontmatter.description.trim().length === 0) {

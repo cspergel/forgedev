@@ -1,5 +1,4 @@
 ---
-name: measure
 description: Measure broken refs, duplicate types, and stub debt.
 disable-model-invocation: true
 ---

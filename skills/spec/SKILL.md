@@ -1,5 +1,4 @@
 ---
-name: spec
 description: Generate or refine one node spec or all specs.
 argument-hint: "[node-id|--all]"
 disable-model-invocation: true

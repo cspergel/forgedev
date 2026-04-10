@@ -1,5 +1,4 @@
 ---
-name: ingest
 description: Ingest an existing repository into ForgePlan and generate descriptive specs.
 argument-hint: "[--force] [--confirm-auto]"
 disable-model-invocation: true

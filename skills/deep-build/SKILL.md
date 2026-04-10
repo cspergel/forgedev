@@ -1,5 +1,4 @@
 ---
-name: deep-build
 description: Run the full autonomous ForgePlan pipeline from build through certification.
 disable-model-invocation: true
 ---

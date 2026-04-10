@@ -1,5 +1,4 @@
 ---
-name: affected
 description: Show which nodes depend on a shared model and what updates they need.
 argument-hint: "[model-name]"
 disable-model-invocation: true

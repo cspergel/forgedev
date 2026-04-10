@@ -1,5 +1,4 @@
 ---
-name: revise
 description: Revise a node spec or shared model and trace affected nodes.
 argument-hint: "[node-id|--model <name>]"
 disable-model-invocation: true

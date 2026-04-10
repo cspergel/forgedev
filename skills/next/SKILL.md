@@ -1,5 +1,4 @@
 ---
-name: next
 description: Recommend the next ForgePlan action based on current project state.
 disable-model-invocation: true
 ---

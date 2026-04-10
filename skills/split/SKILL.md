@@ -1,5 +1,4 @@
 ---
-name: split
 description: Split a built node into smaller governed nodes.
 argument-hint: "[node-id]"
 disable-model-invocation: true

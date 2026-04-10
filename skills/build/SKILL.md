@@ -1,5 +1,4 @@
 ---
-name: build
 description: Build one node or all ready nodes under ForgePlan enforcement.
 argument-hint: "[node-id|--all]"
 disable-model-invocation: true
