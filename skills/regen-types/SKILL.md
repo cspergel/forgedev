@@ -1,8 +1,8 @@
 ---
 name: regen-types
-description: "Rebuild the shared TypeScript types from your manifest. Run this after changing shared model fields to keep the type definitions in sync."
+description: Rebuild shared TypeScript types from the manifest.
+disable-model-invocation: true
 ---
-
 
 # Regenerate Shared Types
 

@@ -1,8 +1,8 @@
 ---
 name: deep-build
-description: "Full autonomous build pipeline. Builds all nodes, verifies they run, reviews them, sweeps for issues, and certifies (tier-aware — SMALL skips cross-model). You describe what you want, then walk away."
+description: Run the full autonomous ForgePlan pipeline from build through certification.
+disable-model-invocation: true
 ---
-
 
 # Deep Build — Full Autonomous Pipeline
 

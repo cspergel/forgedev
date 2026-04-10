@@ -1,8 +1,9 @@
 ---
 name: build
-description: "Build a node (or all nodes). Generates code following the spec with automatic enforcement — files stay in scope, shared types are protected, and acceptance criteria are verified before completion. Use --all to build everything in dependency order."
+description: Build one node or all ready nodes under ForgePlan enforcement.
+argument-hint: "[node-id|--all]"
+disable-model-invocation: true
 ---
-
 
 # Build Node
 

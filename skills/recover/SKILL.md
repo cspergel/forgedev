@@ -1,8 +1,8 @@
 ---
 name: recover
-description: "Something went wrong? This detects crashed or stuck builds/reviews and offers options to resume, reset, or skip. Run this if a build was interrupted or a node is stuck."
+description: Recover from interrupted ForgePlan builds, reviews, sweeps, or splits.
+disable-model-invocation: true
 ---
-
 
 # Crash Recovery
 

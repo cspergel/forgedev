@@ -1,8 +1,9 @@
 ---
 name: revise
-description: "Need to change something? Revise a node's spec or change a shared data model. Automatically finds every affected node and walks you through updating them. Use --model [name] to cascade a shared model change across all dependent nodes."
+description: Revise a node spec or shared model and trace affected nodes.
+argument-hint: "[node-id|--model <name>]"
+disable-model-invocation: true
 ---
-
 
 # Revise Node
 

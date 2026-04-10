@@ -1,8 +1,9 @@
 ---
 name: greenfield
-description: "Full pipeline from idea to certified app. Chains discover → design review → research → spec → plan review → deep-build. One confirmation, then walk away."
+description: Run the full greenfield pipeline from idea to certified app.
+argument-hint: "[description|--from <file>]"
+disable-model-invocation: true
 ---
-
 
 # Greenfield Build
 

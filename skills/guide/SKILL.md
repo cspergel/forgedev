@@ -1,8 +1,8 @@
 ---
 name: guide
-description: "Where am I and what should I do? Evaluates your project state and walks you through the best next steps with clear options. Your personal ForgePlan guide."
+description: Show the best next ForgePlan step for the current project.
+disable-model-invocation: true
 ---
-
 
 # ForgePlan Guide
 

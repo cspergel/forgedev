@@ -1,8 +1,9 @@
 ---
 name: validate
-description: "Is my architecture valid? Checks the manifest for circular dependencies, orphan nodes, and scope overlaps. Validates specs for required fields and consistency with the manifest."
+description: Validate the manifest and specs for cycles, scope overlaps, and consistency.
+argument-hint: "[manifest|spec <node-id>|all]"
+disable-model-invocation: true
 ---
-
 
 # Validate
 

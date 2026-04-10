@@ -1,8 +1,8 @@
 ---
 name: configure
-description: "Set up cross-model review, configure which AI models verify your code, and customize ForgePlan settings. Interactive setup wizard."
+description: Run the ForgePlan setup wizard for cross-model review and settings.
+disable-model-invocation: true
 ---
-
 
 # ForgePlan Configuration
 

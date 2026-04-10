@@ -1,10 +1,12 @@
 ---
 name: help
-description: "Show all ForgePlan commands with descriptions and usage."
+description: List all ForgePlan slash commands with usage. Do not start workflows.
+disable-model-invocation: true
 ---
 
-
 # ForgePlan Commands
+
+Only show command help on this screen. Do not run `/forgeplan:discover`, `/forgeplan:ingest`, or any other workflow as part of `/forgeplan:help`.
 
 ## Getting Started
 

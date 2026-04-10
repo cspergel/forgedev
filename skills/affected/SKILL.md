@@ -1,8 +1,9 @@
 ---
 name: affected
-description: "Which nodes use this data model? Shows every node that depends on a shared model (like User or Document) and what steps are needed to update them."
+description: Show which nodes depend on a shared model and what updates they need.
+argument-hint: "[model-name]"
+disable-model-invocation: true
 ---
-
 
 # Find Affected Nodes
 

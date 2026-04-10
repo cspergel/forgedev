@@ -1,8 +1,8 @@
 ---
 name: measure
-description: "How clean is my code? Counts broken references, duplicate type definitions, and abandoned stubs. Shows a quality score you can track over time."
+description: Measure broken refs, duplicate types, and stub debt.
+disable-model-invocation: true
 ---
-
 
 # Measure Quality
 

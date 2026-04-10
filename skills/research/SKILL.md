@@ -1,8 +1,9 @@
 ---
 name: research
-description: "Research agents search for packages, check licenses, find reference implementations, and gather API docs. Run before speccing to make informed dependency and pattern choices."
+description: Research packages, patterns, and docs for a ForgePlan project.
+argument-hint: "[topic]"
+disable-model-invocation: true
 ---
-
 
 # Research
 

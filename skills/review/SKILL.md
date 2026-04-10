@@ -1,8 +1,9 @@
 ---
 name: review
-description: "Audit a built node against its spec using the seven-dimension review format. Native Claude review, plus optional cross-model verification via BYOK. Use --all to review all built nodes sequentially."
+description: Review one built node or all built nodes against their specs.
+argument-hint: "[node-id|--all]"
+disable-model-invocation: true
 ---
-
 
 # Review Node
 

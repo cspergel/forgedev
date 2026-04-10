@@ -1,8 +1,9 @@
 ---
 name: sweep
-description: "Sweep your entire codebase for cross-cutting issues. Tier-aware agent selection (SMALL 3, MEDIUM 4, LARGE 5) using 5 consolidated team agents (Adversary, Contractualist, Pathfinder, Structuralist, Skeptic). All opus. Progressive convergence drops clean agents. Findings fixed with node-scoped enforcement, then cross-model verified."
+description: Sweep the codebase for cross-cutting issues with ForgePlan agents.
+argument-hint: "[--cross-check|--baseline]"
+disable-model-invocation: true
 ---
-
 
 # Codebase Sweep
 

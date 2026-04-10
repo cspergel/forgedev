@@ -1,8 +1,9 @@
 ---
 name: ingest
-description: "Bootstrap ForgePlan governance on an existing codebase. Generates manifest, descriptive specs (auto-generated from code — not real requirements), wiki skeleton, and baseline sweep. Specs need manual refinement via /forgeplan:spec before the project is fully governed."
+description: Ingest an existing repository into ForgePlan and generate descriptive specs.
+argument-hint: "[--force] [--confirm-auto]"
+disable-model-invocation: true
 ---
-
 
 # /forgeplan:ingest
 

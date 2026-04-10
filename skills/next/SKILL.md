@@ -1,8 +1,8 @@
 ---
 name: next
-description: "What should I do next? Evaluates your entire project state and recommends the best next action — whether that's building, reviewing, integrating, fixing something, or making changes. Your guide through the whole workflow."
+description: Recommend the next ForgePlan action based on current project state.
+disable-model-invocation: true
 ---
-
 
 # Next Node Recommendation
 

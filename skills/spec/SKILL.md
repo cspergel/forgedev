@@ -1,8 +1,9 @@
 ---
 name: spec
-description: "Generate or refine a detailed node specification. Use --all to generate specs for all nodes in dependency order. The spec is the enforcement contract for the build phase."
+description: Generate or refine one node spec or all specs.
+argument-hint: "[node-id|--all]"
+disable-model-invocation: true
 ---
-
 
 # Generate Node Specification
 

@@ -1,8 +1,9 @@
 ---
 name: discover
-description: "Start architecture discovery — guided conversation that produces a validated manifest with nodes, shared models, and dependency graph. This is the entry point for every new ForgePlan project."
+description: Design a new ForgePlan architecture and generate the initial manifest.
+argument-hint: "[description|template:name|--from <file>]"
+disable-model-invocation: true
 ---
-
 
 # Architecture Discovery
 

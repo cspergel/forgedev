@@ -1,8 +1,8 @@
 ---
 name: status
-description: "How's my project doing? Shows every node's status, the dependency graph, shared model usage, and suggests what to do next based on where you are."
+description: Show node status, dependencies, phases, and suggested next steps.
+disable-model-invocation: true
 ---
-
 
 # Project Status
 

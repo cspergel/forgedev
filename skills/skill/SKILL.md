@@ -1,8 +1,9 @@
 ---
 name: skill
-description: "Manage ForgePlan skills — list assignments, refresh registry, install new skills, validate quality. Skills enhance agent capabilities with domain-specific patterns."
+description: Manage ForgePlan skills and refresh the skill registry.
+argument-hint: "[list|refresh|install|validate|review|approve|promote]"
+disable-model-invocation: true
 ---
-
 
 # Skill Management
 

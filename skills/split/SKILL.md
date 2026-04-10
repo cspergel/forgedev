@@ -1,8 +1,9 @@
 ---
 name: split
-description: "Decompose a built node into finer-grained nodes while preserving code, state, and enforcement integrity"
+description: Split a built node into smaller governed nodes.
+argument-hint: "[node-id]"
+disable-model-invocation: true
 ---
-
 
 # /forgeplan:split [node-id]
 

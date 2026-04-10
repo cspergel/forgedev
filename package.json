@@ -9,6 +9,7 @@
     "validate": "node -e \"console.log('Usage:\\n  node scripts/validate-manifest.js <manifest.yaml>\\n  node scripts/validate-spec.js <spec.yaml> [manifest.yaml]')\"",
     "validate:manifest": "node scripts/validate-manifest.js",
     "validate:spec": "node scripts/validate-spec.js",
+    "validate:plugin": "node scripts/validate-plugin.js",
     "measure": "node scripts/measure-quality.js",
     "affected": "node scripts/find-affected-nodes.js",
     "regen-types": "node scripts/regenerate-shared-types.js"

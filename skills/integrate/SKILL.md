@@ -1,8 +1,8 @@
 ---
 name: integrate
-description: "Do all the pieces fit together? Verifies that every node's interfaces connect correctly, shared models are consistent, and identifies exactly what's broken if something doesn't match."
+description: Verify cross-node interfaces and shared model consistency.
+disable-model-invocation: true
 ---
-
 
 # Integration Check
 
