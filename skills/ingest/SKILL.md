@@ -35,6 +35,8 @@ If `--force` was passed AND `.forgeplan/` already contains ANY ForgePlan content
   - .forgeplan/specs/*.yaml (all node specs)
   - .forgeplan/state.json (build/review state)
   - .forgeplan/wiki/ (knowledge base)
+  - .forgeplan/plans/ (implementation planning artifacts)
+  - .forgeplan/research/ (research artifacts that could steer future specs/builds)
   - Any other existing `.forgeplan/` governance files except preserved sweeps/conversations
 
   Existing sweep reports and conversation logs will be preserved.
@@ -80,7 +82,7 @@ Loop until clean (max 5 passes).
 ### Step 7: Write Manifest + Specs + State
 Write `.forgeplan/manifest.yaml`, `.forgeplan/state.json`, `.forgeplan/specs/*.yaml`
 Initialize state with all nodes in "built" status. For each node, also set `nodes.[node-id].spec_type` to `"descriptive"` in state.json — this caches the spec_type so session-start.js doesn't need to read spec YAML files on every session start.
-Create `.forgeplan/` directory structure (specs/, plans/, conversations/, reviews/, sweeps/) using `mkdir -p` (safe — does not overwrite existing directories or their contents). **When `--force` is set:** overwrite manifest.yaml, state.json, specs/*.yaml, wiki/, reviews/, and plans/ so stale governance artifacts cannot steer the newly ingested project incorrectly. Preserve existing sweeps/ and conversations/ directories and their contents.
+Create `.forgeplan/` directory structure (specs/, plans/, conversations/, reviews/, sweeps/) using `mkdir -p` (safe — does not overwrite existing directories or their contents). **When `--force` is set:** delete and recreate stale governance directories before writing new artifacts: `wiki/`, `plans/`, `reviews/`, and `research/`. Then overwrite `manifest.yaml`, `state.json`, and `specs/*.yaml`. Preserve existing `sweeps/` and `conversations/` directories and their contents.
 
 ### Step 7.5: Validate Generated Specs
 For each generated spec, run validation:
@@ -93,7 +95,7 @@ If any spec fails validation, fix the spec (re-engage Architect) and re-validate
 If tier is MEDIUM or LARGE:
 1. Create wiki skeleton: `.forgeplan/wiki/index.md`, `.forgeplan/wiki/nodes/[node-id].md` per node, `.forgeplan/wiki/decisions.md`, `.forgeplan/wiki/rules.md`
 2. Run `node "${CLAUDE_PLUGIN_ROOT}/scripts/compile-wiki.js"` to compile institutional knowledge from specs and code into the wiki.
-If tier is SMALL: skip wiki compilation.
+If tier is SMALL: skip wiki compilation, but still ensure any stale wiki directory left by `--force` was removed in Step 7.
 
 ### Step 9: Baseline Sweep (Read-Only)
 Run `/forgeplan:sweep --baseline` for baseline quality assessment.

@@ -89,6 +89,14 @@
             "items": { "type": "string" },
             "description": "Pre-existing files modified (via Edit) or overwritten (via Write) during build. NOT safe to delete on reset — need manual revert. Auto-populated by PostToolUse."
           },
+          "selected_builder_model": {
+            "type": ["string", "null"],
+            "description": "Builder model selected for the most recent build attempt. Optional metadata for reporting."
+          },
+          "selected_builder_model_reason": {
+            "type": ["string", "null"],
+            "description": "Why the builder model was selected (for example: builder_override, models.builder, tier-default). Optional metadata for reporting."
+          },
           "last_review": {
             "type": ["string", "null"],
             "description": "Path to most recent native review report, or null"

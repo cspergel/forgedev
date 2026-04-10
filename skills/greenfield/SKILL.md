@@ -19,9 +19,12 @@ Read the project directory to determine where to start:
 1. If `.forgeplan/deep-build-report.md` exists AND `sweep_state` is null in state.json AND all nodes have status `"built"`, `"reviewed"`, or `"revised"` AND no node has `bounce_exhausted: true` → **project is already complete**. Present the final output and exit. If any node has `bounce_exhausted: true` with `unverified_acs`, log: "Project completed with unverified acceptance criteria on [node]. Run `/forgeplan:review [node]` to verify." Still present final output but include the warning.
 2. If `sweep_state` is non-null in state.json → **deep-build was interrupted**. Auto-recover: execute the RESUME recovery logic from `/forgeplan:recover` directly — do NOT present the interactive menu, just perform the RESUME action for the current phase. Recovery will continue the pipeline to completion. After recovery finishes, re-enter Step 0 to check if the project is now complete. Log: "Interrupted deep-build detected — auto-recovering from [phase]."
 3. If `.forgeplan/manifest.yaml` does NOT exist → start from Step 1 (discover)
-4. If manifest exists but `.forgeplan/specs/` has no complete specs (specs have empty `test` fields in acceptance_criteria) → start from Step 2 (research) if `.forgeplan/research/` does not exist or contains no `.md` files, or Step 3 (spec) if research reports exist
-5. If manifest exists and specs are complete but some nodes are `pending` or `specced` → start from Step 4 (deep-build)
-6. If nodes are partially built → start from Step 4 (deep-build handles resume via next-node.js)
+4. If manifest exists AND `.forgeplan/reviews/design-review-pass-1.md` does NOT exist AND all nodes are `pending` → start from Step 1.5 (design review)
+5. If manifest exists AND design review exists AND project tier is not `SMALL` AND `.forgeplan/plans/implementation-plan.md` does NOT exist → start from Step 3.5 (plan generation)
+6. If manifest exists AND `.forgeplan/plans/implementation-plan.md` exists AND project tier is not `SMALL` AND `.forgeplan/reviews/plan-review-pass-1.md` does NOT exist → start from Step 3.5 (plan review)
+7. If manifest exists but `.forgeplan/specs/` has no complete specs (specs have empty `test` fields in acceptance_criteria) → start from Step 2 (research) if `.forgeplan/research/` does not exist or contains no `.md` files, or Step 3 (spec) if research reports exist
+8. If manifest exists and specs are complete but some nodes are `pending` or `specced` → start from Step 4 (deep-build)
+9. If nodes are partially built → start from Step 4 (deep-build handles resume via next-node.js)
 
 Log which step is being resumed: "Resuming greenfield from Step [N] — [reason]."
 
@@ -90,7 +93,13 @@ After discover produces the manifest and skeleton specs, dispatch the universal 
 
 ### Step 2: Research
 
-Read `.forgeplan/manifest.yaml` to identify research topics from the tech stack and integrations:
+Research is required for **all greenfield projects, including SMALL**. Every greenfield run must answer the baseline question: **"Does this already exist, and what proven architecture patterns should we learn from?"**
+
+Always add one **baseline prior-art topic** derived from the manifest's project name/description before any stack-specific research:
+- Example: `ai agent token tracker prior art and architecture patterns`
+- This topic is mandatory even when the stack is generic (for example: node + typescript + sqlite)
+
+Read `.forgeplan/manifest.yaml` to identify research topics from the project description, tech stack, and integrations:
 
 - For each `tech_stack` entry naming a specific technology:
   - `auth: supabase-auth` → topic: "supabase auth patterns"
@@ -101,9 +110,13 @@ Read `.forgeplan/manifest.yaml` to identify research topics from the tech stack 
   - Any value of `"none"`, `""`, or `null` → skip (no technology to research)
 - For each `integration` type node in the manifest → research that integration's API
 
+If the stack is otherwise generic, still keep the baseline prior-art topic. Greenfield must always produce at least one research artifact.
+
 For each identified topic, run `/forgeplan:research [topic]`.
 
 **If no specific technologies or integrations are found:** skip Step 2 entirely. Log: "No specific integrations to research — skipping research step."
+
+Override the generic-skip rule above when it conflicts with the baseline prior-art requirement. A greenfield run without any research output is invalid.
 
 **If research fails for a topic:** log a warning and continue. Research is informative, not blocking.
 

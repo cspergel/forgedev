@@ -31,6 +31,9 @@ Run the complete ForgePlan pipeline autonomously: build all → design pass (fro
        "fixing_node": null,
        "consecutive_clean_passes": 0,
        "max_passes": 10,
+       "needs_manual_attention": [],
+       "failed_agents": [],
+       "blocked_decisions": [],
        "findings": { "pending": [], "resolved": [] },
        "modified_files_by_pass": {},
        "agent_convergence": {},
@@ -128,9 +131,13 @@ Before proceeding to integration, verify the project can actually run:
 node "${CLAUDE_PLUGIN_ROOT}/scripts/verify-runnable.js"
 ```
 
-If it **passes**: update `sweep_state.current_phase` from `"verify-runnable"` to `"integrate"` and proceed to Phase 4 (integration check).
+If it returns **`status: "pass"`**: update `sweep_state.current_phase` from `"verify-runnable"` to `"integrate"` and proceed to Phase 4 (integration check).
 
-If it **fails**: dispatch a fix agent to address the issues (e.g., missing dependencies, broken imports, config errors). After the fix agent completes, re-run `verify-runnable.js`. Repeat until it passes. If it fails 3 consecutive times, halt deep-build with an error and preserve `sweep_state` for recovery.
+If it returns **`status: "warnings"`**: treat this as pass-with-warnings. Record the warnings in the deep-build report and proceed to Phase 4.
+
+If it returns **`status: "environment_error"`**: attempt environment-focused remediation (missing `.env`, port conflicts, missing local setup), retry once, then either proceed with a warning or halt if the project still cannot be verified.
+
+If it returns **`status: "fail"`**: dispatch a fix agent to address the issues (e.g., missing dependencies, broken imports, config errors). After the fix agent completes, re-run `verify-runnable.js`. Repeat until it passes. If it fails 3 consecutive times, halt deep-build with an error and preserve `sweep_state` for recovery.
 
 The verify-runnable gate **must pass** before proceeding to Phase 4. This catches fundamental project health issues (missing packages, syntax errors, broken configs) before investing time in integration checks and sweeps.
 
@@ -248,16 +255,40 @@ This phase follows the **exact same logic as sweep Phase 6** (Task 9). All statu
 2. **(Sprint 9, MEDIUM/LARGE only)** Run `node "${CLAUDE_PLUGIN_ROOT}/scripts/compile-wiki.js"` to update the wiki with sweep findings. This is needed because sweep's Phase 7 compile-wiki is skipped when called from deep-build (sweep.md line 26). Without this step, the wiki would only reflect pre-sweep state.
 3. Generate deep-build report at `.forgeplan/deep-build-report.md`:
 
+The report must capture **pipeline decisions**, not just outcomes. Whenever a phase is skipped, downgraded, or uses a default, record the reason. This includes at minimum:
+- research behavior (baseline-only vs stack-specific topics, or no artifacts found)
+- implementation plan behavior (combined SMALL design+plan artifact vs separate plan review)
+- skill loading behavior (enabled, disabled by SMALL tier, or disabled by config)
+- wiki behavior (compiled vs skipped, and why)
+- builder model decisions per node (from `state.json` `selected_builder_model` fields when available)
+- runtime verification / cross-model / design-pass skips and their reasons
+
 ```markdown
 # Deep Build Report
 
 ## Summary
 - Project: [project name]
+- Tier: [complexity tier]
 - Nodes: [N] built, reviewed, and verified
 - Total passes: [N]
 - Wall-clock time: [duration]
 - Final integration: [PASS/FAIL]
 - Cross-model consecutive clean passes: [N]
+
+## Pipeline Decisions
+- Research: [baseline prior-art only / stack-specific topics also run / no research artifacts found] — [reason]
+- Plan artifact: [combined SMALL design+plan / separate implementation plan / missing] — [reason]
+- Skills: [enabled / disabled] — [reason]
+- Wiki: [compiled / skipped] — [reason]
+- Design pass: [ran / skipped] — [reason]
+- Runtime verification: [ran / skipped] — [reason]
+- Cross-model: [ran / skipped] — [reason]
+
+## Build Models
+| Node | Model | Source |
+|------|-------|--------|
+| data-store | sonnet | tier-default |
+| cli | opus | models.builder_override.cli |
 
 ## Findings Timeline
 | Pass | Model | Found | Resolved | Category |
@@ -275,6 +306,12 @@ This phase follows the **exact same logic as sweep Phase 6** (Task 9). All statu
 
 ## Issues Requiring Manual Review
 [Items from sweep_state.needs_manual_attention: project-level findings, user-skipped decisions, unresolvable items]
+
+## Capability Usage
+- Research artifacts: [list files from `.forgeplan/research/`, or "none found"]
+- Plan artifact: [.forgeplan/plans/implementation-plan.md exists?]
+- Skills registry: [.forgeplan/skills-registry.yaml exists?]
+- Wiki files: [list key files, or "skipped for SMALL"]
 
 ## Integration Results
 [Final integration check output]

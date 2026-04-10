@@ -382,9 +382,17 @@ function buildAmbientStatus(forgePlanDir, manifestPath, statePath, state) {
   let skillsDisabled = false;
   try {
     const configPathSkills = path.join(forgePlanDir, "config.yaml");
+    let skillCheckConfig = null;
     if (fs.existsSync(configPathSkills)) {
-      const skillCheckConfig = yaml.load(fs.readFileSync(configPathSkills, "utf-8"));
+      skillCheckConfig = yaml.load(fs.readFileSync(configPathSkills, "utf-8"));
       if (skillCheckConfig && skillCheckConfig.skills && skillCheckConfig.skills.enabled === false) {
+        skillsDisabled = true;
+      }
+    }
+    if (!skillsDisabled) {
+      const { getEffectiveTier } = require("./lib/skill-helpers");
+      const effectiveTier = getEffectiveTier(manifest, skillCheckConfig || {});
+      if ((!skillCheckConfig || !skillCheckConfig.skills || skillCheckConfig.skills.enabled === undefined) && effectiveTier === "SMALL") {
         skillsDisabled = true;
       }
     }

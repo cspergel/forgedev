@@ -136,6 +136,13 @@ function main() {
     dependencyGraph: graphLines,
     sharedModels,
     activeNode: state.active_node || null,
+    sweepState: state.sweep_state ? {
+      operation: state.sweep_state.operation || null,
+      currentPhase: state.sweep_state.current_phase || null,
+      passNumber: state.sweep_state.pass_number || null,
+      blockedDecisions: Array.isArray(state.sweep_state.blocked_decisions) ? state.sweep_state.blocked_decisions : [],
+      needsManualAttention: Array.isArray(state.sweep_state.needs_manual_attention) ? state.sweep_state.needs_manual_attention : [],
+    } : null,
     discoveryComplete: state.discovery_complete || false,
     phase: phaseInfo,
   }, null, 2));

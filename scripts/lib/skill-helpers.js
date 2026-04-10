@@ -12,7 +12,22 @@ const path = require("path");
 const crypto = require("crypto");
 
 /** Default skill sources (must match skill-registry.js). */
-const DEFAULT_SOURCES = [".forgeplan/skills", "skills"];
+const DEFAULT_SOURCES = [".forgeplan/skills", "skill-library"];
+
+function getEffectiveTier(manifest, config) {
+  const override =
+    config &&
+    config.complexity &&
+    typeof config.complexity.tier_override === "string" &&
+    config.complexity.tier_override.trim()
+      ? config.complexity.tier_override.trim()
+      : null;
+  return (
+    override ||
+    (manifest.project && manifest.project.complexity_tier) ||
+    "MEDIUM"
+  ).toUpperCase();
+}
 
 /**
  * Recursively find all .md files in a directory (lightweight copy from skill-registry.js).
@@ -62,7 +77,7 @@ function computeManifestHash(manifest, config, projectRoot) {
   const hashInput = {
     tech_stack: (manifest.project && manifest.project.tech_stack) || {},
     nodes: manifest.nodes ? Object.keys(manifest.nodes).sort() : [],
-    complexity_tier: (manifest.project && manifest.project.complexity_tier) || "MEDIUM",
+    complexity_tier: getEffectiveTier(manifest, config),
     skills_config: (config && config.skills) || {},
   };
 
@@ -152,4 +167,4 @@ function isRegistryStale(manifest, forgePlanDir, config, projectRoot) {
   return { exists: true, stale, activeCount, skillGapCount };
 }
 
-module.exports = { computeManifestHash, isRegistryStale };
+module.exports = { computeManifestHash, isRegistryStale, getEffectiveTier };

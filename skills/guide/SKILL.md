@@ -23,6 +23,18 @@ Read the state and match the FIRST condition that applies (priority order):
 
 For phased projects (`max_phase > 1`), generic `spec --all` / `build --all` guidance applies to the CURRENT build phase only. Future-phase nodes stay interface-only or deferred until `/forgeplan:deep-build` advances the phase.
 
+### Sweep waiting on user decisions
+Check: `sweep_state.blocked_decisions` exists and has length > 0
+```
+⚠️ Sweep is waiting on [N] architectural decision(s).
+
+This operation will NOT continue on its own until those decisions are resolved.
+
+  → /forgeplan:sweep         Resume and answer the pending decisions
+  → /forgeplan:status        See current state
+  → /forgeplan:recover       Abort the operation if needed
+```
+
 ### Active sweep or deep-build in progress
 Check: `sweep_state` is not null and `current_phase` is not `"halted"`
 ```
@@ -91,26 +103,37 @@ Your design is ready for review. The universal review panel (Adversary,
 Skeptic, Structuralist, Contractualist, Pathfinder) will check architecture,
 interfaces, feasibility, user journeys, and security.
 
-  → /forgeplan:greenfield       Runs the full pipeline (includes review)
+  → /forgeplan:greenfield       Resumes at design review and continues the pipeline
   → Run design review manually  Dispatch review agents against the manifest
 ```
 
-### Design reviewed but no implementation plan
-Check: `.forgeplan/reviews/design-review-pass-*.md` exists AND `.forgeplan/plans/implementation-plan.md` does NOT exist
+### Design reviewed but no implementation plan (MEDIUM/LARGE)
+Check: `.forgeplan/reviews/design-review-pass-*.md` exists AND `.forgeplan/plans/implementation-plan.md` does NOT exist AND `complexity_tier` is not `SMALL`
 ```
 Design is reviewed and clean. Next: the Architect generates an implementation
 plan (Planner mode) that breaks the design into buildable tasks.
 
-  → /forgeplan:greenfield       Generates plan automatically (next step)
+  → /forgeplan:greenfield       Resumes at plan generation
 ```
 
-### Plan exists but not reviewed
-Check: `.forgeplan/plans/implementation-plan.md` exists AND `.forgeplan/reviews/plan-review-pass-1.md` does NOT exist
+### SMALL Combined Design+Plan Ready
+Check: `complexity_tier` is `SMALL` AND `.forgeplan/reviews/design-review-pass-1.md` exists AND `.forgeplan/plans/implementation-plan.md` exists AND `.forgeplan/reviews/plan-review-pass-1.md` does NOT exist
+```
+For SMALL projects, the implementation plan is reviewed together with the design.
+There is no separate plan-review stage.
+
+  → /forgeplan:spec --all       Generate complete specs
+  → /forgeplan:greenfield       Continue from research/spec/build
+  → /forgeplan:deep-build       If specs are already complete
+```
+
+### Plan exists but not reviewed (MEDIUM/LARGE)
+Check: `.forgeplan/plans/implementation-plan.md` exists AND `.forgeplan/reviews/plan-review-pass-1.md` does NOT exist AND `complexity_tier` is not `SMALL`
 ```
 Implementation plan is ready for review by the same panel (plan lens).
 The review checks task ordering, dependency satisfaction, and feasibility.
 
-  → /forgeplan:greenfield       Reviews plan automatically (next step)
+  → /forgeplan:greenfield       Resumes at plan review
 ```
 
 ### Plan reviewed and clean

@@ -65,12 +65,23 @@ function evaluate(input) {
     try {
       const forgePlanDirAgent = path.join(cwd, ".forgeplan");
       const configPathCheck = path.join(forgePlanDirAgent, "config.yaml");
-      let skillsEnabled = true; // default: enabled
+      let skillsEnabled = true; // default: enabled unless SMALL tier says otherwise
       const yaml = require(path.join(__dirname, "..", "node_modules", "js-yaml"));
+      const { getEffectiveTier } = require("./lib/skill-helpers");
       try {
+        const manifestPathForTier = path.join(forgePlanDirAgent, "manifest.yaml");
+        let tierForSkills = "MEDIUM";
+        let cfgContent = null;
         if (fs.existsSync(configPathCheck)) {
-          const cfgContent = yaml.load(fs.readFileSync(configPathCheck, "utf-8"));
+          cfgContent = yaml.load(fs.readFileSync(configPathCheck, "utf-8"));
           if (cfgContent && cfgContent.skills && cfgContent.skills.enabled === false) {
+            skillsEnabled = false;
+          }
+        }
+        if (skillsEnabled && fs.existsSync(manifestPathForTier)) {
+          const manifestForTier = yaml.load(fs.readFileSync(manifestPathForTier, "utf-8"));
+          tierForSkills = getEffectiveTier(manifestForTier || {}, cfgContent || {});
+          if ((!cfgContent || !cfgContent.skills || cfgContent.skills.enabled === undefined) && tierForSkills === "SMALL") {
             skillsEnabled = false;
           }
         }
@@ -350,7 +361,7 @@ function evaluate(input) {
   }
 
   // --- Project-root exempt files (builders can write to these regardless of file_scope) ---
-  const exemptRootFiles = [".env.example", "package.json", "package-lock.json", "tsconfig.json"];
+  const exemptRootFiles = [".env.example", "package.json", "package-lock.json", "tsconfig.json", "CLAUDE.md", ".gitignore"];
   if (exemptRootFiles.includes(relPath)) {
     return { block: false };
   }

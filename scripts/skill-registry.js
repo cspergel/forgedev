@@ -68,6 +68,21 @@ const DEFAULT_MAX_ACTIVE = 5;
 /** Default skill sources (searched in order). */
 const DEFAULT_SOURCES = [".forgeplan/skills", "skill-library"];
 
+function getEffectiveTier(manifest, config) {
+  const override =
+    config &&
+    config.complexity &&
+    typeof config.complexity.tier_override === "string" &&
+    config.complexity.tier_override.trim()
+      ? config.complexity.tier_override.trim()
+      : null;
+  return (
+    override ||
+    (manifest.project && manifest.project.complexity_tier) ||
+    "MEDIUM"
+  ).toUpperCase();
+}
+
 // ---------- Logging ----------
 
 function log(msg) {
@@ -392,10 +407,10 @@ function matchesTechFilter(skill, manifest) {
  * Check if a skill's tier_filter matches the project's complexity tier.
  * Returns true if tier_filter is empty (matches all) or contains the current tier.
  */
-function matchesTierFilter(skill, manifest) {
+function matchesTierFilter(skill, manifest, config) {
   if (!skill.tier_filter || skill.tier_filter.length === 0) return true;
-  const tier = (manifest.project && manifest.project.complexity_tier) || "MEDIUM";
-  return skill.tier_filter.map((t) => String(t).toUpperCase()).includes(tier.toUpperCase());
+  const tier = getEffectiveTier(manifest, config || {});
+  return skill.tier_filter.map((t) => String(t).toUpperCase()).includes(tier);
 }
 
 /**
@@ -452,9 +467,9 @@ function matchSkillsToAgent(agentName, skills, manifest, config) {
     }
 
     // Tier filter (project complexity tier, not skill tier)
-    if (!matchesTierFilter(skill, manifest)) {
+    if (!matchesTierFilter(skill, manifest, config)) {
       // Exception: explicit list overrides tier filter
-      if (!explicit.includes(skill.name.toLowerCase())) return false;
+        if (!explicit.includes(skill.name.toLowerCase())) return false;
     }
 
     return true;
@@ -562,9 +577,9 @@ function matchSkillsToAgent(agentName, skills, manifest, config) {
  * @param {Object} manifest - parsed manifest.yaml
  * @returns {{ agent: string, reason: string }[]}
  */
-function detectSkillGaps(assignments, manifest) {
+function detectSkillGaps(assignments, manifest, config) {
   const gaps = [];
-  const tier = (manifest.project && manifest.project.complexity_tier) || "MEDIUM";
+  const tier = getEffectiveTier(manifest, config);
 
   // Agents dispatched per tier (architect excluded — compiled separately):
   //   SMALL:  builder, reviewer, sweep-adversary, sweep-contractualist, sweep-skeptic
@@ -620,7 +635,7 @@ function generateRegistry(manifest, config, projectRoot) {
   }
 
   // Detect skill gaps (agents with 0 skills after cascade)
-  const skillGaps = detectSkillGaps(assignments, manifest);
+  const skillGaps = detectSkillGaps(assignments, manifest, config);
   if (skillGaps.length > 0) {
     log(`  ${skillGaps.length} agent(s) have no skills assigned: ${skillGaps.map(g => g.agent).join(", ")}`);
   }
@@ -827,7 +842,7 @@ function compileArchitect(config, projectRoot, manifest) {
   architectSkills.sort((a, b) => b.priority - a.priority);
 
   // Determine project tier for tier-aware sections
-  const tier = (manifest && manifest.project && manifest.project.complexity_tier) || "MEDIUM";
+  const tier = getEffectiveTier(manifest || {}, config || {});
 
   // Read full content of each skill and compile
   const sections = [];
@@ -953,9 +968,11 @@ function main() {
   const config = loadConfig(projectRoot);
 
   // Check if skills are enabled (default true for MEDIUM/LARGE)
+  const manifest = subcommand === "validate" ? null : loadManifest(projectRoot);
+  const effectiveTier = manifest ? getEffectiveTier(manifest, config) : "MEDIUM";
   const skillsEnabled = config.skills && config.skills.enabled !== undefined
     ? config.skills.enabled
-    : true; // default enabled
+    : effectiveTier !== "SMALL"; // default disabled for SMALL, enabled otherwise
 
   if (subcommand === "validate") {
     // Validate runs regardless of enabled flag

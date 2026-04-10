@@ -352,8 +352,9 @@ If the user asks about other settings, also offer:
 enforcement:
   mode: strict    # strict (default) or advisory
 ```
-- `strict`: PreToolUse hooks BLOCK violations
-- `advisory`: hooks WARN but don't block
+- `strict`: review/cross-model enforcement blocks completion when configured checks fail
+- `advisory`: review/cross-model enforcement reports issues without blocking status transitions
+- Write/file-scope enforcement remains blocking regardless of this setting
 
 ### Model Tiering
 ```yaml
