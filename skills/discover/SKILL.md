@@ -22,6 +22,8 @@ git init
 .forgeplan/
 ├── specs/
 ├── plans/
+├── wiki/
+│   └── nodes/
 ├── conversations/
 │   └── nodes/
 ├── reviews/
@@ -137,6 +139,18 @@ Process:
 5. If confirmed → generate manifest + skeleton specs, run validation, complete all Setup + Completion steps
 6. If rejected → ask "What would you change?" — address that one thing, then re-present the summary for confirmation
 7. After confirmation, do NOT present "Next steps" options — if called from greenfield, the orchestrator handles what comes next. If called standalone with --autonomous, present the normal next steps.
+
+### SMALL Greenfield Plan Artifact
+
+If this discovery run is autonomous **and** it was invoked by `/forgeplan:greenfield` **and** the confirmed tier is `SMALL`, create a lightweight implementation plan at `.forgeplan/plans/implementation-plan.md` immediately after manifest validation.
+
+The plan must include:
+- A short project summary and the confirmed tier
+- Node build order in dependency order
+- For each node: expected files/modules under its `file_scope`, major responsibilities, and verification steps
+- A short "research to apply" section summarizing which prior-art or package findings should influence implementation
+
+This is required because SMALL greenfield uses a combined design+plan flow. Do not defer plan creation to a later step.
 
 ## Guided Discovery Mode
 
@@ -284,6 +298,10 @@ When discovery is complete:
    Architecture complete! [N] nodes, [N] shared models.
 
    Next steps — choose your path:
+
+     Recommended governed flow:
+       → /forgeplan:greenfield     Continue through design review, research,
+                                   plan, build, and certification
 
      Manual (more control):
        → /forgeplan:spec --all     Generate detailed specs (interactive)

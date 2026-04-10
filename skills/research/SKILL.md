@@ -39,26 +39,36 @@ Dispatch research agents to gather best practices, packages, and documentation f
    mkdir -p .forgeplan/research
    ```
 
-4. **Dispatch the Researcher agent:**
+4. **Load Researcher skills (Sprint 11):**
+
+   - Read `.forgeplan/skills-registry.yaml` if it exists
+   - Look up `assignments.researcher`
+   - If researcher skills are assigned, pass them into the Researcher dispatch prompt:
+     - `read_now` skills: "READ NOW: [path] — [description]. Read before starting research."
+     - `reference` skills: "REFERENCE: [path] — [description]. Consult if relevant."
+   - If the registry is missing or has no `researcher` assignments, proceed without skills
+
+5. **Dispatch the Researcher agent:**
 
    Provide:
    - The agent's system prompt (read from `${CLAUDE_PLUGIN_ROOT}/agents/researcher.md`)
    - The research topic
    - The project context (tech_stack, description)
+   - Any researcher skill hints loaded in Step 4
 
    - **Researcher** (`researcher.md`): consolidated research agent — handles package search, license checking, reference implementations, best practices, architecture patterns, API documentation extraction, and prior art in one pass. (Sprint 10A: absorbs former license-checker, inspiration, and docs-agent.)
 
-5. **Format the report:**
+6. **Format the report:**
    - Start with a **Summary** section: key recommendations, flagged packages, reference count
    - Then include the full research output
    - If the agent failed or returned empty results, note: "Researcher returned no results — [reason or 'could not access web']"
 
-6. **Write the report:**
+7. **Write the report:**
    - Save to `.forgeplan/research/[topic-slug]-[ISO-date].md`
    - Topic slug: lowercase, spaces replaced with hyphens, non-alphanumeric stripped, max 50 chars
    - Example: `.forgeplan/research/supabase-auth-2026-04-06.md`
 
-7. **Present summary to user:**
+8. **Present summary to user:**
    ```
    === Research Complete: [topic] ===
 

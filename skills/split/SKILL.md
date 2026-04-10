@@ -21,7 +21,13 @@ If any prerequisite fails, explain which one and stop.
 
 ### Step 1: Invoke Architect in Split Mode
 
-Use the Agent tool to dispatch the architect agent. Read `agents/architect.md` and pass it as the system prompt with `--split [node-id]` in the prompt. The architect:
+Before dispatching the Architect, compile architect skills for the current project context:
+```bash
+node "${CLAUDE_PLUGIN_ROOT}/scripts/skill-registry.js" compile-architect
+```
+Inject the compiled output into the Architect's prompt context. Do not rely on any baked skill block inside `agents/architect.md`.
+
+Use the Agent tool to dispatch the architect agent. Read `agents/architect.md` and pass it as the system prompt with `--split [node-id]` in the prompt plus the compiled architect skill block. The architect:
 1. Reads the node's spec from `.forgeplan/specs/[node-id].yaml`
 2. Globs the node's `file_scope` to get file list
 3. Analyzes code structure: directory groupings, import clusters, domain boundaries

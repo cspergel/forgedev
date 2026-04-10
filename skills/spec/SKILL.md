@@ -124,7 +124,7 @@ When the existing spec has `spec_type: "descriptive"` (auto-generated from `/for
 1. **Read the existing descriptive spec as a starting point.** It contains what the code currently does, not what it should do. Present the existing description, interfaces, and any auto-detected patterns to the user.
 2. **Engage the user to add real requirements:** acceptance criteria, constraints, non-goals, failure modes. The descriptive spec's description and interfaces are the baseline — enhance them, don't discard them.
 3. **Set the output spec to:** `spec_type: "prescriptive"` and clear `generated_from` (or set to null). This marks the spec as human-refined.
-4. **Status handling for ingested nodes:** If the node's current status is `"built"` (code already exists from ingest), set status to `"revised"` instead of `"specced"`. This triggers a review against the new prescriptive spec without re-building (the code already exists). Do NOT downgrade a `"built"` node to `"specced"` — that would cause the builder to re-generate code on top of the existing codebase.
+4. **Status handling for ingested nodes:** If the node's current status is `"built"` (code already exists from ingest), keep it at `"built"` after refining the spec. This allows `/forgeplan:review [node-id]` to audit the existing implementation against the new prescriptive spec without forcing a rebuild. Do NOT downgrade a `"built"` node to `"specced"` — that would cause the builder to re-generate code on top of the existing codebase.
 
 ## Phase-Aware Spec Depth (Sprint 10B)
 

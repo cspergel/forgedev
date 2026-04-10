@@ -384,7 +384,7 @@ Save the full discovery conversation to `.forgeplan/conversations/discovery.md` 
 3. **Be opinionated but flexible.** Recommend best practices, but defer to the user's explicit choices.
 4. **Never finalize with gaps.** If a critical system is missing, ask about it.
 5. **Always validate.** Run the validation script after every manifest write.
-6. **Create the .forgeplan directory structure** if it doesn't exist: `.forgeplan/`, `.forgeplan/specs/`, `.forgeplan/conversations/`, `.forgeplan/conversations/nodes/`, `.forgeplan/reviews/`, `.forgeplan/sweeps/`.
+6. **Create the .forgeplan directory structure** if it doesn't exist: `.forgeplan/`, `.forgeplan/specs/`, `.forgeplan/plans/`, `.forgeplan/wiki/`, `.forgeplan/wiki/nodes/`, `.forgeplan/conversations/`, `.forgeplan/conversations/nodes/`, `.forgeplan/reviews/`, `.forgeplan/sweeps/`.
 7. **Assess complexity early.** The tier shapes everything downstream — node count, spec depth, verification intensity.
 8. **Present consequences, not just tier names.** The user should understand what each tier means for their build experience before agreeing.
 

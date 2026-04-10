@@ -148,7 +148,7 @@ This sends the node's spec and implementation files to the alternate model for i
 - Assembles a review prompt with the seven audit dimensions
 - Calls the alternate model via MCP server, CLI subprocess, or API (per config)
 - Writes the cross-model report to `.forgeplan/reviews/[node-id]-crossmodel.md`
-- Outputs a JSON result with `status` ("approved" or "changes_requested") and `findings_count`
+- Outputs a JSON result with `status` (`"approved"`, `"changes_requested"`, or `"skipped_fallback"`) and `findings_count`
 
 Parse the JSON output and present the cross-model findings to the user alongside the native review.
 
@@ -174,6 +174,8 @@ The node can only advance to `"reviewed"` if **both** the native review and the 
 **If cross-model review errors** (network failure, misconfigured provider, timeout): In strict mode, **restore node status first** (same steps as above — set status back to `previous_status`, clear `previous_status`, clear `active_node`), then warn the user that the cross-model gate could not be evaluated and offer two choices:
 1. Retry the cross-model review
 2. Override and advance to `"reviewed"` anyway (with a note in the review report that cross-model verification was skipped)
+
+**Implementation note:** `cross-model-review.js` currently reports provider/setup failures as `status: "skipped_fallback"` rather than `"error"`. In strict mode, treat `skipped_fallback` exactly like an unevaluated cross-model gate: restore status first, then offer retry or override.
 
 ## Completion
 
