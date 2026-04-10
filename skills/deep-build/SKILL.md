@@ -92,20 +92,22 @@ All existing enforcement (PreToolUse, PostToolUse, Builder agent, Stop hook) app
 
 1. Set `sweep_state.current_phase` to `"design-pass"` (already set by Phase 2 transition)
 2. Load the `frontend-design` skill directly — the design-pass agent is not in the registry (it's a specialized single-use agent, not a standard sweep/build agent). Read the skill content from `${CLAUDE_PLUGIN_ROOT}/skill-library/core/frontend-design.md` for inclusion in the agent prompt. If the file doesn't exist, skip the design pass with a warning.
-3. Identify all frontend nodes (nodes with `type: "frontend"` or nodes whose `file_scope` contains frontend files such as `.tsx`, `.jsx`, `.vue`, `.svelte`)
-4. Dispatch the design-pass agent using the Agent tool:
+3. Check for optional design context files at `DESIGN.md`, `docs/DESIGN.md`, and `.forgeplan/wiki/design.md`. Include any that exist in the design-pass prompt as the intended design direction. If none exist, note "No explicit design docs detected."
+4. Identify all frontend nodes (nodes with `type: "frontend"` or nodes whose `file_scope` contains frontend files such as `.tsx`, `.jsx`, `.vue`, `.svelte`)
+5. Dispatch the design-pass agent using the Agent tool:
    - Read `agents/design-pass.md` for the system prompt
    - Include the `frontend-design` skill content from `skill-library/core/frontend-design.md`
+   - Include any detected design context files
    - Include all frontend node files (read from each frontend node's `file_scope`)
    - Include the manifest for context
    - **Tier-aware depth:** Pass the complexity tier so the agent knows which levels to check:
      - SMALL (if explicitly enabled): Level 1 only (anti-slop rules)
      - MEDIUM: Levels 1-2 (anti-slop rules + visual consistency)
      - LARGE: Levels 1-3 (anti-slop rules + visual consistency + component quality)
-5. Parse the agent's response for FINDING blocks (D-prefix) or CLEAN
-6. If CLEAN: log "Design pass clean." Proceed to user steering (step 8).
-7. If findings: dispatch a fresh fix agent per finding (same pattern as sweep Phase 4 — fresh agent, node-scoped, save/restore node status). After fixes, re-run the design pass agent once to verify. If still has findings after 2 passes, move remaining to `sweep_state.needs_manual_attention` with reason "design quality — user review recommended."
-8. **User steering (one round):** Present a summary of the frontend build:
+6. Parse the agent's response for FINDING blocks (D-prefix) or CLEAN
+7. If CLEAN: log "Design pass clean." Proceed to user steering (step 9).
+8. If findings: dispatch a fresh fix agent per finding (same pattern as sweep Phase 4 — fresh agent, node-scoped, save/restore node status). After fixes, re-run the design pass agent once to verify. If still has findings after 2 passes, move remaining to `sweep_state.needs_manual_attention` with reason "design quality — user review recommended."
+9. **User steering (one round):** Present a summary of the frontend build:
    ```
    Frontend design pass complete. Here's what was built:
      - [N] pages: [list page names from frontend nodes]
@@ -119,7 +121,7 @@ All existing enforcement (PreToolUse, PostToolUse, Builder agent, Stop hook) app
    - If user provides feedback: dispatch a fix agent with the feedback as instructions, targeting all frontend node files. Re-run design pass after.
    - If user presses enter / says "continue" / no response: proceed.
    - **In autonomous mode (greenfield/deep-build without user interaction):** Skip user steering. The design pass findings + fixes are sufficient.
-9. Update `sweep_state.current_phase` to `"verify-runnable"` and proceed to Phase 3.
+10. Update `sweep_state.current_phase` to `"verify-runnable"` and proceed to Phase 3.
 
 ### Phase 3: Run verify-runnable gate (was Phase 2.5)
 
@@ -311,6 +313,7 @@ The report must capture **pipeline decisions**, not just outcomes. Whenever a ph
 - Research artifacts: [list files from `.forgeplan/research/`, or "none found"]
 - Plan artifact: [.forgeplan/plans/implementation-plan.md exists?]
 - Skills registry: [.forgeplan/skills-registry.yaml exists?]
+- Design docs: [list `DESIGN.md`, `docs/DESIGN.md`, `.forgeplan/wiki/design.md`, or "none found"]
 - Wiki files: [list key files, or "skipped for SMALL"]
 
 ## Integration Results
@@ -379,3 +382,5 @@ After Phase 8 certification completes:
 - Clean up any worktrees on halt: `node "${CLAUDE_PLUGIN_ROOT}/scripts/worktree-manager.js" cleanup`
 - All state is persisted after every transition for crash recovery
 - Use /forgeplan:recover to resume interrupted deep-builds
+
+

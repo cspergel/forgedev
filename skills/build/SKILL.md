@@ -40,6 +40,15 @@ Before dispatching the Builder agent, load skills from the registry:
 
 **For SMALL tier:** Skip skill loading entirely (skills disabled by default for SMALL).
 
+## Optional Design Context
+
+If the target node is frontend-facing, check these files before dispatching the Builder:
+- `DESIGN.md`
+- `docs/DESIGN.md`
+- `.forgeplan/wiki/design.md`
+
+If any exist, include them in the Builder context as product/design direction. They are advisory, but they should influence visual hierarchy, spacing, palette, motion, and tone. If none exist, proceed normally.
+
 ## Single Node Mode
 
 Build the specified node following its spec with layered enforcement:

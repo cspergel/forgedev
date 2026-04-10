@@ -26,6 +26,8 @@ The pipeline: **discover** → **spec** → **build** → **verify** → **revie
 
 Each step scales to your project. A simple app gets 3 sweep agents and finishes in one session. A complex app gets all 5 agents, cross-model verification, and convergence certification.
 
+Optional design direction can live in `DESIGN.md`, `docs/DESIGN.md`, or `.forgeplan/wiki/design.md`. ForgePlan surfaces those files in session status and feeds them into frontend build/design-pass flows when present.
+
 ## What you actually do
 
 ```

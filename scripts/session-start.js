@@ -380,19 +380,19 @@ function buildAmbientStatus(forgePlanDir, manifestPath, statePath, state) {
 
   // Sprint 11: Skill registry staleness check — skip if skills are disabled
   let skillsDisabled = false;
+  let loadedConfig = null;
   try {
     const configPathSkills = path.join(forgePlanDir, "config.yaml");
-    let skillCheckConfig = null;
     if (fs.existsSync(configPathSkills)) {
-      skillCheckConfig = yaml.load(fs.readFileSync(configPathSkills, "utf-8"));
-      if (skillCheckConfig && skillCheckConfig.skills && skillCheckConfig.skills.enabled === false) {
+      loadedConfig = yaml.load(fs.readFileSync(configPathSkills, "utf-8"));
+      if (loadedConfig && loadedConfig.skills && loadedConfig.skills.enabled === false) {
         skillsDisabled = true;
       }
     }
     if (!skillsDisabled) {
       const { getEffectiveTier } = require("./lib/skill-helpers");
-      const effectiveTier = getEffectiveTier(manifest, skillCheckConfig || {});
-      if ((!skillCheckConfig || !skillCheckConfig.skills || skillCheckConfig.skills.enabled === undefined) && effectiveTier === "SMALL") {
+      const effectiveTier = getEffectiveTier(manifest, loadedConfig || {});
+      if ((!loadedConfig || !loadedConfig.skills || loadedConfig.skills.enabled === undefined) && effectiveTier === "SMALL") {
         skillsDisabled = true;
       }
     }
@@ -401,16 +401,8 @@ function buildAmbientStatus(forgePlanDir, manifestPath, statePath, state) {
   if (!skillsDisabled) {
     try {
       const { isRegistryStale } = require("./lib/skill-helpers");
-      // Load config for skill-file hashing (staleness detection needs config.skills + projectRoot)
-      let skillConfig = null;
-      const configPath = path.join(forgePlanDir, "config.yaml");
-      try {
-        if (fs.existsSync(configPath)) {
-          skillConfig = yaml.load(fs.readFileSync(configPath, "utf-8"));
-        }
-      } catch (_) { /* config missing or unparseable — proceed without it */ }
       const projectRoot = path.dirname(forgePlanDir);
-      const regStatus = isRegistryStale(manifest, forgePlanDir, skillConfig, projectRoot);
+      const regStatus = isRegistryStale(manifest, forgePlanDir, loadedConfig, projectRoot);
       if (!regStatus.exists && nodeIds.length > 0) {
         lines.push("  Skills: no registry — will auto-generate on next build");
       } else if (regStatus.exists && regStatus.stale) {
@@ -427,6 +419,19 @@ function buildAmbientStatus(forgePlanDir, manifestPath, statePath, state) {
     } catch {
       // Skill registry check must never crash session start
     }
+  }
+
+  try {
+    const { getDesignContextStatus } = require("./lib/design-context");
+    const projectRoot = path.dirname(forgePlanDir);
+    const designStatus = getDesignContextStatus(projectRoot, manifest, loadedConfig || {});
+    if (designStatus.enabled && designStatus.files.length > 0) {
+      lines.push(`  Design docs: ${designStatus.files.map((entry) => entry.relativePath).join(", ")}`);
+    } else if (designStatus.enabled) {
+      lines.push(`  Design docs: none detected (${designStatus.expectedSources.join(", ")})`);
+    }
+  } catch {
+    // Design context is advisory only.
   }
 
   // Next command suggestion

@@ -57,6 +57,10 @@ Before any architecture conversation begins (template, document import, autonomo
 
 The Architect uses these skills during decomposition (e.g., DDD strategic design for LARGE tier projects).
 
+## Optional Design Docs
+
+If `DESIGN.md` or `docs/DESIGN.md` already exists in the project root, read it before finalizing frontend-facing architecture decisions. Treat it as a design/product direction input, not as an implementation contract.
+
 ## Template Mode
 
 If the user's argument starts with `template:`, load the corresponding blueprint:

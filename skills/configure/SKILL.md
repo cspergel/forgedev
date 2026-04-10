@@ -201,7 +201,7 @@ codex exec "Respond with only the word OK" 2>&1
 - If output contains "OK" → "Codex working!" → continue.
 - If it fails or times out → show the error. Common fixes:
   - "rate limit" → tell user to wait and retry.
-  - "model not found" → Codex may need a config update. Try: `codex exec -c model="gpt-4o" "Respond with OK"`.
+  - "model not found" → Codex may need a config update. Try: `codex exec -c model="gpt-5-codex" "Respond with OK"`.
   - Other error → show it and suggest option 5 (Direct API) as fallback.
 
 **Step 4: Write config and confirm.**
@@ -271,9 +271,9 @@ Ask: "Which model? (leave blank for default)"
 Defaults and recommended models by provider:
 
 **OpenAI:**
-- Default: `gpt-4o` (proven, widely available)
-- Recommended: `gpt-4o` or newer if available
-- Budget: `gpt-4o-mini`
+- Default: `gpt-5-codex` (best fit for code review)
+- Recommended: `gpt-5-codex`
+- Budget: `gpt-4.1`
 
 **Google:**
 - Default: `gemini-2.5-flash` (best price-performance)

@@ -13,16 +13,16 @@ review:
 
   # --- MCP Mode Settings ---
   # Requires: `claude mcp add [server-name]` configured beforehand
-  # mcp_server: "codex"          # MCP server name (as configured in claude mcp)
+  # mcp_server: "codex-cli"      # MCP server name (default for Codex/OpenAI)
 
   # --- CLI Mode Settings ---
-  # cli_command: "codex"          # CLI executable name
-  # cli_args: []                  # Additional CLI arguments
+  # cli_command: "codex"         # CLI executable name
+  # cli_args: ["exec"]           # Additional CLI arguments (default for Codex)
 
   # --- API Mode Settings ---
   # provider: "openai"            # openai | google | anthropic
   # api_key: "$OPENAI_API_KEY"    # Env var reference (prefix with $) or direct key
-  # model: "gpt-4o"               # Model to use for review
+  # model: "gpt-5-codex"          # Model to use for review (default for OpenAI API)
 
   # --- Common Settings ---
   # timeout: 120000               # Timeout in ms for cross-model calls (default: 2 minutes)
@@ -99,3 +99,12 @@ skills:
     - .forgeplan/skills            # Project-specific skills (from skill learner or manual)
     - skills                       # Plugin built-in skills (curated, vendored)
     # - ~/.claude/skills           # User global skills (cross-project)
+
+# --- Frontend Design Context (optional) ---
+# Lets ForgePlan pull product/design direction from DESIGN.md-style files when they exist.
+design:
+  enabled: true                    # true = always use when files exist, false = ignore, omitted = auto for frontend projects
+  sources:
+    - DESIGN.md
+    - docs/DESIGN.md
+    - .forgeplan/wiki/design.md

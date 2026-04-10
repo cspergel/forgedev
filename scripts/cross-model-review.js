@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 
 /**
- * cross-model-review.js — ForgePlan Core Cross-Model Review
+ * cross-model-review.js - ForgePlan Core Cross-Model Review
  *
  * Sends node code + spec to an alternate LLM for independent review.
  * Three modes of operation:
- *   1. MCP mode (recommended) — uses structured MCP tool calls via claude mcp
- *   2. CLI mode — spawns Codex/Gemini CLI as subprocess
- *   3. API mode — direct HTTP API calls (requires API key)
+ *   1. MCP mode (recommended) - uses structured MCP tool calls via claude mcp
+ *   2. CLI mode - spawns Codex/Gemini CLI as subprocess
+ *   3. API mode - direct HTTP API calls (requires API key)
  *
  * Usage:
  *   node cross-model-review.js <node-id> [config-path]
@@ -19,8 +19,9 @@
 
 const fs = require("fs");
 const path = require("path");
-const { execSync, spawnSync, spawn } = require("child_process");
+const { execSync, spawnSync } = require("child_process");
 const yaml = require("js-yaml");
+const { loadConfig, resolveApiKey, resolveReviewConfig } = require("./lib/review-config");
 
 async function main() {
   const nodeId = process.argv[2];
@@ -34,21 +35,10 @@ async function main() {
 
   const cwd = process.cwd();
   const forgePlanDir = path.join(cwd, ".forgeplan");
+  const config = loadConfig(configPath);
+  const reviewConfig = resolveReviewConfig(config);
+  const mode = reviewConfig.mode;
 
-  // Load config
-  let config = { review: { mode: "native" } };
-  if (fs.existsSync(configPath)) {
-    try {
-      config = yaml.load(fs.readFileSync(configPath, "utf-8")) || config;
-    } catch (err) {
-      console.error(`Warning: Could not parse config: ${err.message}. Using defaults.`);
-    }
-  }
-
-  const reviewConfig = config.review || {};
-  const mode = reviewConfig.mode || "native";
-
-  // If mode is "native", this script is not needed — use the built-in reviewer
   if (mode === "native") {
     console.log(JSON.stringify({
       status: "skipped",
@@ -57,7 +47,6 @@ async function main() {
     process.exit(0);
   }
 
-  // Load node spec
   const specPath = path.join(forgePlanDir, "specs", `${nodeId}.yaml`);
   if (!fs.existsSync(specPath)) {
     console.error(`Spec not found: ${specPath}`);
@@ -65,17 +54,13 @@ async function main() {
   }
   const spec = fs.readFileSync(specPath, "utf-8");
 
-  // Load manifest for shared models
   const manifestPath = path.join(forgePlanDir, "manifest.yaml");
   let manifest = "";
   if (fs.existsSync(manifestPath)) {
     manifest = fs.readFileSync(manifestPath, "utf-8");
   }
 
-  // Collect node files
   const nodeFiles = collectNodeFiles(cwd, forgePlanDir, nodeId);
-
-  // Assemble the review prompt
   const prompt = assembleReviewPrompt(nodeId, spec, manifest, nodeFiles);
 
   let result;
@@ -94,9 +79,8 @@ async function main() {
       process.exit(2);
   }
 
-  // Graceful fallback: if cross-model failed, don't block the pipeline
   if (result.status === "error") {
-    const fallbackReport = `## Cross-Model Review — Skipped (Fallback)\n\n` +
+    const fallbackReport = `## Cross-Model Review - Skipped (Fallback)\n\n` +
       `Cross-model review via ${mode} failed. The pipeline continues with Claude-only review.\n\n` +
       `**Error:** ${result.report.replace(/^## .*\n\n/, "")}\n\n` +
       `**What this means:** The native Claude reviewer still ran. Cross-model verification ` +
@@ -108,10 +92,9 @@ async function main() {
       report: fallbackReport,
       findingsCount: 0,
     };
-    console.error(`Warning: Cross-model review failed, falling back to Claude-only review.`);
+    console.error("Warning: Cross-model review failed, falling back to Claude-only review.");
   }
 
-  // Write cross-model review report
   const reportPath = path.join(forgePlanDir, "reviews", `${nodeId}-crossmodel.md`);
   const reportDir = path.dirname(reportPath);
   if (!fs.existsSync(reportDir)) {
@@ -119,10 +102,9 @@ async function main() {
   }
   fs.writeFileSync(reportPath, result.report, "utf-8");
 
-  // Output structured result
   console.log(JSON.stringify({
     status: result.status,
-    mode: mode,
+    mode,
     provider: reviewConfig.provider || "unknown",
     node: nodeId,
     report_path: reportPath,
@@ -130,9 +112,6 @@ async function main() {
   }, null, 2));
 }
 
-/**
- * Collect all files for a node from the manifest's files list.
- */
 function collectNodeFiles(cwd, forgePlanDir, nodeId) {
   const manifestPath = path.join(forgePlanDir, "manifest.yaml");
   const files = {};
@@ -149,19 +128,16 @@ function collectNodeFiles(cwd, forgePlanDir, nodeId) {
       }
     }
   } catch {
-    // Can't read manifest/files — return empty
+    // Best effort only.
   }
 
   return files;
 }
 
-/**
- * Assemble the cross-model review prompt.
- */
 function assembleReviewPrompt(nodeId, spec, manifest, nodeFiles) {
   let prompt = `# Cross-Model Code Review: ${nodeId}\n\n`;
-  prompt += `You are reviewing a node implementation against its spec. `;
-  prompt += `The code was written by a different AI model. Do NOT trust it — verify independently.\n\n`;
+  prompt += "You are reviewing a node implementation against its spec. ";
+  prompt += "The code was written by a different AI model. Do NOT trust it - verify independently.\n\n";
 
   prompt += `## Node Spec\n\`\`\`yaml\n${spec}\n\`\`\`\n\n`;
 
@@ -169,41 +145,34 @@ function assembleReviewPrompt(nodeId, spec, manifest, nodeFiles) {
     prompt += `## Manifest (shared models and project context)\n\`\`\`yaml\n${manifest}\n\`\`\`\n\n`;
   }
 
-  prompt += `## Implementation Files\n\n`;
+  prompt += "## Implementation Files\n\n";
   for (const [filePath, content] of Object.entries(nodeFiles)) {
     prompt += `### ${filePath}\n\`\`\`\n${content}\n\`\`\`\n\n`;
   }
 
-  prompt += `## Review Instructions\n\n`;
-  prompt += `For EACH acceptance criterion in the spec:\n`;
-  prompt += `- AC[N]: PASS — [evidence] or AC[N]: FAIL — [what's missing]\n\n`;
-  prompt += `For EACH constraint: ENFORCED or VIOLATED with evidence.\n`;
-  prompt += `For EACH interface: verify the contract is implemented.\n`;
-  prompt += `For EACH non_goal: verify it was NOT implemented.\n`;
-  prompt += `For EACH failure_mode: verify defensive code exists.\n\n`;
-  prompt += `End with: Recommendation: APPROVE or REQUEST CHANGES (N failures)\n`;
+  prompt += "## Review Instructions\n\n";
+  prompt += "For EACH acceptance criterion in the spec:\n";
+  prompt += "- AC[N]: PASS - [evidence] or AC[N]: FAIL - [what's missing]\n\n";
+  prompt += "For EACH constraint: ENFORCED or VIOLATED with evidence.\n";
+  prompt += "For EACH interface: verify the contract is implemented.\n";
+  prompt += "For EACH non_goal: verify it was NOT implemented.\n";
+  prompt += "For EACH failure_mode: verify defensive code exists.\n\n";
+  prompt += "End with: Recommendation: APPROVE or REQUEST CHANGES (N failures)\n";
 
   return prompt;
 }
 
-/**
- * MCP mode — use claude mcp to communicate with alternate model.
- * Recommended mode: uses existing subscriptions, structured responses.
- */
 function reviewViaMcp(config, prompt, cwd) {
-  // Sanitize: allow alphanumeric, hyphens, underscores (MCP server names are identifiers)
-  const mcpServer = (config.mcp_server || "codex").replace(/[^a-zA-Z0-9_-]/g, "");
+  const mcpServer = String(config.mcp_server || "codex-cli").replace(/[^a-zA-Z0-9_-]/g, "");
   const timeout = config.timeout || 120000;
   const tmpPrompt = path.join(cwd, ".forgeplan", ".tmp-review-prompt.md");
 
   try {
     fs.writeFileSync(tmpPrompt, prompt, "utf-8");
-
     const result = execSync(
       `claude mcp call ${mcpServer} review --input "${tmpPrompt}"`,
       { encoding: "utf-8", timeout, cwd, stdio: ["pipe", "pipe", "pipe"] }
     );
-
     return parseReviewResponse(result);
   } catch (err) {
     return {
@@ -216,26 +185,20 @@ function reviewViaMcp(config, prompt, cwd) {
   }
 }
 
-/**
- * CLI mode — spawn alternate model's CLI as subprocess.
- * Works with Codex CLI, Gemini CLI, or any CLI that accepts a prompt.
- */
 function reviewViaCli(config, prompt, cwd) {
   const command = config.cli_command || "codex";
-  const args = config.cli_args || [];
+  const args = Array.isArray(config.cli_args) ? config.cli_args : [];
   const timeout = config.timeout || 120000;
   const tmpPrompt = path.join(cwd, ".forgeplan", ".tmp-review-prompt.md");
 
   try {
     fs.writeFileSync(tmpPrompt, prompt, "utf-8");
-
-    // spawnSync with shell:true for .cmd shim resolution on Windows.
-    // CRITICAL: shell:true on Windows routes through cmd.exe which re-parses
-    // arguments — spaces split args, & chains commands. We must double-quote
-    // every argument to protect against this.
-    const safeArgs = [...args.map(String), tmpPrompt].map(a => `"${String(a).replace(/"/g, '\\"')}"`);
+    const safeArgs = [...args.map(String), tmpPrompt].map((arg) => `"${String(arg).replace(/"/g, '\\"')}"`);
     const proc = spawnSync(command, safeArgs, {
-      encoding: "utf-8", timeout, cwd, shell: true,
+      encoding: "utf-8",
+      timeout,
+      cwd,
+      shell: true,
       stdio: ["pipe", "pipe", "pipe"],
     });
     if (proc.error) throw proc.error;
@@ -244,9 +207,7 @@ function reviewViaCli(config, prompt, cwd) {
       err.stderr = proc.stderr;
       throw err;
     }
-    const result = proc.stdout;
-
-    return parseReviewResponse(result);
+    return parseReviewResponse(proc.stdout);
   } catch (err) {
     return {
       status: "error",
@@ -258,17 +219,9 @@ function reviewViaCli(config, prompt, cwd) {
   }
 }
 
-/**
- * API mode — direct HTTP calls to provider APIs.
- * Requires API key in config.
- */
 async function reviewViaApi(config, prompt) {
   const provider = config.provider || "openai";
-  // Resolve API key — support env var references ($ENV_VAR_NAME)
-  let apiKey = config.api_key;
-  if (apiKey && apiKey.startsWith("$")) {
-    apiKey = process.env[apiKey.slice(1)] || "";
-  }
+  const apiKey = resolveApiKey(config.api_key);
   const model = config.model;
 
   if (!apiKey) {
@@ -279,20 +232,21 @@ async function reviewViaApi(config, prompt) {
     };
   }
 
-  // Provider-specific API configuration
-  let url, headers, body;
+  let url;
+  let headers;
+  let body;
 
   switch (provider) {
     case "openai":
-      url = "https://api.openai.com/v1/chat/completions";
-      headers = { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" };
+      url = "https://api.openai.com/v1/responses";
+      headers = { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" };
       body = JSON.stringify({
-        model: model || "gpt-4o",
-        messages: [{ role: "user", content: prompt }],
-        max_tokens: 8192,
+        model: model || "gpt-5-codex",
+        input: prompt,
+        reasoning: { effort: "medium" },
+        max_output_tokens: 8192,
       });
       break;
-
     case "google":
       url = `https://generativelanguage.googleapis.com/v1beta/models/${model || "gemini-2.5-flash"}:generateContent`;
       headers = { "Content-Type": "application/json", "x-goog-api-key": apiKey };
@@ -300,7 +254,6 @@ async function reviewViaApi(config, prompt) {
         contents: [{ parts: [{ text: prompt }] }],
       });
       break;
-
     case "anthropic":
       url = "https://api.anthropic.com/v1/messages";
       headers = {
@@ -314,7 +267,6 @@ async function reviewViaApi(config, prompt) {
         messages: [{ role: "user", content: prompt }],
       });
       break;
-
     default:
       return {
         status: "error",
@@ -324,7 +276,6 @@ async function reviewViaApi(config, prompt) {
   }
 
   try {
-    // Use Node.js built-in fetch (Node 18+) — no credentials in process args
     const response = await fetch(url, {
       method: "POST",
       headers,
@@ -345,7 +296,7 @@ async function reviewViaApi(config, prompt) {
     let text = "";
 
     if (provider === "openai") {
-      text = data.choices?.[0]?.message?.content || "";
+      text = extractOpenAiResponsesText(data);
     } else if (provider === "google") {
       text = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
     } else if (provider === "anthropic") {
@@ -362,33 +313,40 @@ async function reviewViaApi(config, prompt) {
   }
 }
 
-/**
- * Parse a review response into structured format.
- * Extracts verdict from the LAST "Recommendation:" line to avoid false positives
- * (e.g., "I would APPROVE with minor changes" in body text).
- */
+function extractOpenAiResponsesText(data) {
+  if (typeof data.output_text === "string" && data.output_text.trim()) {
+    return data.output_text;
+  }
+
+  const parts = [];
+  for (const item of data.output || []) {
+    if (!item || !Array.isArray(item.content)) continue;
+    for (const content of item.content) {
+      if (typeof content.text === "string" && content.text.trim()) {
+        parts.push(content.text);
+      }
+    }
+  }
+  return parts.join("\n\n");
+}
+
 function parseReviewResponse(text) {
   const report = typeof text === "string" ? text.trim() : String(text).trim();
-
-  // Count findings (FAIL lines)
   const failMatches = report.match(/\bFAIL\b/gi) || [];
   const violatedMatches = report.match(/\bVIOLATED\b/gi) || [];
   const findingsCount = failMatches.length + violatedMatches.length;
 
-  // Determine status from the LAST "Recommendation:" line only
   let status = "unknown";
   const lines = report.split("\n");
-  const recLine = lines.slice().reverse().find((l) => /^\s*Recommendation:/i.test(l));
+  const recLine = lines.slice().reverse().find((line) => /^\s*Recommendation:/i.test(line));
 
   if (recLine) {
     if (/REQUEST CHANGES/i.test(recLine)) status = "changes_requested";
     else if (/APPROVE/i.test(recLine)) status = "approved";
   }
 
-  // Fallback: if no Recommendation line found, use findings count
   if (status === "unknown") {
-    if (findingsCount > 0) status = "changes_requested";
-    else status = "approved";
+    status = findingsCount > 0 ? "changes_requested" : "approved";
   }
 
   return { status, report, findingsCount };
@@ -400,5 +358,10 @@ if (require.main === module) {
     process.exit(2);
   });
 } else {
-  module.exports = { assembleReviewPrompt, parseReviewResponse, collectNodeFiles };
+  module.exports = {
+    assembleReviewPrompt,
+    collectNodeFiles,
+    extractOpenAiResponsesText,
+    parseReviewResponse,
+  };
 }
