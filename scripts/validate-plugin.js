@@ -275,8 +275,11 @@ function assertStateTransitionBashAllowlist(errors) {
     return;
   }
   const content = fs.readFileSync(preToolUsePath, "utf8");
-  if (!content.includes("state-transition\\.js")) {
+  if (!content.includes("state-transition.js")) {
     pushError(errors, "scripts/pre-tool-use.js: Bash allowlist must include state-transition.js helper commands");
+  }
+  if (!content.includes("nodeScriptPattern(")) {
+    pushError(errors, "scripts/pre-tool-use.js: Bash allowlist must support quoted node script paths via nodeScriptPattern()");
   }
   if (!content.includes("splitReadOnlyShellSegments")) {
     pushError(errors, "scripts/pre-tool-use.js: Bash guard must support splitting safe read-only shell wrappers");

@@ -566,6 +566,13 @@ function evaluateBash(toolInput, cwd) {
 
   const activeStatus = state.active_node ? state.active_node.status : "sweeping";
 
+  function nodeScriptPattern(scriptName, tailPattern = String.raw`(?:\s|$)`) {
+    const escaped = scriptName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    return new RegExp(
+      String.raw`^\s*node\s+(?:"[^"]*${escaped}"|'[^']*${escaped}'|[^\s]*${escaped})${tailPattern}`
+    );
+  }
+
   // Whitelist: known-safe read-only commands that cannot mutate files
   const safePatterns = [
     /^\s*ls\b/,                         // list files
@@ -583,28 +590,31 @@ function evaluateBash(toolInput, cwd) {
     /^\s*git\s+(status|log|diff|show|branch|remote|tag|stash\s+list)\b/,
     /^\s*git\s+add\b/,                      // git add (staging files)
     /^\s*git\s+commit\s+(-[amSnN]\s+|--(?:message|author|signoff|no-edit|allow-empty|amend|gpg-sign)\b|"[^"]*"|'[^']*'|\s+)*(-[amSnN]|--(?:message|author|signoff|no-edit|allow-empty|amend|gpg-sign)\b|"[^"]*"|'[^']*')\s*$/, // git commit: requires at least one safe flag (blocks bare git commit and -e/--edit/-p/--patch/-i/--interactive)
-    /^\s*node\s+[^\s]*validate-manifest\.js/,  // our own validation script
-    /^\s*node\s+[^\s]*validate-spec\.js/,     // our own spec validator
-    /^\s*node\s+[^\s]*next-node\.js/,         // our own next-node script
-    /^\s*node\s+[^\s]*state-transition\.js\s+(start-build|complete-build|start-review|start-review-fixing|start-revising|set-spec-status|complete-review|restore-previous-status|set-node-status|clear-active-node|set-sweep-phase|set-sweep-state|clear-sweep-state)\b/, // deterministic state transitions
-    /^\s*node\s+[^\s]*session-start\.js/,     // our own session-start script
-    /^\s*node\s+[^\s]*topo-sort\.js/,         // our own topo-sort script
-    /^\s*node\s+[^\s]*status-report\.js/,     // our own status report script
-    /^\s*node\s+[^\s]*integrate-check\.js/,   // our own integration checker
-    /^\s*node\s+[^\s]*cross-model-review\.js/, // our own cross-model review script
-    /^\s*node\s+[^\s]*measure-quality\.js/,   // our own quality measurement script
-    /^\s*node\s+[^\s]*find-affected-nodes\.js/, // our own affected-node finder
-    /^\s*node\s+[^\s]*regenerate-shared-types\.js/, // our own type generator
-    /^\s*node\s+[^\s]*cross-model-bridge\.js/,   // Sprint 6: cross-model sweep bridge
-    /^\s*node\s+[^\s]*verify-runnable\.js/,       // our own verification script (Phase A)
-    /^\s*node\s+[^\s]*validate-ingest\.js/,      // Sprint 10B: repo ingestion validation
-    /^\s*node\s+[^\s]*runtime-verify\.js/,        // Phase B runtime verification
-    /^\s*node\s+[^\s]*worktree-manager\.js/,     // our own worktree manager
-    /^\s*node\s+[^\s]*compact-context\.js/,      // our own compaction context script
-    /^\s*node\s+[^\s]*compile-wiki\.js/,         // Sprint 9: wiki knowledge compilation
-    /^\s*node\s+[^\s]*verify-cross-phase\.js/,   // Sprint 10B: cross-phase implementation verification
-    /^\s*node\s+[^\s]*blast-radius\.js/,          // Sprint 11: dependency graph + blast radius analysis
-    /^\s*node\s+[^\s]*skill-registry\.js/,        // Sprint 11: skill registry generation/refresh/validation
+    nodeScriptPattern("validate-manifest.js"),  // our own validation script
+    nodeScriptPattern("validate-spec.js"),     // our own spec validator
+    nodeScriptPattern("next-node.js"),         // our own next-node script
+    nodeScriptPattern(
+      "state-transition.js",
+      String.raw`\s+(start-build|complete-build|start-review|start-review-fixing|start-revising|set-spec-status|complete-review|restore-previous-status|set-node-status|clear-active-node|set-sweep-phase|set-sweep-state|clear-sweep-state)\b`
+    ), // deterministic state transitions
+    nodeScriptPattern("session-start.js"),     // our own session-start script
+    nodeScriptPattern("topo-sort.js"),         // our own topo-sort script
+    nodeScriptPattern("status-report.js"),     // our own status report script
+    nodeScriptPattern("integrate-check.js"),   // our own integration checker
+    nodeScriptPattern("cross-model-review.js"), // our own cross-model review script
+    nodeScriptPattern("measure-quality.js"),   // our own quality measurement script
+    nodeScriptPattern("find-affected-nodes.js"), // our own affected-node finder
+    nodeScriptPattern("regenerate-shared-types.js"), // our own type generator
+    nodeScriptPattern("cross-model-bridge.js"),   // Sprint 6: cross-model sweep bridge
+    nodeScriptPattern("verify-runnable.js"),       // our own verification script (Phase A)
+    nodeScriptPattern("validate-ingest.js"),      // Sprint 10B: repo ingestion validation
+    nodeScriptPattern("runtime-verify.js"),        // Phase B runtime verification
+    nodeScriptPattern("worktree-manager.js"),     // our own worktree manager
+    nodeScriptPattern("compact-context.js"),      // our own compaction context script
+    nodeScriptPattern("compile-wiki.js"),         // Sprint 9: wiki knowledge compilation
+    nodeScriptPattern("verify-cross-phase.js"),   // Sprint 10B: cross-phase implementation verification
+    nodeScriptPattern("blast-radius.js"),          // Sprint 11: dependency graph + blast radius analysis
+    nodeScriptPattern("skill-registry.js"),        // Sprint 11: skill registry generation/refresh/validation
     /^\s*git\s+worktree\s+(add|remove|list|prune)\b/, // worktree: only safe subcommands
     /^\s*deno\s+(cache|--version|test|task\s+(dev|build|test|start))\b/, // Deno: safe subcommands only (no eval, no run)
     /^\s*bun\s+(install|--version|test|run\s+(dev|build|test|start))\b/, // Bun: safe subcommands only (no -e, no eval)
