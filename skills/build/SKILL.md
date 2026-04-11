@@ -123,7 +123,11 @@ The Builder agent receives:
 
 1. When the Builder agent finishes, it presents a summary and stops
 2. The Stop hook fires automatically — Layer 1 (`stop-hook.js`) checks bounce counter, Layer 2 (prompt) evaluates every acceptance criterion by ID
-3. **If all criteria pass:** The Stop hook marks the node as `"built"`, sets `last_build_completed`, resets `bounce_count` to 0, clears `active_node`
+3. **If all criteria pass:** Use the deterministic helper:
+   ```bash
+   node "${CLAUDE_PLUGIN_ROOT}/scripts/state-transition.js" complete-build "[node-id]"
+   ```
+   This marks the node as `"built"`, sets `last_build_completed`, resets `bounce_count`, clears `previous_status`, clears `active_node`, and resets `stop_hook_active`.
 4. **If criteria fail:** The Stop hook bounces — lists the failing criteria and continues building (up to 3 bounces, then escalates to user via `/forgeplan:recover`)
 
 After the Stop hook allows completion, suggest running `/forgeplan:review [node-id]` next.

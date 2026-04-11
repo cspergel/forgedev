@@ -11,12 +11,12 @@
  *   2. Clear stop_hook_active (reset from previous bounce cycle)
  *   3. Check bounce counter (< 3 = bounce, >= 3 = escalate to user)
  *   4. If bouncing: increment counter, exit 2 with AC evaluation instructions
- *   5. Claude evaluates ACs per the exit-2 message, does state transition if all pass
+ *   5. Claude evaluates ACs per the exit-2 message, then uses state-transition.js complete-build if all pass
  *   6. Claude tries to stop again → hook re-fires, counter incremented
  *
  * The exit-2 message instructs Claude to:
  *   - Read the node's spec and evaluate each AC by ID
- *   - If ALL ACs pass: mark node as "built", clear active_node, reset bounce_count
+ *   - If ALL ACs pass: use the deterministic complete-build transition helper
  *   - If any AC fails: continue working to address it
  *
  * Input: JSON on stdin with session context
@@ -156,7 +156,7 @@ function evaluate(input) {
       `1. Read the node spec at .forgeplan/specs/${activeNodeId}.yaml\n` +
       `2. For EACH acceptance criterion (AC1, AC2, etc.), verify it is met by the code you wrote. Check the 'test' field for each AC.\n` +
       `3. If ALL criteria pass:\n` +
-      `   - Update .forgeplan/state.json: set nodes.${activeNodeId}.status to "built", set nodes.${activeNodeId}.last_build_completed to current ISO timestamp, set nodes.${activeNodeId}.bounce_count to 0, set active_node to null, set stop_hook_active to false, update last_updated\n` +
+      `   - Run: node "${'${CLAUDE_PLUGIN_ROOT}'}/scripts/state-transition.js" complete-build "${activeNodeId}"\n` +
       `   - Then you may stop.\n` +
       `4. If any criterion FAILS: continue working to address it. Do NOT stop until all criteria pass or you've exhausted your attempts.\n`,
   };

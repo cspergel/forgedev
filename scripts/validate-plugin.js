@@ -199,6 +199,11 @@ function assertStateTransitionUsage(errors) {
       message: "skills/build/SKILL.md: build setup must use state-transition.js start-build",
     },
     {
+      file: path.join(skillsRoot, "build", "SKILL.md"),
+      marker: "state-transition.js\" complete-build",
+      message: "skills/build/SKILL.md: build completion must use state-transition.js complete-build",
+    },
+    {
       file: path.join(skillsRoot, "review", "SKILL.md"),
       marker: "state-transition.js\" start-review",
       message: "skills/review/SKILL.md: review setup must use state-transition.js start-review",
@@ -232,6 +237,17 @@ function assertStateTransitionUsage(errors) {
     const content = fs.readFileSync(check.file, "utf8");
     if (!content.includes(check.marker)) {
       pushError(errors, check.message);
+    }
+  }
+
+  const stopHookPath = path.join(repoRoot, "scripts", "stop-hook.js");
+  if (fs.existsSync(stopHookPath)) {
+    const stopHookContent = fs.readFileSync(stopHookPath, "utf8");
+    if (!stopHookContent.includes("state-transition.js\" complete-build")) {
+      pushError(errors, "scripts/stop-hook.js: successful build verification must instruct use of state-transition.js complete-build");
+    }
+    if (stopHookContent.includes("Update .forgeplan/state.json: set nodes.")) {
+      pushError(errors, "scripts/stop-hook.js: must not instruct manual state.json editing on build completion");
     }
   }
 }
