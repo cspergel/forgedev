@@ -660,9 +660,10 @@ function evaluateBash(toolInput, cwd) {
   const allSegmentsSafe = segments.every((seg) => {
     const trimmed = seg.trim();
     if (!trimmed) return true;
+    const normalized = normalizeReadOnlySegment(trimmed);
     const matchesSafe =
-      safePatterns.some((p) => p.test(trimmed)) ||
-      isReadOnlyInlinePython(trimmed);
+      safePatterns.some((p) => p.test(normalized)) ||
+      isReadOnlyInlinePython(normalized);
     // Strip safe redirections (2>&1, 2>/dev/null, >/dev/null) before checking for file redirections
     const stripped = trimmed.replace(/\d+>&\d+/g, "").replace(/\d+>\s*\/dev\/null/g, "").replace(/>\s*\/dev\/null/g, "");
     const hasUnsafeRedirection = />\s*[^\s]/.test(stripped) || /\|\s*Out-File/i.test(stripped);
@@ -705,6 +706,14 @@ function splitReadOnlyShellSegments(command) {
   return command
     .split(/\s*(?:\r?\n|\r|;|&&|\|\||(?<!\|)\|(?!\|))\s*/)
     .filter(Boolean);
+}
+
+function normalizeReadOnlySegment(segment) {
+  return segment
+    .replace(/\s+\d+>&\d+\s*/g, " ")
+    .replace(/\s+\d+>\s*\/dev\/null\s*/gi, " ")
+    .replace(/\s+>\s*\/dev\/null\s*/gi, " ")
+    .trim();
 }
 
 function isReadOnlyInlinePython(segment) {

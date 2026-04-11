@@ -305,6 +305,9 @@ function assertStateTransitionBashAllowlist(errors) {
   if (!content.includes("splitReadOnlyShellSegments")) {
     pushError(errors, "scripts/pre-tool-use.js: Bash guard must support splitting safe read-only shell wrappers");
   }
+  if (!content.includes("normalizeReadOnlySegment")) {
+    pushError(errors, "scripts/pre-tool-use.js: Bash guard must normalize benign shell redirections before safe-command matching");
+  }
   if (!content.includes("relPath.startsWith(\".forgeplan/reviews/\")")) {
     pushError(errors, "scripts/pre-tool-use.js: sweep/deep-build analysis mode must allow .forgeplan/reviews/ writes for parallel review batches");
   }
@@ -359,6 +362,12 @@ function assertTopLevelOrchestrationStateRules(errors) {
     }
     if (!content.includes("Map each failure to an owning node")) {
       pushError(errors, "skills/deep-build/SKILL.md: Phase 3 remediation must route verify-runnable failures to owning nodes");
+    }
+    if (!content.includes("ForgePlan only supports one `active_node` at a time during remediation")) {
+      pushError(errors, "skills/deep-build/SKILL.md: Phase 3 remediation must document the single-active-node constraint");
+    }
+    if (!content.includes("Do **not** apply fixes for multiple node groups in parallel")) {
+      pushError(errors, "skills/deep-build/SKILL.md: Phase 3 remediation must forbid parallel cross-node write execution");
     }
   }
 

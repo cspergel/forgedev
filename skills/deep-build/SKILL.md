@@ -207,7 +207,8 @@ If it returns **`status: "fail"`**: do **not** try to edit files directly from s
    - `placementops/core/**`, `alembic/**`, `main.py`, `requirements.txt`, `pyproject.toml`, `Pipfile`, `poetry.lock`, `Dockerfile`, `docker-compose.yml`, `alembic.ini`, or generic `install:python` dependency failures -> `core-infrastructure`
    - If a failure cannot be mapped to a real node, add it to `sweep_state.needs_manual_attention` and continue with the mapped failures only.
 3. Group failures by owning node.
-4. For each affected node group:
+4. If multiple owners are affected, you may analyze and prepare the fix plans in parallel, but you must execute the write phase **serially** because ForgePlan only supports one `active_node` at a time during remediation. Do **not** apply fixes for multiple node groups in parallel.
+5. For each affected node group, one at a time:
    - Read `.forgeplan/state.json` to capture the node's current status (typically `reviewed` or `reviewed-with-findings`)
    - Run:
      ```bash
@@ -223,11 +224,11 @@ If it returns **`status: "fail"`**: do **not** try to edit files directly from s
      ```bash
      node "${CLAUDE_PLUGIN_ROOT}/scripts/state-transition.js" restore-previous-status "[node-id]"
      ```
-5. After all node-scoped fix groups finish, re-run:
+6. After all node-scoped fix groups finish, re-run:
    ```bash
    node "${CLAUDE_PLUGIN_ROOT}/scripts/verify-runnable.js"
    ```
-6. Repeat the verify-runnable remediation loop up to 3 times. If failures remain after 3 remediation cycles, halt deep-build with an error and preserve `sweep_state` for recovery.
+7. Repeat the verify-runnable remediation loop up to 3 times. If failures remain after 3 remediation cycles, halt deep-build with an error and preserve `sweep_state` for recovery.
 
 The verify-runnable gate **must pass** before proceeding to Phase 4. This catches fundamental project health issues (missing packages, syntax errors, broken configs) before investing time in integration checks and sweeps.
 
