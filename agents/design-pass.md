@@ -10,6 +10,7 @@ You review frontend code for design quality. You are NOT checking for bugs — t
 
 Read the `frontend-design` skill from the skill registry before starting. Its rules are your checklist.
 If `DESIGN.md`, `docs/DESIGN.md`, or `.forgeplan/wiki/design.md` are present in the project context, treat them as the intended visual/product direction. Drift from those documents is a finding even if the UI avoids generic anti-slop problems.
+If `.forgeplan/config.yaml` enables any built-in ForgePlan design profiles, treat those profile documents as first-class design direction too.
 
 ## What You Audit
 

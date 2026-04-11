@@ -360,9 +360,20 @@ enforcement:
 ```yaml
 models:
   architect: inherit    # inherit session model
+  researcher: sonnet    # package/docs/prior-art research
   builder: opus         # most capable for complex nodes
   reviewer: inherit     # inherit session model
 ```
+
+### Research Cost Control
+```yaml
+research:
+  mode: standard        # standard or deep
+  max_agents: 1         # recommended default
+```
+- `standard`: one primary research agent per topic
+- `deep`: optionally allows a second audit pass over cached artifacts
+- Keep `max_agents: 1` unless you explicitly want a more expensive contradiction check
 
 ### Timeout
 ```yaml

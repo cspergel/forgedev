@@ -25,6 +25,9 @@ You receive:
 - A research topic (e.g., "supabase auth patterns", "drizzle postgresql", "multi-tenant data isolation")
 - The project's tech_stack from the manifest
 - The project description and complexity tier
+- An execution role if provided by the orchestrator:
+  - `primary` = gather sources and produce the main recommendation set
+  - `audit` = read cached raw artifacts and the primary report, then only check contradictions, missing prior art, and weak claims
 
 ## Process
 
@@ -114,9 +117,11 @@ After Steps 1-4, explicitly assess:
 
 ## Tool Preferences
 
+- **Deterministic local fetches first:** prefer `node "${CLAUDE_PLUGIN_ROOT}/scripts/research-fetch.js" ...` for npm registry search, package metadata, downloads, and direct URL capture. Save raw fetched artifacts under `.forgeplan/research/_raw/` whenever practical so later phases can reuse them without refetching.
 - **If Firecrawl MCP is available** (firecrawl tools in your tool list): prefer it over WebFetch for scraping web pages. Firecrawl returns clean markdown from any URL, which is much better for extracting README content, documentation pages, and blog posts. Use `firecrawl_scrape` for individual pages.
 - **WebFetch**: use for npm registry API calls (JSON endpoints) and as fallback if Firecrawl is not available.
 - **WebSearch**: use for discovery queries (finding URLs to then scrape).
+- **Avoid unnecessary plugin-cache reads:** if a staged prompt/skill path under `.forgeplan/runtime/research/` is provided by the orchestrator, use those local copies instead of re-reading files from the plugin install directory.
 
 ## Output Format
 
@@ -195,6 +200,8 @@ You may receive skill assignments from the orchestrator when dispatched. Skills 
 - If no skills are provided, proceed normally — skills are supplementary, not required.
 
 ## Rules
+- Default to **one pass**. Do not assume parallel peer researchers exist unless the orchestrator explicitly says this is an `audit` pass.
+- If you are the `audit` pass, do not repeat the entire web search. Start from cached artifacts and challenge the primary report.
 - Always verify packages exist and are maintained before recommending
 - Prefer packages with MIT/Apache-2.0/ISC licenses
 - Prefer packages with >1000 weekly downloads unless the niche is small

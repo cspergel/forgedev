@@ -87,6 +87,12 @@ function resolveSkillSourceDir(sourceDir, projectRoot) {
   return projectRelative;
 }
 
+function normalizeTechTerm(value) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "");
+}
+
 function getEffectiveTier(manifest, config) {
   const override =
     config &&
@@ -414,10 +420,16 @@ function matchesTechFilter(skill, manifest) {
   // Also include the keys as matchable (e.g., "database", "frontend")
   const stackKeys = Object.keys(techStack).map((k) => k.toLowerCase());
   const allStackTerms = [...stackValues, ...stackKeys];
+  const normalizedStackTerms = allStackTerms
+    .map((term) => normalizeTechTerm(term))
+    .filter(Boolean);
 
-  return skill.tech_filter.some((filter) =>
-    allStackTerms.some((term) => term.includes(String(filter).toLowerCase()))
-  );
+  return skill.tech_filter.some((filter) => {
+    const rawFilter = String(filter).toLowerCase();
+    const normalizedFilter = normalizeTechTerm(filter);
+    return allStackTerms.some((term) => term.includes(rawFilter)) ||
+      normalizedStackTerms.some((term) => term.includes(normalizedFilter));
+  });
 }
 
 /**

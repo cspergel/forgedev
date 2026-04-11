@@ -60,6 +60,9 @@ models:
   # Architecture & discovery — needs strong reasoning
   architect: "opus"
 
+  # Research — package and prior-art analysis
+  researcher: "sonnet"
+
   # Building — depends on node complexity
   builder: "sonnet"              # Default for all builds
   # builder_override:            # Optional per-node overrides
@@ -80,6 +83,11 @@ models:
   # sweep_api: "sonnet"          # Contract verification
   # sweep_imports: "haiku"       # Simple import chain analysis
 
+# --- Research Configuration ---
+research:
+  mode: "standard"               # standard = 1 primary agent; deep = allow a limited audit pass
+  max_agents: 1                  # Hard cap for research fanout. Recommended: 1 for most projects, 2 only for deep research.
+
 # --- Complexity Override ---
 complexity:
   tier_override: ""    # Set to SMALL, MEDIUM, or LARGE to override the Architect's assessment.
@@ -97,7 +105,7 @@ skills:
   max_active: 5                    # Maximum concurrent skills per agent to prevent context bloat
   sources:                         # Where to look for skills (searched in order)
     - .forgeplan/skills            # Project-specific skills (from skill learner or manual)
-    - skills                       # Plugin built-in skills (curated, vendored)
+    - skill-library                # Plugin built-in skills (curated, vendored)
     # - ~/.claude/skills           # User global skills (cross-project)
 
 # --- Frontend Design Context (optional) ---
@@ -108,3 +116,13 @@ design:
     - DESIGN.md
     - docs/DESIGN.md
     - .forgeplan/wiki/design.md
+  profiles:
+    # Optional bundled ForgePlan design profiles. These are reusable DESIGN.md-style
+    # guides shipped with the plugin and loaded alongside any project-local design docs.
+    # Good starting points for product surfaces before you write a custom DESIGN.md.
+    # Available built-in profiles:
+    # - operations-command-center
+    # - calm-clinical-workbench
+    # - dense-enterprise-dashboard
+    # Example:
+    # - operations-command-center

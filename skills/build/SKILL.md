@@ -47,6 +47,10 @@ If the target node is frontend-facing, check these files before dispatching the 
 - `docs/DESIGN.md`
 - `.forgeplan/wiki/design.md`
 
+Also check `.forgeplan/config.yaml` for `design.profiles`. Any configured built-in
+ForgePlan design profiles must be included in the Builder context alongside
+project-local design docs.
+
 If any exist, include them in the Builder context as product/design direction. They are advisory, but they should influence visual hierarchy, spacing, palette, motion, and tone. If none exist, proceed normally.
 
 ## Single Node Mode

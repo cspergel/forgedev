@@ -428,7 +428,11 @@ function buildAmbientStatus(forgePlanDir, manifestPath, statePath, state) {
     if (designStatus.enabled && designStatus.files.length > 0) {
       lines.push(`  Design docs: ${designStatus.files.map((entry) => entry.relativePath).join(", ")}`);
     } else if (designStatus.enabled) {
-      lines.push(`  Design docs: none detected (${designStatus.expectedSources.join(", ")})`);
+      const expected = [
+        ...(designStatus.expectedSources || []),
+        ...((designStatus.expectedProfiles || []).map((profile) => `design-profile:${profile}`)),
+      ];
+      lines.push(`  Design docs: none detected (${expected.join(", ")})`);
     }
   } catch {
     // Design context is advisory only.

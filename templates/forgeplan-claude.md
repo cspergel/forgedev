@@ -57,3 +57,4 @@ This project uses **ForgePlan Core**, an architecture-governed build harness. Fo
 - `.forgeplan/sweeps/` — Sweep and cross-model verification reports
 - `.forgeplan/wiki/` — Compiled knowledge base (MEDIUM/LARGE only)
 - `DESIGN.md` / `docs/DESIGN.md` — Optional product/design direction for frontend work
+- `.forgeplan/config.yaml` `design.profiles` — Optional bundled ForgePlan design profiles for frontend direction

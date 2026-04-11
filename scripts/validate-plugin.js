@@ -44,6 +44,11 @@ const publicCommandSurfacePaths = [
   path.join(repoRoot, "templates", "forgeplan-claude.md"),
 ];
 
+const inlineOrchestrationPaths = [
+  path.join(skillsRoot, "greenfield", "SKILL.md"),
+  path.join(skillsRoot, "deep-build", "SKILL.md"),
+];
+
 function parseFrontmatter(skillPath) {
   const content = fs.readFileSync(skillPath, "utf8");
   const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
@@ -65,6 +70,52 @@ function findForgePlanCommands(content) {
     matches.push(match[1]);
   }
   return matches;
+}
+
+function assertDiscoverCompletion(errors) {
+  const discoverPath = path.join(skillsRoot, "discover", "SKILL.md");
+  if (!fs.existsSync(discoverPath)) {
+    pushError(errors, "skills/discover/SKILL.md: missing");
+    return;
+  }
+
+  const content = fs.readFileSync(discoverPath, "utf8");
+  const completionIndex = content.indexOf("Next steps");
+  if (completionIndex === -1) {
+    pushError(errors, "skills/discover/SKILL.md: missing completion next-steps block");
+    return;
+  }
+
+  const completionBlock = content.slice(completionIndex, Math.min(content.length, completionIndex + 1200));
+  const greenfieldIndex = completionBlock.indexOf("/forgeplan:greenfield");
+  const specIndex = completionBlock.indexOf("/forgeplan:spec --all");
+  const deepBuildIndex = completionBlock.indexOf("/forgeplan:deep-build");
+
+  if (greenfieldIndex === -1) {
+    pushError(errors, "skills/discover/SKILL.md: completion block must recommend /forgeplan:greenfield");
+  }
+  if (specIndex !== -1 && greenfieldIndex !== -1 && greenfieldIndex > specIndex) {
+    pushError(errors, "skills/discover/SKILL.md: /forgeplan:greenfield must appear before /forgeplan:spec --all in completion guidance");
+  }
+  if (deepBuildIndex !== -1 && greenfieldIndex !== -1 && greenfieldIndex > deepBuildIndex) {
+    pushError(errors, "skills/discover/SKILL.md: /forgeplan:greenfield must appear before /forgeplan:deep-build in completion guidance");
+  }
+}
+
+function assertNoNestedSpecSkill(errors) {
+  for (const filePath of inlineOrchestrationPaths) {
+    if (!fs.existsSync(filePath)) {
+      continue;
+    }
+    const rel = path.relative(repoRoot, filePath);
+    const content = fs.readFileSync(filePath, "utf8");
+    if (!content.includes("Skill(forgeplan:spec)")) {
+      pushError(errors, `${rel}: must explicitly forbid nested Skill(forgeplan:spec) invocation`);
+    }
+    if (!content.includes("skills/spec/SKILL.md")) {
+      pushError(errors, `${rel}: must direct the orchestrator to inline the spec workflow from skills/spec/SKILL.md`);
+    }
+  }
 }
 
 const errors = [];
@@ -194,6 +245,9 @@ for (const surfacePath of publicCommandSurfacePaths) {
     }
   }
 }
+
+assertDiscoverCompletion(errors);
+assertNoNestedSpecSkill(errors);
 
 if (errors.length > 0) {
   console.error("Plugin validation failed:");

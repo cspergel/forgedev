@@ -51,8 +51,8 @@ This is a sequential loop using existing commands:
 1. Run `node "${CLAUDE_PLUGIN_ROOT}/scripts/next-node.js"` to get the recommended node
 2. Handle result by type:
    - `"recommendation"`:
-     - If status is `"pending"`: run `/forgeplan:spec [node-id]` first to generate a complete spec with filled-in acceptance criteria and test fields. Verify the spec file exists and has non-empty `test` fields for each AC before proceeding. Then `/forgeplan:build [node-id]`.
-     - If status is `"specced"`: verify the spec has non-empty acceptance criteria test fields (skeleton specs from discover have empty fields). If test fields are empty, re-run `/forgeplan:spec [node-id]` to complete them. Then `/forgeplan:build [node-id]`.
+     - If status is `"pending"`: execute the single-node **autonomous spec workflow inline** (read `${CLAUDE_PLUGIN_ROOT}/skills/spec/SKILL.md` and follow its Autonomous Mode for the specific node). Do **not** use `Skill(forgeplan:spec)` — `spec` has `disable-model-invocation: true`. Generate a complete spec with filled-in acceptance criteria and test fields, verify the spec file exists and has non-empty `test` fields for each AC, then `/forgeplan:build [node-id]`.
+     - If status is `"specced"`: verify the spec has non-empty acceptance criteria test fields (skeleton specs from discover have empty fields). If test fields are empty, re-run the single-node autonomous spec workflow inline to complete them. Then `/forgeplan:build [node-id]`.
      - If status is `"built"`: node was built but not yet reviewed. Run `/forgeplan:review [node-id]` only.
      - After each build, run `/forgeplan:review [node-id]`
      - **Bounce exhaustion recovery:** If a node's Stop hook has bounced 3 times (escalated to user), the autonomous deep-build must NOT halt the pipeline. Instead:
@@ -92,7 +92,7 @@ All existing enforcement (PreToolUse, PostToolUse, Builder agent, Stop hook) app
 
 1. Set `sweep_state.current_phase` to `"design-pass"` (already set by Phase 2 transition)
 2. Load the `frontend-design` skill directly — the design-pass agent is not in the registry (it's a specialized single-use agent, not a standard sweep/build agent). Read the skill content from `${CLAUDE_PLUGIN_ROOT}/skill-library/core/frontend-design.md` for inclusion in the agent prompt. If the file doesn't exist, skip the design pass with a warning.
-3. Check for optional design context files at `DESIGN.md`, `docs/DESIGN.md`, and `.forgeplan/wiki/design.md`. Include any that exist in the design-pass prompt as the intended design direction. If none exist, note "No explicit design docs detected."
+3. Check for optional design context files at `DESIGN.md`, `docs/DESIGN.md`, and `.forgeplan/wiki/design.md`. Also read `.forgeplan/config.yaml` for any configured `design.profiles` and include those bundled profile docs too. Include all of them in the design-pass prompt as the intended design direction. If none exist, note "No explicit design docs detected."
 4. Identify all frontend nodes (nodes with `type: "frontend"` or nodes whose `file_scope` contains frontend files such as `.tsx`, `.jsx`, `.vue`, `.svelte`)
 5. Dispatch the design-pass agent using the Agent tool:
    - Read `agents/design-pass.md` for the system prompt
@@ -313,7 +313,7 @@ The report must capture **pipeline decisions**, not just outcomes. Whenever a ph
 - Research artifacts: [list files from `.forgeplan/research/`, or "none found"]
 - Plan artifact: [.forgeplan/plans/implementation-plan.md exists?]
 - Skills registry: [.forgeplan/skills-registry.yaml exists?]
-- Design docs: [list `DESIGN.md`, `docs/DESIGN.md`, `.forgeplan/wiki/design.md`, or "none found"]
+- Design docs: [list `DESIGN.md`, `docs/DESIGN.md`, `.forgeplan/wiki/design.md`, configured `design-profile:*` entries, or "none found"]
 - Wiki files: [list key files, or "skipped for SMALL"]
 
 ## Integration Results
@@ -372,7 +372,7 @@ After Phase 8 certification completes:
 3. Run /forgeplan:integrate with cross-phase lens (MANDATORY — this is distinct from the Phase 4 same-phase integration check). This runs BOTH `integrate-check.js` (spec-to-spec) AND `verify-cross-phase.js` (implementation-to-spec). **Check exit codes AND parse JSON output:** exit code 1 = hard FAIL (halt immediately). Exit code 0 with `warned > 0` in either script's JSON = WARNs present — the LLM deep-check in integrate.md step 4 must run before proceeding. Only advance when both scripts exit 0 AND the LLM deep-check resolves all WARNs.
 4. If integrate fully passes (no unresolved FAILs or WARNs): increment `build_phase` in manifest, set `build_phase_started_at` in state, and update `sweep_state.phase_advancement.checkpoint` to `"post_increment"`.
 5. Before promoting specs, update `sweep_state.phase_advancement.checkpoint` to `"promoting_specs"`.
-6. Run /forgeplan:spec for promoted nodes — detect interface-only specs (specs with `spec_type: "interface-only"` or `generated_from: "phase-promotion"`) and re-run spec generation to promote to full prescriptive specs. The promoted spec must set `spec_type: "prescriptive"` and include all 14 fields. **If any promoted node's spec generation fails:** halt with error, preserve `sweep_state` (still has `current_phase: "integrate"` plus `phase_advancement` checkpoint state), and present: "Phase advancement failed during spec promotion for [node-id]. Run /forgeplan:recover to resume."
+6. Promote specs for promoted nodes by executing the single-node autonomous spec workflow **inline** — detect interface-only specs (specs with `spec_type: "interface-only"` or `generated_from: "phase-promotion"`) and re-run spec generation to promote to full prescriptive specs. Do **not** invoke `Skill(forgeplan:spec)` here. The promoted spec must set `spec_type: "prescriptive"` and include all 14 fields. **If any promoted node's spec generation fails:** halt with error, preserve `sweep_state` (still has `current_phase: "integrate"` plus `phase_advancement` checkpoint state), and present: "Phase advancement failed during spec promotion for [node-id]. Run /forgeplan:recover to resume."
 7. Update `sweep_state.phase_advancement.checkpoint` to `"promotion_complete"`. Do NOT delete backups or clear sweep_state yet.
 8. Start new build cycle for promoted nodes (loop back to Phase 2). Phase 2's initialization overwrites `sweep_state` with fresh `operation: "deep-building"`, `current_phase: "build-all"`. **After Phase 2 successfully initializes sweep_state**, delete `.forgeplan/phase-advance-backup/`. A crash between step 7 and Phase 2 init is safe: `checkpoint: "promotion_complete"` tells recovery that spec promotion succeeded and the next action is to start the build loop (not re-run promotion).
 

@@ -112,7 +112,14 @@ Read `.forgeplan/manifest.yaml` to identify research topics from the project des
 
 If the stack is otherwise generic, still keep the baseline prior-art topic. Greenfield must always produce at least one research artifact.
 
-For each identified topic, run `/forgeplan:research [topic]`.
+For each identified topic, run `/forgeplan:research [topic]` **sequentially**.
+
+Do not parallelize topic-level research by default. Research cost compounds too quickly on LARGE projects.
+The default expectation is:
+- `research.mode: standard` → 1 primary agent per topic
+- `research.mode: deep` → at most 2 agents per topic, where the second is an audit pass over cached artifacts
+
+If multiple topics exist, reuse prior raw artifacts under `.forgeplan/research/_raw/` when possible instead of re-fetching the same vendor/docs pages.
 
 **If no specific technologies or integrations are found:** skip Step 2 entirely. Log: "No specific integrations to research — skipping research step."
 
@@ -122,13 +129,26 @@ Override the generic-skip rule above when it conflicts with the baseline prior-a
 
 ### Step 3: Spec all nodes (autonomous, phase-aware)
 
-Generate specs for all nodes:
+Do **not** invoke `/forgeplan:spec` via the Skill tool here. `spec` is a command
+skill with `disable-model-invocation: true`, so nested `Skill(forgeplan:spec)`
+calls are invalid.
 
+Instead, execute the autonomous spec workflow **inline** by reading:
+```bash
+${CLAUDE_PLUGIN_ROOT}/skills/spec/SKILL.md
 ```
-/forgeplan:spec --all --autonomous
-```
+and following its **Autonomous Mode** for `--all`.
 
-This reads research findings from `.forgeplan/research/` and applies the Sprint 10B phased-spec contract automatically:
+This inline autonomous spec pass must:
+- process nodes in dependency order
+- read research findings from `.forgeplan/research/`
+- apply the Sprint 10B phased-spec contract automatically
+- write/update `.forgeplan/specs/[node-id].yaml`
+- run spec validation after each node
+- update `.forgeplan/state.json`
+- avoid any user interaction
+
+The inline spec pass reads research findings from `.forgeplan/research/` and applies the Sprint 10B phased-spec contract automatically:
 - Current-phase nodes get full specs with acceptance criteria, tests, constraints, and failure modes
 - Next-phase nodes get interface-only specs
 - Later-phase nodes stay deferred until promotion

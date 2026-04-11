@@ -4,6 +4,7 @@ const fs = require("fs");
 const path = require("path");
 
 const DEFAULT_SOURCES = ["DESIGN.md", "docs/DESIGN.md", ".forgeplan/wiki/design.md"];
+const DEFAULT_PROFILE_DIR = path.join(__dirname, "..", "..", "design-profiles");
 
 function hasFrontendSurface(manifest) {
   const techFrontend =
@@ -40,13 +41,52 @@ function getDesignSources(config) {
   return configured.length > 0 ? configured : DEFAULT_SOURCES.slice();
 }
 
+function getDesignProfiles(config) {
+  const configured = config && config.design && Array.isArray(config.design.profiles)
+    ? config.design.profiles.filter((entry) => typeof entry === "string" && entry.trim())
+    : [];
+  return configured.length > 0 ? configured : [];
+}
+
+function resolveProfileFile(profileName) {
+  const trimmed = String(profileName || "").trim();
+  if (!trimmed) return null;
+
+  const fileName = trimmed.endsWith(".md") ? trimmed : `${trimmed}.md`;
+  const profilePath = path.join(DEFAULT_PROFILE_DIR, fileName);
+  if (!fs.existsSync(profilePath)) {
+    return null;
+  }
+
+  return {
+    relativePath: `design-profile:${fileName.replace(/\\/g, "/")}`,
+    absolutePath: profilePath,
+  };
+}
+
 function resolveDesignFiles(projectRoot, config) {
-  return getDesignSources(config)
+  const seen = new Set();
+  const files = getDesignSources(config)
     .map((relativePath) => ({
       relativePath,
       absolutePath: path.join(projectRoot, relativePath),
     }))
     .filter((entry) => fs.existsSync(entry.absolutePath));
+
+  for (const file of files) {
+    seen.add(path.resolve(file.absolutePath));
+  }
+
+  for (const profileName of getDesignProfiles(config)) {
+    const profile = resolveProfileFile(profileName);
+    if (!profile) continue;
+    const resolved = path.resolve(profile.absolutePath);
+    if (seen.has(resolved)) continue;
+    seen.add(resolved);
+    files.push(profile);
+  }
+
+  return files;
 }
 
 function getDesignContextStatus(projectRoot, manifest, config) {
@@ -59,14 +99,18 @@ function getDesignContextStatus(projectRoot, manifest, config) {
     enabled: true,
     files,
     expectedSources: getDesignSources(config),
+    expectedProfiles: getDesignProfiles(config),
   };
 }
 
 module.exports = {
   DEFAULT_SOURCES,
+  DEFAULT_PROFILE_DIR,
   getDesignContextStatus,
+  getDesignProfiles,
   getDesignSources,
   hasFrontendSurface,
   isDesignEnabled,
+  resolveProfileFile,
   resolveDesignFiles,
 };

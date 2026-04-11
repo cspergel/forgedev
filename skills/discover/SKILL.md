@@ -107,7 +107,12 @@ When `--from` is provided, route through the Translator agent instead of directl
 3. **Validate Translator output:** After receiving the response, check: (a) it parses as valid JSON (strip markdown fences if present), (b) it contains `project_name` (string), `proposed_nodes` (non-empty array), `shared_models` (array), `tier_assessment` (one of SMALL/MEDIUM/LARGE), and `ambiguities` (array). If validation fails: fall back to Architect inline extraction with warning: "Translator returned invalid output, using inline extraction."
 4. **If Translator dispatch fails** (timeout, error, empty output): fall back to Architect inline extraction (see architect.md Document-Extraction Mode) with warning: "Translator unavailable, using inline extraction." Note: when using the Architect fallback, ambiguity resolution is handled inline by the Architect — skip the Interviewer dispatch step.
 5. **If `ambiguities` array is non-empty AND tier is not SMALL:** dispatch the Interviewer agent (read `agents/interviewer.md`) to resolve them one at a time. For autonomous mode: Interviewer resolves by choosing defaults and logging assumptions.
-6. **Dispatch Researcher** (read `agents/researcher.md`) for design-level research and ecosystem context. Skip for SMALL tier unless explicitly requested.
+6. **Dispatch Researcher** for design-level research and ecosystem context. Skip for SMALL tier unless explicitly requested.
+   Before dispatch, run:
+   ```bash
+   node "${CLAUDE_PLUGIN_ROOT}/scripts/research-prepare.js"
+   ```
+   Then use the staged local researcher prompt and skills it returns, plus the selected `models.researcher` value from `.forgeplan/config.yaml` if present. Prefer the deterministic `research-fetch.js` helper for package/docs capture before falling back to live web fetches.
 7. **Pass the Translator mapping + research context + resolved ambiguities to the Architect.** The Architect generates manifest + skeleton specs from the mapping (existing behavior, new structured input format).
 8. After manifest generation, continue with the normal scaffolding and completion steps.
 
@@ -321,3 +326,8 @@ When discovery is complete:
        → /forgeplan:deep-build     Specs all nodes, builds, reviews, sweeps,
                                     and cross-model certifies — fully autonomous.
    ```
+7. **Recommendation order is mandatory for standalone discovery.**
+   - If this command was invoked directly by the user (not by `/forgeplan:greenfield`), `/forgeplan:greenfield` MUST be the first recommended next step after a successful discovery or re-discovery.
+   - Do not omit `/forgeplan:greenfield` from the completion message for standalone discovery.
+   - `/forgeplan:spec --all`, `/forgeplan:build`, `/forgeplan:next`, and `/forgeplan:deep-build` are secondary alternatives, not the primary recommendation.
+   - The only exception is autonomous discovery invoked from `/forgeplan:greenfield`, where no next-step menu should be shown because the orchestrator continues automatically.
