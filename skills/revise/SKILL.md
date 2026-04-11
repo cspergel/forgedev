@@ -24,7 +24,7 @@ If the argument starts with `--model`, this is a shared model cascade:
 
 ## Prerequisites
 
-- Node must have status "built" or "reviewed"
+- Node must have status "built", "reviewed", or "reviewed-with-findings"
 - `.forgeplan/specs/[node-id].yaml` must exist
 
 ## Setup

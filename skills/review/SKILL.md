@@ -12,25 +12,32 @@ Audit the specified node's implementation against its spec.
 
 ## Review All Mode (`--all`)
 
-If the argument is `--all`, review all built nodes sequentially in dependency order:
+If the argument is `--all`, review all built nodes in dependency order. Use tier-aware batching:
 
 1. Run `node "${CLAUDE_PLUGIN_ROOT}/scripts/topo-sort.js"` to get the dependency order
-2. Read `.forgeplan/state.json` to find nodes with status `"built"` (not yet reviewed)
-3. For each eligible node in dependency order:
-   - Run the single-node review flow below
-   - Present each review result before moving to the next
-   - If any node gets REQUEST CHANGES, note it and continue with the remaining nodes
-4. After all reviews, present a summary: which nodes passed, which need changes
+2. Read `.forgeplan/state.json` to find nodes with status `"built"` (not yet review-complete)
+3. Read `.forgeplan/manifest.yaml` and partition the eligible built nodes into dependency-safe batches:
+   - Nodes in the same batch must not depend on one another
+   - A simple rule is sufficient: use topological layers from the manifest dependency graph
+4. Dispatch review work by tier:
+   - `SMALL`: review sequentially
+   - `MEDIUM`/`LARGE`: review one dependency-safe batch at a time, with nodes inside the batch reviewed in parallel using fresh Reviewer agents
+5. For parallel batches:
+   - Do **not** call `start-review` for every node before dispatching the batch. The runtime only has one `active_node`, so pre-marking multiple nodes as `"reviewing"` is invalid.
+   - Keep the batch read-only: reviewer agents may write only `.forgeplan/reviews/[node-id].md`
+   - After the whole batch returns, process the nodes in topological order and serialize the final state transitions with `complete-review`
+6. If any node gets REQUEST CHANGES, note it and continue with the remaining eligible nodes
+7. After all reviews, present a summary: which nodes passed cleanly and which completed with findings
 
 ## Prerequisites
 
-- Node must have status "built" or "reviewed" (for re-review)
+- Node must have status "built", "reviewed", or "reviewed-with-findings" (for re-review)
 - `.forgeplan/specs/[node-id].yaml` must exist
 - Code files must exist in the node's `file_scope` directory
 
 ## Setup
 
-1. Update state using the deterministic helper instead of manual file editing:
+1. For single-node review, update state using the deterministic helper instead of manual file editing:
    ```bash
    node "${CLAUDE_PLUGIN_ROOT}/scripts/state-transition.js" start-review "[node-id]" "[previous-status]"
    ```
@@ -40,6 +47,8 @@ If the argument is `--all`, review all built nodes sequentially in dependency or
    - `nodes.[node-id].status`
    - `last_updated`
    Do not manually edit `.forgeplan/state.json` for this transition.
+
+   For `--all` parallel review batches, skip this pre-transition and keep reviews read-only until batch completion. Final state transitions are serialized after reports are written.
 
 2. **Read** `.forgeplan/config.yaml` if it exists. Check `review.mode` and `enforcement.mode`. If config doesn't exist, defaults are `review.mode: "native"` and `enforcement.mode: "advisory"`.
 
@@ -164,7 +173,11 @@ Parse the JSON output and present the cross-model findings to the user alongside
 The `enforcement.mode` from config.yaml determines whether cross-model review blocks the status transition:
 
 ### `enforcement.mode: "advisory"` (default)
-The node advances to `"reviewed"` regardless of the cross-model result. Cross-model findings are informational — presented to the user but not blocking.
+The review operation completes even if findings remain, but the terminal node status must reflect whether the review actually passed:
+- If all active review lenses pass (native APPROVE, and cross-model APPROVE or skipped) → advance to `"reviewed"`
+- If any findings remain deferred (native REQUEST CHANGES, cross-model changes requested, or advisory fallback with unresolved issues) → advance to `"reviewed-with-findings"`
+
+Cross-model findings are informational in advisory mode — they do not block the pipeline — but they must not be hidden behind a plain `"reviewed"` status.
 
 ### `enforcement.mode: "strict"`
 The node can only advance to `"reviewed"` if **both** the native review and the cross-model review pass:
@@ -190,16 +203,21 @@ then warn the user that the cross-model gate could not be evaluated and offer tw
 
 ## Completion
 
-Update state with the deterministic helper:
+Update state with the deterministic helper. Choose the terminal status explicitly:
+
+- Use `"reviewed"` only when all required review lenses approve.
+- Use `"reviewed-with-findings"` in advisory mode when the review is complete but findings remain deferred to later sweep/rebuild work.
+
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/scripts/state-transition.js" complete-review "[node-id]" ".forgeplan/reviews/[node-id].md" "[.forgeplan/reviews/[node-id]-crossmodel.md|-]"
+node "${CLAUDE_PLUGIN_ROOT}/scripts/state-transition.js" complete-review "[node-id]" ".forgeplan/reviews/[node-id].md" "[.forgeplan/reviews/[node-id]-crossmodel.md|-]" "[reviewed|reviewed-with-findings]"
 ```
-This atomically sets reviewed status, persists review report paths, clears `previous_status`, clears `active_node`, and updates `last_updated`.
+This atomically sets the final review-complete status, persists review report paths, clears `previous_status`, clears `active_node`, and updates `last_updated`.
 
 **After updating state, suggest next steps based on the review outcome:**
 
 - **If APPROVE:** Suggest:
   - `/forgeplan:next` to see the next recommended action
-  - `/forgeplan:integrate` if all nodes are now reviewed (to verify cross-node interfaces)
+  - `/forgeplan:integrate` if all nodes are now review-complete (to verify cross-node interfaces)
 - **If REQUEST CHANGES:** Suggest:
   - `/forgeplan:build [node-id]` to rebuild this node and address the findings
+  - `/forgeplan:sweep` if findings are being intentionally deferred to the later autonomous fix pass

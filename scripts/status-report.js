@@ -56,12 +56,14 @@ function main() {
   const nodeStates = state.nodes || {};
 
   // Build node status list
-  // "reviewed" = truly complete. "revised" = spec changed, code stale, needs rebuild.
-  const completedStatuses = ["reviewed"];
+  // Review-complete statuses are terminal for pipeline progression.
+  // "revised" = spec changed, code stale, needs rebuild.
+  const completedStatuses = ["reviewed", "reviewed-with-findings"];
   const builtStatuses = ["built"];
   const inProgressStatuses = ["building", "reviewing", "review-fixing", "revising", "sweeping"];
   const nodes = [];
   let completed = 0;
+  let completedWithFindings = 0;
   let builtAwaitingReview = 0;
   let revisedNeedsRebuild = 0;
   let specced = 0;
@@ -73,6 +75,7 @@ function main() {
     const status = sNode.status || "pending";
     const filesCount = (mNode.files || []).length;
     if (builtStatuses.includes(status)) builtAwaitingReview++;
+    if (status === "reviewed-with-findings") completedWithFindings++;
 
     let icon = "[ ]"; // not started
     if (completedStatuses.includes(status)) { icon = "[*]"; completed++; }
@@ -126,6 +129,7 @@ function main() {
     summary: {
       total: nodeIds.length,
       completed,
+      completedWithFindings,
       builtAwaitingReview,
       revisedNeedsRebuild,
       specced,

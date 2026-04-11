@@ -115,7 +115,7 @@ function main() {
     if (!buildPhases.includes(ss.current_phase)) {
       // Compute completed count inline (the main `completed` var is defined later in the file)
       // "revised" means "spec changed, needs rebuild" — NOT complete
-      const completedStatuses_ = ["built", "reviewed"];
+      const completedStatuses_ = ["built", "reviewed", "reviewed-with-findings"];
       const completedCount = nodeIds.filter((id) => {
         const ns = nodeStates[id];
         return ns && completedStatuses_.includes(ns.status);
@@ -154,7 +154,7 @@ function main() {
         // "built"/"reviewed" = had code, now stale from cascade.
         // "revised" = already marked for rebuild (from its own revision), but
         // also affected by this cascade — still needs rebuild.
-        if (["built", "reviewed", "revised"].includes(affectedState.status)) {
+        if (["built", "reviewed", "reviewed-with-findings", "revised"].includes(affectedState.status)) {
           // If we have timestamps, only flag if the revision is newer than the last build
           const lastBuildTime = affectedState.last_build_completed || "";
           if (revTimestamp && lastBuildTime && revTimestamp <= lastBuildTime) {
@@ -179,11 +179,11 @@ function main() {
   // --- State summary for context-aware suggestions ---
   // Two levels of "done":
   // - depSatisfiedStatuses: a dependency is satisfied once built (downstream can start building)
-  // - fullyCompleteStatuses: a node is truly done only when reviewed (for "all complete" check)
+  // - fullyCompleteStatuses: a node is truly done once review is complete
   // NOTE: "revised" means "spec changed, code is stale, needs rebuild" — it is NOT complete.
-  // The correct progression is: revised → building → built → reviewing → reviewed.
-  const depSatisfiedStatuses = ["built", "reviewed"];
-  const fullyCompleteStatuses = ["reviewed"];
+  // The correct progression is: revised → building → built → reviewing → reviewed|reviewed-with-findings.
+  const depSatisfiedStatuses = ["built", "reviewed", "reviewed-with-findings"];
+  const fullyCompleteStatuses = ["reviewed", "reviewed-with-findings"];
   const allStatuses = {};
   for (const id of nodeIds) {
     const status = nodeStates[id]?.status || "pending";
@@ -221,9 +221,17 @@ function main() {
     }
   }
 
-  // Find eligible nodes: pending/specced with all deps completed AND within current build phase
+  // Find eligible nodes, but keep buildable and reviewable work separate:
+  // - build candidates: pending / specced / revised
+  // - review candidates: built
+  // During deep-build build-all, actual build work must be exhausted before
+  // we start consuming built-but-unreviewed review work. Mixing them into one
+  // pool lets already-built nodes outrank still-buildable nodes, which is what
+  // caused the observed recommendation drift.
   const buildPhase = (manifest.project && manifest.project.build_phase) || 1;
-  const eligible = [];
+  const topoIndex = new Map(sorted.map((id, index) => [id, index]));
+  const buildCandidates = [];
+  const reviewCandidates = [];
   for (const id of sorted) {
     const ns = nodeStates[id];
     const status = ns ? ns.status : "pending";
@@ -249,9 +257,16 @@ function main() {
         return !ds || !fullyCompleteStatuses.includes(ds.status);
       }).length;
 
-      eligible.push({ id, status, unblocks });
+      const candidate = { id, status, unblocks };
+      if (status === "built") {
+        reviewCandidates.push(candidate);
+      } else {
+        buildCandidates.push(candidate);
+      }
     }
   }
+
+  const eligible = buildCandidates.length > 0 ? buildCandidates : reviewCandidates;
 
   // Count progress
   const completed = nodeIds.filter((id) => {
@@ -264,7 +279,7 @@ function main() {
       // Check which nodes are reviewed vs just built
       const reviewed = nodeIds.filter((id) => {
         const ns = nodeStates[id];
-        return ns && ns.status === "reviewed";
+        return ns && (ns.status === "reviewed" || ns.status === "reviewed-with-findings");
       }).length;
 
       const suggestions = [];
@@ -320,8 +335,18 @@ function main() {
     process.exit(0);
   }
 
-  // Sort by: most unblocks first, then by topological order
-  eligible.sort((a, b) => b.unblocks - a.unblocks);
+  // Sort build candidates by impact first, but review candidates strictly by
+  // dependency order. Once we're reviewing built nodes, deterministic topo
+  // order is more important than "unblocks" scoring.
+  if (buildCandidates.length > 0) {
+    eligible.sort((a, b) => {
+      const unblockDelta = b.unblocks - a.unblocks;
+      if (unblockDelta !== 0) return unblockDelta;
+      return (topoIndex.get(a.id) || 0) - (topoIndex.get(b.id) || 0);
+    });
+  } else {
+    eligible.sort((a, b) => (topoIndex.get(a.id) || 0) - (topoIndex.get(b.id) || 0));
+  }
   const recommended = eligible[0];
   const node = manifest.nodes[recommended.id];
   const deps = node.depends_on || [];

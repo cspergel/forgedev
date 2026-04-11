@@ -13,7 +13,7 @@ disable-model-invocation: true
 If the argument is `--all`, build all eligible nodes sequentially in dependency order:
 
 1. Run `node "${CLAUDE_PLUGIN_ROOT}/scripts/topo-sort.js"` to get the build order
-2. Read `.forgeplan/state.json` and manifest to find nodes with status `"specced"` or `"revised"` whose dependencies are all satisfied AND `(node.phase || 1) <= (manifest.project.build_phase || 1)`. Skip nodes already `"built"` or `"reviewed"` — they should move to review/integration, not be rebuilt by default. Skip future-phase nodes with log: "Skipping [node-id] — phase [N] (current build_phase: [M])."
+2. Read `.forgeplan/state.json` and manifest to find nodes with status `"specced"` or `"revised"` whose dependencies are all satisfied AND `(node.phase || 1) <= (manifest.project.build_phase || 1)`. Skip nodes already `"built"`, `"reviewed"`, or `"reviewed-with-findings"` — they should move to review/integration, not be rebuilt by default. Skip future-phase nodes with log: "Skipping [node-id] — phase [N] (current build_phase: [M])."
 3. For each eligible node in dependency order:
    - Run the single-node build flow below
    - After each build completes and the Stop hook verifies ACs, move to the next node
@@ -67,8 +67,8 @@ Build the specified node following its spec with layered enforcement:
 
 - `.forgeplan/manifest.yaml` must exist
 - `.forgeplan/specs/[node-id].yaml` must exist and be complete
-- The target node's status must be one of: `"specced"`, `"built"`, `"reviewed"`, or `"revised"` (not `"pending"`, `"building"`, `"reviewing"`, `"review-fixing"`, `"revising"`, or `"sweeping"`)
-- All nodes in the target's `depends_on` list must have status "built" or "reviewed" (NOT "revised" — revised means stale code that needs rebuild)
+- The target node's status must be one of: `"specced"`, `"built"`, `"reviewed"`, `"reviewed-with-findings"`, or `"revised"` (not `"pending"`, `"building"`, `"reviewing"`, `"review-fixing"`, `"revising"`, or `"sweeping"`)
+- All nodes in the target's `depends_on` list must have status "built", "reviewed", or "reviewed-with-findings" (NOT "revised" — revised means stale code that needs rebuild)
 - No other node can be currently in "building" or "sweeping" status
 
 ## Setup
@@ -146,4 +146,4 @@ If `/forgeplan:review` issues REQUEST CHANGES, re-run `/forgeplan:build [node-id
 - The current code (as-is on disk)
 - The specific review findings to address
 
-This fresh-agent pattern prevents the Builder from getting stuck in its own reasoning loop. The cycle is: specced → building → built → reviewed (until APPROVE). After revision: revised → building → built → reviewed (review is required after every rebuild).
+This fresh-agent pattern prevents the Builder from getting stuck in its own reasoning loop. The cycle is: specced → building → built → reviewing → reviewed|reviewed-with-findings. After revision: revised → building → built → reviewing → reviewed|reviewed-with-findings (review is required after every rebuild).

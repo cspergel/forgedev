@@ -98,7 +98,7 @@ Partial review: [check if .forgeplan/reviews/[node-id].md exists]
 Options:
   1. RESUME  — Restart the review from scratch (restarts Reviewer agent)
   2. SKIP    — Restore node to `nodes.[node-id].previous_status` (set at review start), clear active_node — review later. Only available if `previous_status` is set.
-  3. ACCEPT  — If partial review exists, mark as reviewed using existing report
+  3. ACCEPT  — If partial review exists, mark as review-complete using existing report
 
 Choose [1/2/3]:
 ```
@@ -268,7 +268,11 @@ workflow inline from the relevant skill file:
   node "${CLAUDE_PLUGIN_ROOT}/scripts/state-transition.js" set-node-status "[node-id]" "built"
   ```
   then read `${CLAUDE_PLUGIN_ROOT}/skills/review/SKILL.md` and execute the single-node review workflow inline (same as Reviewing resume — the fixer's partial work remains on disk and will be re-reviewed)
-- **Revising:** run
+- **Revising:** if `previous_status` is set, run
+  ```bash
+  node "${CLAUDE_PLUGIN_ROOT}/scripts/state-transition.js" restore-previous-status "[node-id]"
+  ```
+  otherwise run
   ```bash
   node "${CLAUDE_PLUGIN_ROOT}/scripts/state-transition.js" set-node-status "[node-id]" "reviewed"
   ```

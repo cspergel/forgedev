@@ -82,7 +82,7 @@ function validateManifest(manifest, manifestPath) {
   // --- 1b. Required Per-Node Fields ---
   const requiredNodeFields = ["name", "type", "status", "file_scope", "spec"];
   const validNodeTypes = ["service", "frontend", "database", "storage", "integration", "cli", "library", "extension", "worker", "pipeline"];
-  const validStatuses = ["pending", "specced", "building", "built", "reviewing", "review-fixing", "reviewed", "revising", "revised", "sweeping"];
+  const validStatuses = ["pending", "specced", "building", "built", "reviewing", "review-fixing", "reviewed", "reviewed-with-findings", "revising", "revised", "sweeping"];
 
   for (const nodeId of nodeIds) {
     const node = manifest.nodes[nodeId];
@@ -95,7 +95,7 @@ function validateManifest(manifest, manifestPath) {
       errors.push(`Node "${nodeId}": invalid type "${node.type}" — must be one of: ${validNodeTypes.join(", ")}.`);
     }
     if (node.status && !validStatuses.includes(node.status)) {
-      errors.push(`Node "${nodeId}": invalid status "${node.status}" — must be one of: pending, specced, building, built, reviewing, reviewed, revising, revised, sweeping.`);
+      errors.push(`Node "${nodeId}": invalid status "${node.status}" — must be one of: pending, specced, building, built, reviewing, reviewed, reviewed-with-findings, revising, revised, sweeping.`);
     }
     if (!Array.isArray(node.files)) {
       // files can start empty but must be an array

@@ -251,6 +251,7 @@ function buildAmbientStatus(forgePlanDir, manifestPath, statePath, state) {
     built: 0,       // "built" only — awaiting review
     revised: 0,     // "revised" = spec changed, code is stale, needs rebuild
     reviewed: 0,    // "reviewed" — truly complete
+    reviewedWithFindings: 0, // review completed but findings remain deferred
     inProgress: 0,  // building, reviewing, review-fixing, revising, sweeping
   };
 
@@ -271,6 +272,8 @@ function buildAmbientStatus(forgePlanDir, manifestPath, statePath, state) {
       counts.built++;
     } else if (status === "reviewed") {
       counts.reviewed++;
+    } else if (status === "reviewed-with-findings") {
+      counts.reviewedWithFindings++;
     } else if (inProgressStatuses.includes(status)) {
       counts.inProgress++;
     }
@@ -298,6 +301,7 @@ function buildAmbientStatus(forgePlanDir, manifestPath, statePath, state) {
   let summaryLine = `${projectName} -- ${counts.total} nodes`;
   const parts = [];
   if (counts.reviewed > 0) parts.push(`${counts.reviewed} reviewed`);
+  if (counts.reviewedWithFindings > 0) parts.push(`${counts.reviewedWithFindings} reviewed-with-findings`);
   if (counts.built > 0) parts.push(`${counts.built} built`);
   if (counts.specced > 0) parts.push(`${counts.specced} specced`);
   if (counts.pending > 0) parts.push(`${counts.pending} pending`);
@@ -473,7 +477,7 @@ function isWikiStale(state, forgePlanDir) {
  * Includes specific node names in suggestions where possible.
  */
 function determineSuggestion(counts, state, nodeIds, nodeStates, manifest) {
-  const { total, pending, specced, built, revised, reviewed, inProgress } = counts;
+  const { total, pending, specced, built, revised, reviewed, reviewedWithFindings, inProgress } = counts;
 
   // If there's an active sweep that completed, suggest status/measure
   if (state && state.sweep_state) {
@@ -506,8 +510,8 @@ function determineSuggestion(counts, state, nodeIds, nodeStates, manifest) {
     for (const nodeId of nodeIds) {
       const ns = nodeStates[nodeId];
       if (!ns) continue;
-      // Only skip nodes that are truly complete (reviewed). "revised" needs rebuild, not terminal.
-      const isTerminal = ns.status === "reviewed";
+      // Only skip nodes that are truly review-complete. "revised" needs rebuild, not terminal.
+      const isTerminal = ns.status === "reviewed" || ns.status === "reviewed-with-findings";
       if (isTerminal) continue;
       const nodePhase = (manifest.nodes[nodeId] && manifest.nodes[nodeId].phase) || 1;
       if (nodePhase > ingestBuildPhase) continue;
@@ -527,8 +531,8 @@ function determineSuggestion(counts, state, nodeIds, nodeStates, manifest) {
           const nodePhase = (manifest.nodes[nodeId] && manifest.nodes[nodeId].phase) || 1;
           if (nodePhase > ingestBuildPhase) continue;
           const ns = nodeStates[nodeId];
-          // Only skip nodes that are truly complete (reviewed). "revised" needs rebuild, not terminal.
-          const isTerminal = ns && ns.status === "reviewed";
+          // Only skip nodes that are truly review-complete. "revised" needs rebuild, not terminal.
+          const isTerminal = ns && (ns.status === "reviewed" || ns.status === "reviewed-with-findings");
           if (isTerminal) continue;
           // Skip if state already has spec_type (already checked above)
           if (ns && ns.spec_type) continue;
@@ -549,10 +553,10 @@ function determineSuggestion(counts, state, nodeIds, nodeStates, manifest) {
   const maxPhase = manifest ? Math.max(1, ...nodeIds.map(id => (manifest.nodes[id].phase || 1))) : 1;
   if (maxPhase > 1) {
     const currentPhaseNodes = nodeIds.filter(id => (manifest.nodes[id].phase || 1) <= buildPhase);
-    // Only "reviewed" counts as complete. "revised" means spec changed, needs rebuild.
+    // Only review-complete statuses count as complete. "revised" means spec changed, needs rebuild.
     const currentPhaseComplete = currentPhaseNodes.filter(id => {
       const ns = nodeStates[id];
-      return ns && ns.status === "reviewed";
+      return ns && (ns.status === "reviewed" || ns.status === "reviewed-with-findings");
     }).length;
     if (currentPhaseComplete === currentPhaseNodes.length && currentPhaseNodes.length > 0 && buildPhase < maxPhase) {
       return `/forgeplan:deep-build (advance to phase ${buildPhase + 1})`;
@@ -592,19 +596,19 @@ function determineSuggestion(counts, state, nodeIds, nodeStates, manifest) {
   }
 
   // All reviewed — suggest sweep or integrate
-  if (reviewed === total) {
+  if ((reviewed + reviewedWithFindings) === total) {
     return "/forgeplan:sweep --cross-check or /forgeplan:integrate";
   }
 
-  // All built or mix of built+reviewed — suggest review for a specific node
-  if ((built + reviewed) === total && total > 0) {
+  // All built or mix of built+review-complete — suggest review for a specific node
+  if ((built + reviewed + reviewedWithFindings) === total && total > 0) {
     const node = firstNodeInStatus(builtStatuses);
     if (node) return `/forgeplan:review ${node}`;
     return "/forgeplan:sweep";
   }
 
   // Some built, some not — suggest the specific next action
-  if ((built + reviewed) > 0 && (built + reviewed) < total) {
+  if ((built + reviewed + reviewedWithFindings) > 0 && (built + reviewed + reviewedWithFindings) < total) {
     // Suggest reviewing an unreviewed built node, or building a specced/revised node
     const builtNode = firstNodeInStatus(builtStatuses);
     if (builtNode) return `/forgeplan:review ${builtNode}`;

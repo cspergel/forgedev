@@ -47,8 +47,21 @@ This is a sequential loop using existing commands:
      - Do **not** pre-mutate `active_node` or node `status` before running the inline build or review workflows. Those workflows own the node-level state transitions.
      - If status is `"pending"`: execute the single-node **autonomous spec workflow inline** (read `${CLAUDE_PLUGIN_ROOT}/skills/spec/SKILL.md` and follow its Autonomous Mode for the specific node). Do **not** use `Skill(forgeplan:spec)` — `spec` has `disable-model-invocation: true`. Generate a complete spec with filled-in acceptance criteria and test fields, verify the spec file exists and has non-empty `test` fields for each AC, then read `${CLAUDE_PLUGIN_ROOT}/skills/build/SKILL.md` and execute the single-node build workflow inline.
      - If status is `"specced"`: verify the spec has non-empty acceptance criteria test fields (skeleton specs from discover have empty fields). If test fields are empty, re-run the single-node autonomous spec workflow inline to complete them. Then read `${CLAUDE_PLUGIN_ROOT}/skills/build/SKILL.md` and execute the single-node build workflow inline.
-     - If status is `"built"`: node was built but not yet reviewed. Read `${CLAUDE_PLUGIN_ROOT}/skills/review/SKILL.md` and execute the single-node review workflow inline only.
-     - After each build, read `${CLAUDE_PLUGIN_ROOT}/skills/review/SKILL.md` and execute the single-node review workflow inline. Do not start the reviewer by hand.
+     - If status is `"built"`: node was built but not yet reviewed. Read `${CLAUDE_PLUGIN_ROOT}/skills/review/SKILL.md` and execute review inline.
+     - After each build, read `${CLAUDE_PLUGIN_ROOT}/skills/review/SKILL.md` and execute review inline. Do not start the reviewer by hand.
+     - **Parallel review optimization:** when `next-node.js` surfaces built-but-unreviewed work and there are multiple eligible `"built"` nodes waiting, do not review them strictly one-by-one on MEDIUM/LARGE by default. Instead:
+       1. Gather all currently eligible `"built"` nodes in dependency order
+       2. Partition them into dependency-safe batches (topological layers; no node in a batch depends on another node in that batch)
+       3. For each batch, dispatch fresh Reviewer agents in parallel
+       4. Keep the batch read-only: do **not** pre-mutate `active_node` or mark multiple nodes as `"reviewing"` before dispatch
+       5. After the batch returns, serialize `complete-review` state transitions in topological order, using:
+          - `"reviewed"` for APPROVE
+          - `"reviewed-with-findings"` when advisory review completed but findings remain deferred
+       6. Only fall back to strictly sequential review when:
+          - tier is `SMALL`
+          - `multi_agent_review.enabled` is true
+          - `enforcement.mode` is `strict`
+          - or a batch node requires immediate interactive recovery
      - Treat `state-transition.js complete-build` as the terminal node-state transition for that build. Do **not** add a follow-up `set-node-status "[node-id]" "built"` after it succeeds.
      - Do **not** attempt root-scope integration edits during the node build loop (for example `main.py`, `app.py`, route registries, or top-level navigation registries). If a node needs that wiring, record it as an integration follow-up and continue. Cross-node/root wiring belongs to the owning root node or the integration phase, not the node builder.
      - **Bounce exhaustion recovery:** If a node's Stop hook has bounced 3 times (escalated to user), the autonomous deep-build must NOT halt the pipeline. Instead:
@@ -74,7 +87,11 @@ This is a sequential loop using existing commands:
        node "${CLAUDE_PLUGIN_ROOT}/scripts/state-transition.js" set-node-status "[node-id]" "built"
        ```
        then read `${CLAUDE_PLUGIN_ROOT}/skills/review/SKILL.md` and re-review after the fix attempt
-     - `"revising"` → run:
+     - `"revising"` → if `previous_status` is set, run:
+       ```bash
+       node "${CLAUDE_PLUGIN_ROOT}/scripts/state-transition.js" restore-previous-status "[node-id]"
+       ```
+       otherwise run:
        ```bash
        node "${CLAUDE_PLUGIN_ROOT}/scripts/state-transition.js" set-node-status "[node-id]" "reviewed"
        ```

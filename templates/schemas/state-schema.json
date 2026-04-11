@@ -46,8 +46,8 @@
         "properties": {
           "status": {
             "type": "string",
-            "enum": ["pending", "specced", "building", "built", "reviewing", "review-fixing", "reviewed", "revising", "revised", "sweeping"],
-            "description": "Current node status (reviewing/review-fixing/revising are transient in-progress states)"
+            "enum": ["pending", "specced", "building", "built", "reviewing", "review-fixing", "reviewed", "reviewed-with-findings", "revising", "revised", "sweeping"],
+            "description": "Current node status (reviewing/review-fixing/revising are transient in-progress states; reviewed-with-findings means review completed but findings remain deferred)"
           },
           "last_build_completed": {
             "type": ["string", "null"],

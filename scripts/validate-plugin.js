@@ -239,6 +239,11 @@ function assertStateTransitionUsage(errors) {
     },
     {
       file: path.join(skillsRoot, "review", "SKILL.md"),
+      marker: "reviewed-with-findings",
+      message: "skills/review/SKILL.md: advisory review flow must document reviewed-with-findings for deferred findings",
+    },
+    {
+      file: path.join(skillsRoot, "review", "SKILL.md"),
       marker: "state-transition.js\" restore-previous-status",
       message: "skills/review/SKILL.md: strict review recovery must use state-transition.js restore-previous-status",
     },
@@ -292,12 +297,16 @@ function assertStateTransitionBashAllowlist(errors) {
   if (!content.includes("splitReadOnlyShellSegments")) {
     pushError(errors, "scripts/pre-tool-use.js: Bash guard must support splitting safe read-only shell wrappers");
   }
+  if (!content.includes("relPath.startsWith(\".forgeplan/reviews/\")")) {
+    pushError(errors, "scripts/pre-tool-use.js: sweep/deep-build analysis mode must allow .forgeplan/reviews/ writes for parallel review batches");
+  }
 }
 
 function assertTopLevelOrchestrationStateRules(errors) {
   const deepBuildPath = path.join(skillsRoot, "deep-build", "SKILL.md");
   const recoverPath = path.join(skillsRoot, "recover", "SKILL.md");
   const buildPath = path.join(skillsRoot, "build", "SKILL.md");
+  const reviewPath = path.join(skillsRoot, "review", "SKILL.md");
   const builderAgentPath = path.join(repoRoot, "agents", "builder.md");
 
   if (fs.existsSync(buildPath)) {
@@ -333,6 +342,19 @@ function assertTopLevelOrchestrationStateRules(errors) {
     }
     if (!content.includes("Do **not** attempt root-scope integration edits during the node build loop")) {
       pushError(errors, "skills/deep-build/SKILL.md: build-all loop must forbid root-scope integration edits such as main.py during node builds");
+    }
+    if (!content.includes("Parallel review optimization")) {
+      pushError(errors, "skills/deep-build/SKILL.md: build-all loop must document the parallel review optimization for built-node batches");
+    }
+  }
+
+  if (fs.existsSync(reviewPath)) {
+    const content = fs.readFileSync(reviewPath, "utf8");
+    if (!content.includes("dependency-safe batches")) {
+      pushError(errors, "skills/review/SKILL.md: --all mode must use dependency-safe batches for MEDIUM/LARGE reviews");
+    }
+    if (!content.includes("skip this pre-transition")) {
+      pushError(errors, "skills/review/SKILL.md: parallel review batches must skip per-node start-review pre-transitions");
     }
   }
 

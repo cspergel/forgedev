@@ -13,7 +13,7 @@ function usage() {
     "  node scripts/state-transition.js start-review-fixing <node-id>\n" +
     "  node scripts/state-transition.js start-revising <node-id> <previous-status>\n" +
     "  node scripts/state-transition.js set-spec-status <node-id> <status> <spec-type>\n" +
-    "  node scripts/state-transition.js complete-review <node-id> <review-path> [crossmodel-review-path]\n" +
+    "  node scripts/state-transition.js complete-review <node-id> <review-path> [crossmodel-review-path] [target-status]\n" +
     "  node scripts/state-transition.js restore-previous-status <node-id>\n" +
     "  node scripts/state-transition.js set-node-status <node-id> <status> [previous-status|-]\n" +
     "  node scripts/state-transition.js clear-active-node\n" +
@@ -184,11 +184,15 @@ function main() {
       const nodeId = process.argv[3];
       const reviewPath = process.argv[4];
       const crossModelPath = process.argv[5];
+      const targetStatus = process.argv[6] || "reviewed";
       if (!nodeId || !reviewPath) {
         usage();
       }
+      if (!["reviewed", "reviewed-with-findings"].includes(targetStatus)) {
+        throw new Error(`Invalid complete-review target status: ${targetStatus}`);
+      }
       const node = ensureNode(state, nodeId);
-      node.status = "reviewed";
+      node.status = targetStatus;
       node.last_review = reviewPath;
       if (crossModelPath && crossModelPath !== "-") {
         node.last_crossmodel_review = crossModelPath;
