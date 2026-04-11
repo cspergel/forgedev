@@ -6,12 +6,16 @@ disable-model-invocation: true
 # ForgePlan Commands
 
 Only show command help on this screen. Do not run `/forgeplan:discover`, `/forgeplan:ingest`, or any other workflow as part of `/forgeplan:help`.
+Only mention real public `/forgeplan:*` commands on this screen. Internal agents
+like Translator, Architect, Interviewer, Researcher, Builder, and Reviewer may
+be described as implementation details, but they are not valid slash commands
+and must never be presented as runnable commands.
 
 ## Getting Started
 
 | Command | What it does |
 |---------|-------------|
-| `/forgeplan:discover [description\|template:name\|--from doc.md]` | **Start here.** Describe your project, pick a template, or import an existing document (`--from`). The Translator maps documents to ForgePlan methodology, the Interviewer resolves ambiguities, then the Architect creates your architecture. |
+| `/forgeplan:discover [description\|template:name\|--from doc.md]` | **Start here.** Describe your project, pick a template, or import an existing document (`--from`). ForgePlan will map the document into nodes, shared models, and architecture. |
 | `/forgeplan:spec [node\|--all]` | Generate or refine node specs. Full specs (ACs, constraints, interfaces) for current-phase nodes; interface-only specs for next-phase nodes. Also handles descriptive-to-prescriptive refinement after ingest. |
 
 ## Building

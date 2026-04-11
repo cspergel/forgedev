@@ -8,6 +8,12 @@ disable-model-invocation: true
 
 You are starting a ForgePlan architecture discovery session.
 
+## Public Command Boundary
+
+`/forgeplan:discover` is the public entry point for document import. The
+Translator is an internal agent used by this workflow, not a public slash
+command. Never instruct the user to run `forgeplan:translator`.
+
 ## Setup
 
 First, set up the project directory for a greenfield build if needed:

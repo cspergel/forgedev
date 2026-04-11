@@ -7,10 +7,34 @@ disable-model-invocation: true
 
 Evaluate the full project state and give the user clear, actionable guidance.
 
+## Public Command Boundary
+
+Only recommend real public ForgePlan slash commands from this set:
+`affected`, `build`, `configure`, `deep-build`, `discover`, `greenfield`,
+`guide`, `help`, `ingest`, `integrate`, `measure`, `next`, `recover`,
+`regen-types`, `research`, `review`, `revise`, `skill`, `spec`, `split`,
+`status`, `sweep`, `validate`.
+
+Internal agents and roles such as `translator`, `architect`, `interviewer`,
+`researcher`, `builder`, or `reviewer` are NOT slash commands. Never tell the
+user to run `forgeplan:translator` or any other internal agent name.
+
+If the user already has planning docs, PRDs, architecture docs, or markdown
+notes but no manifest yet, the correct public entry point is:
+- `/forgeplan:discover --from <doc-path>` for architecture import
+- `/forgeplan:greenfield --from <doc-path>` for the full autonomous pipeline
+
 ## Process
 
 1. Check if `.forgeplan/manifest.yaml` exists
-2. If no manifest: guide the user to start with `/forgeplan:discover`
+2. If no manifest: check for planning docs before giving startup guidance
+   - Look for likely architecture/planning inputs such as `Planning Docs/**/*.md`,
+     `docs/**/*.md`, `PRD*.md`, `*Architecture*.md`, `*Build_Plan*.md`,
+     `*Synthesis*.md`, and `files.zip`
+   - If rich planning docs exist, prefer `/forgeplan:discover --from <doc-path>`
+     or `/forgeplan:greenfield --from <doc-path>` over generic `/forgeplan:discover`
+   - Do not tell the user to summarize dense documents manually if the docs are
+     already present and readable
 3. If manifest exists, read it and read `.forgeplan/state.json`
 4. Count nodes in each status
 5. Check for stuck/crashed nodes, active sweeps, active builds
@@ -75,7 +99,23 @@ Check: `active_node` is not null, or any node has status "building"/"reviewing"/
 ```
 Welcome to ForgePlan!
 
-You haven't started a project yet. Here's how to begin:
+You haven't started a project yet.
+
+[If planning docs or architecture docs are present in the workspace:]
+You already have planning material, so the best entry point is document import:
+
+  → /forgeplan:discover --from "path/to/doc.md"
+    Import planning docs into a ForgePlan architecture and manifest.
+
+  → /forgeplan:greenfield --from "path/to/doc.md"
+    Run the full autonomous pipeline starting from those docs.
+
+  If multiple relevant docs exist, recommend the strongest primary doc first
+  (for example a master build plan), then mention that additional docs can be
+  supplied with repeated `--from` flags.
+
+[Otherwise:]
+Here's how to begin:
 
   → /forgeplan:discover [describe your project]
     Tell me what you want to build and I'll create the architecture.

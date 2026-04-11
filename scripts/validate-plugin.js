@@ -36,6 +36,14 @@ const commandSkillRules = {
   validate: { argumentHint: "[manifest|spec <node-id>|all]" },
 };
 
+const publicCommandSurfacePaths = [
+  path.join(skillsRoot, "guide", "SKILL.md"),
+  path.join(skillsRoot, "help", "SKILL.md"),
+  path.join(skillsRoot, "discover", "SKILL.md"),
+  path.join(repoRoot, "README.md"),
+  path.join(repoRoot, "templates", "forgeplan-claude.md"),
+];
+
 function parseFrontmatter(skillPath) {
   const content = fs.readFileSync(skillPath, "utf8");
   const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
@@ -47,6 +55,16 @@ function parseFrontmatter(skillPath) {
 
 function pushError(errors, message) {
   errors.push(message);
+}
+
+function findForgePlanCommands(content) {
+  const matches = [];
+  const regex = /\/forgeplan:([a-z0-9-]+)/g;
+  let match;
+  while ((match = regex.exec(content)) !== null) {
+    matches.push(match[1]);
+  }
+  return matches;
 }
 
 const errors = [];
@@ -155,6 +173,25 @@ for (const [skillName, rule] of Object.entries(commandSkillRules)) {
         frontmatter["argument-hint"]
       )}`
     );
+  }
+}
+
+const validCommandNames = new Set(Object.keys(commandSkillRules));
+
+for (const surfacePath of publicCommandSurfacePaths) {
+  if (!fs.existsSync(surfacePath)) {
+    pushError(errors, `${path.relative(repoRoot, surfacePath)}: missing public command surface file`);
+    continue;
+  }
+
+  const content = fs.readFileSync(surfacePath, "utf8");
+  for (const commandName of findForgePlanCommands(content)) {
+    if (!validCommandNames.has(commandName)) {
+      pushError(
+        errors,
+        `${path.relative(repoRoot, surfacePath)}: references unknown public command /forgeplan:${commandName}`
+      );
+    }
   }
 }
 
