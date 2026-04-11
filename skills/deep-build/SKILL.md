@@ -138,7 +138,7 @@ node "${CLAUDE_PLUGIN_ROOT}/scripts/state-transition.js" set-sweep-phase "verify
 and proceed directly to Phase 3.
 
 1. `sweep_state.current_phase` should already be `"design-pass"` from the Phase 2 transition. Do not hand-edit `state.json` here.
-2. Load the `frontend-design` skill directly — the design-pass agent is not in the registry (it's a specialized single-use agent, not a standard sweep/build agent). Read the skill content from `${CLAUDE_PLUGIN_ROOT}/skill-library/core/frontend-design.md` for inclusion in the agent prompt. If the file doesn't exist, skip the design pass with a warning.
+2. Load the `frontend-design` skill directly — the design-pass agent is not in the registry (it's a specialized single-use agent, not a standard sweep/build agent). Do **not** search heuristically for this file. Read the exact path `${CLAUDE_PLUGIN_ROOT}/skill-library/core/frontend-design.md` for inclusion in the agent prompt. If a direct read of that exact path fails, skip the design pass with a warning.
 3. Check for optional design context files at `DESIGN.md`, `docs/DESIGN.md`, and `.forgeplan/wiki/design.md`. Also read `.forgeplan/config.yaml` for any configured `design.profiles` and include those bundled profile docs too. Include all of them in the design-pass prompt as the intended design direction. If none exist, note "No explicit design docs detected."
 4. Identify all frontend nodes (nodes with `type: "frontend"` or nodes whose `file_scope` contains frontend files such as `.tsx`, `.jsx`, `.vue`, `.svelte`)
 5. Dispatch the design-pass agent using the Agent tool:

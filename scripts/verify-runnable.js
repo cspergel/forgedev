@@ -59,6 +59,59 @@ function loadTechStack() {
   }
 }
 
+function fileExists(relPath) {
+  return fs.existsSync(path.join(cwd, relPath));
+}
+
+function detectRuntime(techStack) {
+  if (techStack.runtime) return techStack.runtime;
+  if (fileExists("deno.json") || fileExists("deno.jsonc")) return "deno";
+  if (fileExists("bun.lockb") || fileExists("bun.lock")) return "bun";
+  if (fileExists("package.json")) return "node";
+  if (fileExists("pyproject.toml") || fileExists("requirements.txt") || fileExists("Pipfile") || fileExists("poetry.lock")) {
+    return "python";
+  }
+  return "node";
+}
+
+function detectLanguage(techStack, runtime) {
+  if (techStack.language) return techStack.language;
+  if (runtime === "python") return "python";
+  if (fileExists("tsconfig.json")) return "typescript";
+  return runtime === "node" ? "javascript" : runtime;
+}
+
+function detectPythonInstallCommand() {
+  if (fileExists("requirements.txt")) return "python -m pip install -r requirements.txt";
+  if (fileExists("pyproject.toml") && fileExists("poetry.lock")) return "poetry install";
+  if (fileExists("Pipfile")) return "pipenv install --dev";
+  if (fileExists("pyproject.toml")) return "python -m pip install -e .";
+  return null;
+}
+
+function detectPythonServerCommand(techStack) {
+  const port = techStack.dev_port || 8000;
+  if (fileExists("manage.py")) return `python manage.py runserver ${port}`;
+  if (fileExists("main.py")) {
+    try {
+      const content = fs.readFileSync(path.join(cwd, "main.py"), "utf-8");
+      if (/FastAPI|fastapi/i.test(content) && /\bapp\s*=/.test(content)) {
+        return `python -m uvicorn main:app --host 127.0.0.1 --port ${port}`;
+      }
+    } catch {}
+    return "python main.py";
+  }
+  if (fileExists(path.join("app", "main.py"))) {
+    try {
+      const content = fs.readFileSync(path.join(cwd, "app", "main.py"), "utf-8");
+      if (/FastAPI|fastapi/i.test(content) && /\bapp\s*=/.test(content)) {
+        return `python -m uvicorn app.main:app --host 127.0.0.1 --port ${port}`;
+      }
+    } catch {}
+  }
+  return null;
+}
+
 // --- Run a command with timeout and error classification ---
 function runStep(name, command, timeoutMs) {
   const result = { name, command, status: "pass", output: "", error: "" };
@@ -224,8 +277,8 @@ function detectProjectType(techStack, manifestPath) {
 // --- Main ---
 async function main() {
   const techStack = loadTechStack();
-  const runtime = techStack.runtime || "node";
-  const language = techStack.language || "typescript";
+  const runtime = detectRuntime(techStack);
+  const language = detectLanguage(techStack, runtime);
   const testCommand = techStack.test_command || "";
   const manifestPath = path.join(forgePlanDir, "manifest.yaml");
   const projectType = detectProjectType(techStack, manifestPath);
@@ -246,6 +299,9 @@ async function main() {
   // --- Step 1: Install dependencies ---
   let installCmd;
   switch (runtime) {
+    case "python":
+      installCmd = detectPythonInstallCommand();
+      break;
     case "deno":
       installCmd = "deno cache src/**/*.ts";
       break;
@@ -256,16 +312,23 @@ async function main() {
       installCmd = "npm install";
   }
 
-  const installResult = runStep("install", installCmd, 60000);
-  steps.push(installResult);
-  if (installResult.status === "fail") {
-    if (installResult.errorType === "transient") {
-      // Network issue — not a code problem
-      hasEnvErrors = true;
-    } else if (installResult.errorType === "environment") {
-      hasEnvErrors = true;
-    } else {
-      hasCodeErrors = true;
+  if (!installCmd) {
+    steps.push({
+      name: "install",
+      status: "skip",
+      output: `No install command inferred for runtime "${runtime}". Skipping dependency install.`,
+    });
+  } else {
+    const installResult = runStep("install", installCmd, 60000);
+    steps.push(installResult);
+    if (installResult.status === "fail") {
+      if (installResult.errorType === "transient") {
+        hasEnvErrors = true;
+      } else if (installResult.errorType === "environment") {
+        hasEnvErrors = true;
+      } else {
+        hasCodeErrors = true;
+      }
     }
   }
 
@@ -321,14 +384,17 @@ async function main() {
   let testCmd;
   if (testCommand) {
     // Validate test_command against known safe runners to prevent arbitrary shell execution
-    if (!/^(npm|npx|node|deno|bun|pnpm|yarn)\s/.test(testCommand) && testCommand !== "npm test") {
-      steps.push({ name: "test", status: "fail", output: `Untrusted test_command in manifest: "${testCommand}". Must start with npm, npx, node, deno, bun, pnpm, or yarn.`, errorType: "code" });
+    if (!/^(npm|npx|node|deno|bun|pnpm|yarn|python|pytest|uv|poetry|pipenv)\s/.test(testCommand) && testCommand !== "npm test") {
+      steps.push({ name: "test", status: "fail", output: `Untrusted test_command in manifest: "${testCommand}". Must start with npm, npx, node, deno, bun, pnpm, yarn, python, pytest, uv, poetry, or pipenv.`, errorType: "code" });
       testCmd = null;
     } else {
       testCmd = testCommand;
     }
   } else {
     switch (runtime) {
+      case "python":
+        testCmd = "pytest";
+        break;
       case "deno":
         testCmd = "deno test";
         break;
@@ -348,21 +414,17 @@ async function main() {
     for (const entry of entries) {
       if (entry.isDirectory()) {
         if (entry.name === "__tests__") return true;
-        if (entry.name === "node_modules") continue;
+        if (["node_modules", ".git", ".forgeplan", ".venv", "venv", "__pycache__"].includes(entry.name)) continue;
+        if (/^tests?$/i.test(entry.name)) return true;
         if (scanForTests(path.join(dir, entry.name))) return true;
-      } else if (/\.(test|spec)\.\w+$/.test(entry.name)) {
+      } else if (/\.(test|spec)\.\w+$/.test(entry.name) || /^test_.*\.py$/.test(entry.name)) {
         return true;
       }
     }
     return false;
   }
   try {
-    testsExist = scanForTests(path.join(cwd, "src"));
-    if (!testsExist) {
-      // Also check project root for test directories
-      testsExist = scanForTests(path.join(cwd, "test")) ||
-                   scanForTests(path.join(cwd, "tests"));
-    }
+    testsExist = scanForTests(cwd);
   } catch {
     testsExist = true; // On error, assume tests exist and let the test runner decide
   }
@@ -402,6 +464,9 @@ async function main() {
     // Determine dev command
     let devCmd;
     switch (runtime) {
+      case "python":
+        devCmd = detectPythonServerCommand(techStack);
+        break;
       case "deno":
         devCmd = "deno task dev";
         break;
@@ -421,7 +486,13 @@ async function main() {
       hasDevScript = pkg.scripts && pkg.scripts.dev;
     } catch {}
 
-    if (!hasDevScript && runtime === "node") {
+    if (!devCmd) {
+      steps.push({
+        name: "server",
+        status: "skip",
+        output: `No dev server command inferred for runtime "${runtime}". Skipping server check.`,
+      });
+    } else if (!hasDevScript && runtime === "node") {
       steps.push({
         name: "server",
         status: "skip",

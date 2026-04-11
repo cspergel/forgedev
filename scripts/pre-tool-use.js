@@ -225,8 +225,10 @@ function evaluate(input) {
     // sweep_state can be active with no active_node (analysis phase, between node fixes).
     if (state.sweep_state && state.sweep_state.operation) {
       // Sweep analysis mode: .forgeplan/ management files writable, source files blocked
+      const sweepPhase = state.sweep_state.current_phase;
       if (
         relPath.startsWith(".forgeplan/sweeps/") ||
+        ((sweepPhase === "build-all" || sweepPhase === "integrate") && relPath.startsWith(".forgeplan/reviews/")) ||
         relPath.startsWith(".forgeplan/wiki/") ||    // Sprint 9: wiki updates during sweep analysis
         relPath.startsWith(".forgeplan/specs/") ||
         relPath === ".forgeplan/manifest.yaml" ||
