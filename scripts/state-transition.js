@@ -15,6 +15,7 @@ function usage() {
     "  node scripts/state-transition.js set-spec-status <node-id> <status> <spec-type>\n" +
     "  node scripts/state-transition.js complete-review <node-id> <review-path> [crossmodel-review-path] [target-status]\n" +
     "  node scripts/state-transition.js restore-previous-status <node-id>\n" +
+    "  node scripts/state-transition.js start-sweep-fix <node-id> <previous-status>\n" +
     "  node scripts/state-transition.js set-node-status <node-id> <status> [previous-status|-]\n" +
     "  node scripts/state-transition.js clear-active-node\n" +
     "  node scripts/state-transition.js set-sweep-phase <phase>\n" +
@@ -211,6 +212,24 @@ function main() {
       node.status = node.previous_status || node.status;
       node.previous_status = null;
       state.active_node = null;
+      state.last_updated = ts;
+      break;
+    }
+    case "start-sweep-fix": {
+      const nodeId = process.argv[3];
+      const previousStatus = process.argv[4];
+      if (!nodeId || !previousStatus) {
+        usage();
+      }
+      const node = ensureNode(state, nodeId);
+      node.previous_status = previousStatus;
+      node.status = "sweeping";
+      if (!state.sweep_state || typeof state.sweep_state !== "object") {
+        state.sweep_state = { operation: "deep-building", current_phase: "verify-runnable" };
+      }
+      state.sweep_state.fixing_node = nodeId;
+      state.active_node = { node: nodeId, status: "sweeping", started_at: ts };
+      state.stop_hook_active = false;
       state.last_updated = ts;
       break;
     }

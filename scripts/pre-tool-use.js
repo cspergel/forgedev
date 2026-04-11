@@ -363,7 +363,21 @@ function evaluate(input) {
   }
 
   // --- Project-root exempt files (builders can write to these regardless of file_scope) ---
-  const exemptRootFiles = [".env.example", "package.json", "package-lock.json", "tsconfig.json", "CLAUDE.md", ".gitignore"];
+  const exemptRootFiles = [
+    ".env.example",
+    "package.json",
+    "package-lock.json",
+    "tsconfig.json",
+    "requirements.txt",
+    "pyproject.toml",
+    "Pipfile",
+    "poetry.lock",
+    "Dockerfile",
+    "docker-compose.yml",
+    "alembic.ini",
+    "CLAUDE.md",
+    ".gitignore",
+  ];
   if (exemptRootFiles.includes(relPath)) {
     return { block: false };
   }
@@ -600,7 +614,7 @@ function evaluateBash(toolInput, cwd) {
     nodeScriptPattern("next-node.js"),         // our own next-node script
     nodeScriptPattern(
       "state-transition.js",
-      String.raw`\s+(start-build|increment-bounce|complete-build|start-review|start-review-fixing|start-revising|set-spec-status|complete-review|restore-previous-status|set-node-status|clear-active-node|set-sweep-phase|set-sweep-state|clear-sweep-state)\b`
+      String.raw`\s+(start-build|increment-bounce|complete-build|start-review|start-review-fixing|start-revising|set-spec-status|complete-review|restore-previous-status|start-sweep-fix|set-node-status|clear-active-node|set-sweep-phase|set-sweep-state|clear-sweep-state)\b`
     ), // deterministic state transitions
     nodeScriptPattern("session-start.js"),     // our own session-start script
     nodeScriptPattern("topo-sort.js"),         // our own topo-sort script

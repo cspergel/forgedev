@@ -248,6 +248,11 @@ function assertStateTransitionUsage(errors) {
       message: "skills/review/SKILL.md: strict review recovery must use state-transition.js restore-previous-status",
     },
     {
+      file: path.join(skillsRoot, "deep-build", "SKILL.md"),
+      marker: "state-transition.js\" start-sweep-fix",
+      message: "skills/deep-build/SKILL.md: verify-runnable remediation must use state-transition.js start-sweep-fix for node-scoped fixes",
+    },
+    {
       file: path.join(skillsRoot, "spec", "SKILL.md"),
       marker: "state-transition.js\" set-spec-status",
       message: "skills/spec/SKILL.md: spec completion must use state-transition.js set-spec-status",
@@ -287,6 +292,9 @@ function assertStateTransitionBashAllowlist(errors) {
   const content = fs.readFileSync(preToolUsePath, "utf8");
   if (!content.includes("state-transition.js")) {
     pushError(errors, "scripts/pre-tool-use.js: Bash allowlist must include state-transition.js helper commands");
+  }
+  if (!content.includes("start-sweep-fix")) {
+    pushError(errors, "scripts/pre-tool-use.js: Bash allowlist must include state-transition.js start-sweep-fix");
   }
   if (!content.includes("nodeScriptPattern(")) {
     pushError(errors, "scripts/pre-tool-use.js: Bash allowlist must support quoted node script paths via nodeScriptPattern()");
@@ -345,6 +353,12 @@ function assertTopLevelOrchestrationStateRules(errors) {
     }
     if (!content.includes("Parallel review optimization")) {
       pushError(errors, "skills/deep-build/SKILL.md: build-all loop must document the parallel review optimization for built-node batches");
+    }
+    if (!content.includes("do **not** try to edit files directly from sweep-analysis mode")) {
+      pushError(errors, "skills/deep-build/SKILL.md: Phase 3 remediation must forbid direct edits from sweep-analysis mode");
+    }
+    if (!content.includes("Map each failure to an owning node")) {
+      pushError(errors, "skills/deep-build/SKILL.md: Phase 3 remediation must route verify-runnable failures to owning nodes");
     }
   }
 

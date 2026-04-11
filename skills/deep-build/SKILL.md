@@ -198,7 +198,36 @@ If it returns **`status: "warnings"`**: treat this as pass-with-warnings. Record
 
 If it returns **`status: "environment_error"`**: attempt environment-focused remediation (missing `.env`, port conflicts, missing local setup), retry once, then either proceed with a warning or halt if the project still cannot be verified.
 
-If it returns **`status: "fail"`**: dispatch a fix agent to address the issues (e.g., missing dependencies, broken imports, config errors). After the fix agent completes, re-run `verify-runnable.js`. Repeat until it passes. If it fails 3 consecutive times, halt deep-build with an error and preserve `sweep_state` for recovery.
+If it returns **`status: "fail"`**: do **not** try to edit files directly from sweep-analysis mode. Route the failures into node-scoped fixes first:
+
+1. Parse the failing `steps` from the `verify-runnable.js` JSON.
+2. Map each failure to an owning node using file paths, workspace labels, and manifest scopes:
+   - `frontend/**`, `typecheck:node*`, `test:node*`, `server:node*` -> `frontend-app-shell`
+   - `placementops/modules/<name>/**` -> `<name>-module`
+   - `placementops/core/**`, `alembic/**`, `main.py`, `requirements.txt`, `pyproject.toml`, `Pipfile`, `poetry.lock`, `Dockerfile`, `docker-compose.yml`, `alembic.ini`, or generic `install:python` dependency failures -> `core-infrastructure`
+   - If a failure cannot be mapped to a real node, add it to `sweep_state.needs_manual_attention` and continue with the mapped failures only.
+3. Group failures by owning node.
+4. For each affected node group:
+   - Read `.forgeplan/state.json` to capture the node's current status (typically `reviewed` or `reviewed-with-findings`)
+   - Run:
+     ```bash
+     node "${CLAUDE_PLUGIN_ROOT}/scripts/state-transition.js" start-sweep-fix "[node-id]" "[previous-status]"
+     ```
+   - Dispatch a **fresh fix agent** scoped to that node only. Give it:
+     - just the failures for that node
+     - the node spec
+     - the affected source files
+     - the corresponding test/config files it may need to update
+   - The fix agent may modify source and tests within the node's scope plus permitted root infra files; it must not perform cross-node edits.
+   - After the fix agent finishes, run:
+     ```bash
+     node "${CLAUDE_PLUGIN_ROOT}/scripts/state-transition.js" restore-previous-status "[node-id]"
+     ```
+5. After all node-scoped fix groups finish, re-run:
+   ```bash
+   node "${CLAUDE_PLUGIN_ROOT}/scripts/verify-runnable.js"
+   ```
+6. Repeat the verify-runnable remediation loop up to 3 times. If failures remain after 3 remediation cycles, halt deep-build with an error and preserve `sweep_state` for recovery.
 
 The verify-runnable gate **must pass** before proceeding to Phase 4. This catches fundamental project health issues (missing packages, syntax errors, broken configs) before investing time in integration checks and sweeps.
 
