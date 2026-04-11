@@ -252,6 +252,17 @@ function assertStateTransitionUsage(errors) {
   }
 }
 
+function assertStateTransitionBashAllowlist(errors) {
+  const preToolUsePath = path.join(repoRoot, "scripts", "pre-tool-use.js");
+  if (!fs.existsSync(preToolUsePath)) {
+    return;
+  }
+  const content = fs.readFileSync(preToolUsePath, "utf8");
+  if (!content.includes("state-transition\\.js")) {
+    pushError(errors, "scripts/pre-tool-use.js: Bash allowlist must include state-transition.js helper commands");
+  }
+}
+
 const errors = [];
 
 let pluginManifest;
@@ -387,6 +398,7 @@ assertNoNestedBuilderSkill(errors);
 assertDeepBuildSnapshotContract(errors);
 assertPlannerArtifactContract(errors);
 assertStateTransitionUsage(errors);
+assertStateTransitionBashAllowlist(errors);
 
 if (errors.length > 0) {
   console.error("Plugin validation failed:");

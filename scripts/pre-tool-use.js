@@ -586,6 +586,7 @@ function evaluateBash(toolInput, cwd) {
     /^\s*node\s+[^\s]*validate-manifest\.js/,  // our own validation script
     /^\s*node\s+[^\s]*validate-spec\.js/,     // our own spec validator
     /^\s*node\s+[^\s]*next-node\.js/,         // our own next-node script
+    /^\s*node\s+[^\s]*state-transition\.js\s+(start-build|complete-build|start-review|start-review-fixing|start-revising|set-spec-status|complete-review|restore-previous-status|set-sweep-state|clear-sweep-state)\b/, // deterministic state transitions
     /^\s*node\s+[^\s]*session-start\.js/,     // our own session-start script
     /^\s*node\s+[^\s]*topo-sort\.js/,         // our own topo-sort script
     /^\s*node\s+[^\s]*status-report\.js/,     // our own status report script
