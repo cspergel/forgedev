@@ -644,6 +644,8 @@ function evaluateBash(toolInput, cwd) {
     /^\s*claude\s+mcp\s+(call|list)\b/,   // cross-model review via MCP
     /^\s*npm\s+(test|run\s+test|run\s+lint|run\s+validate)\b/, // test/lint/validate — execute user-defined scripts (accepted tradeoff)
     /^\s*npm\s+install\s*$/,             // npm install (no args only — blocks npm install <pkg> which runs arbitrary postinstall)
+    /^\s*pytest\b/,                      // targeted Python test execution
+    /^\s*python(?:3)?\s+-m\s+pytest\b/,  // targeted Python test execution via module runner
     /^\s*npx\s+tsc\s+--noEmit\s*$/,      // tsc type checking only (--noEmit mandatory — bare tsc writes .js files)
     /^\s*pwd\b/,                        // print working directory
     /^\s*echo\s/,                       // echo without redirection (checked below)

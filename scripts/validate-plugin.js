@@ -308,6 +308,9 @@ function assertStateTransitionBashAllowlist(errors) {
   if (!content.includes("normalizeReadOnlySegment")) {
     pushError(errors, "scripts/pre-tool-use.js: Bash guard must normalize benign shell redirections before safe-command matching");
   }
+  if (!content.includes("python(?:3)?\\s+-m\\s+pytest") || !content.includes("^\\s*pytest\\b")) {
+    pushError(errors, "scripts/pre-tool-use.js: Bash allowlist must permit targeted pytest verification during active remediation");
+  }
   if (!content.includes("relPath.startsWith(\".forgeplan/reviews/\")")) {
     pushError(errors, "scripts/pre-tool-use.js: sweep/deep-build analysis mode must allow .forgeplan/reviews/ writes for parallel review batches");
   }
