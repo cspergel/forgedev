@@ -141,8 +141,8 @@ function assertNoNestedBuilderSkill(errors) {
   if (!content.includes("Skill(forgeplan:builder)")) {
     pushError(errors, "skills/deep-build/SKILL.md: must explicitly forbid nested Skill(forgeplan:builder) invocation");
   }
-  if (!content.includes("/forgeplan:build [node-id]")) {
-    pushError(errors, "skills/deep-build/SKILL.md: must direct orchestration to the public /forgeplan:build [node-id] entry point");
+  if (!content.includes("skills/build/SKILL.md")) {
+    pushError(errors, "skills/deep-build/SKILL.md: must direct orchestration to inline the build workflow from skills/build/SKILL.md");
   }
 }
 
@@ -155,8 +155,8 @@ function assertNoNestedReviewerSkill(errors) {
   if (!content.includes("forgeplan:reviewer")) {
     pushError(errors, "skills/deep-build/SKILL.md: must explicitly forbid internal forgeplan:reviewer dispatch");
   }
-  if (!content.includes("/forgeplan:review [node-id]")) {
-    pushError(errors, "skills/deep-build/SKILL.md: must direct orchestration to the public /forgeplan:review [node-id] entry point");
+  if (!content.includes("skills/review/SKILL.md")) {
+    pushError(errors, "skills/deep-build/SKILL.md: must direct orchestration to inline the review workflow from skills/review/SKILL.md");
   }
 }
 
@@ -263,6 +263,9 @@ function assertStateTransitionUsage(errors) {
     if (stopHookContent.includes("Update .forgeplan/state.json: set nodes.")) {
       pushError(errors, "scripts/stop-hook.js: must not instruct manual state.json editing on build completion");
     }
+    if (!stopHookContent.includes("files_created") || !stopHookContent.includes("files_modified")) {
+      pushError(errors, "scripts/stop-hook.js: must skip AC enforcement for untouched interrupted builds by checking files_created/files_modified");
+    }
   }
 }
 
@@ -308,8 +311,8 @@ function assertTopLevelOrchestrationStateRules(errors) {
     if (!content.includes("state-transition.js\" set-node-status")) {
       pushError(errors, "skills/recover/SKILL.md: recovery flows must use state-transition.js set-node-status");
     }
-    if (!content.includes("/forgeplan:build [node-id]") || !content.includes("/forgeplan:review [node-id]")) {
-      pushError(errors, "skills/recover/SKILL.md: resume flows must route through public /forgeplan:build and /forgeplan:review commands");
+    if (!content.includes("skills/build/SKILL.md") || !content.includes("skills/review/SKILL.md")) {
+      pushError(errors, "skills/recover/SKILL.md: resume flows must inline the build and review workflows from their skill files");
     }
   }
 }

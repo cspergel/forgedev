@@ -8,8 +8,12 @@ disable-model-invocation: true
 Run the complete ForgePlan pipeline autonomously: build all → design pass (frontend) → verify-runnable → review → integrate → sweep → (runtime verify, Sprint 8) → cross-model (tier-aware) → certified.
 
 **State mutation rule:** Do **not** hand-edit `.forgeplan/state.json` in deep-build. Use
-`node "${CLAUDE_PLUGIN_ROOT}/scripts/state-transition.js" ...` for operation state changes, and
-use the public `/forgeplan:build` and `/forgeplan:review` commands for node-level transitions.
+`node "${CLAUDE_PLUGIN_ROOT}/scripts/state-transition.js" ...` for operation state changes.
+For node-level work, do **not** invoke `Skill(forgeplan:build)` or `Skill(forgeplan:review)`.
+Those are command skills with `disable-model-invocation: true`. Read the skill files and execute
+their workflows inline instead:
+- `${CLAUDE_PLUGIN_ROOT}/skills/build/SKILL.md`
+- `${CLAUDE_PLUGIN_ROOT}/skills/review/SKILL.md`
 
 ## Prerequisites
 
@@ -38,13 +42,13 @@ This is a sequential loop using existing commands:
 2. Handle result by type:
    - `"recommendation"`:
      - Before any build starts, snapshot existing files for the node using the **Glob tool** with the node's `file_scope`, exactly as `/forgeplan:build` requires. Persist that list to `nodes.[node-id].pre_build_files` in state. Do **not** use Bash/Node ad hoc file enumeration here; active deep-build enforcement blocks non-whitelisted shell commands during build-all.
-     - Do **not** invoke `Skill(forgeplan:builder)` or treat `forgeplan:builder` as a public skill. `builder` is an internal agent only. The public build entry point is `/forgeplan:build [node-id]`, or the inline build workflow from `${CLAUDE_PLUGIN_ROOT}/skills/build/SKILL.md` when orchestration requires it.
-     - Do **not** invoke `forgeplan:reviewer` or dispatch internal reviewer agents directly. The public review entry point is `/forgeplan:review [node-id]`, and it owns its own state transitions.
-     - Do **not** pre-mutate `active_node` or node `status` before calling `/forgeplan:build` or `/forgeplan:review`. Those public commands own the node-level state transitions.
-     - If status is `"pending"`: execute the single-node **autonomous spec workflow inline** (read `${CLAUDE_PLUGIN_ROOT}/skills/spec/SKILL.md` and follow its Autonomous Mode for the specific node). Do **not** use `Skill(forgeplan:spec)` — `spec` has `disable-model-invocation: true`. Generate a complete spec with filled-in acceptance criteria and test fields, verify the spec file exists and has non-empty `test` fields for each AC, then `/forgeplan:build [node-id]`.
-     - If status is `"specced"`: verify the spec has non-empty acceptance criteria test fields (skeleton specs from discover have empty fields). If test fields are empty, re-run the single-node autonomous spec workflow inline to complete them. Then `/forgeplan:build [node-id]`.
-     - If status is `"built"`: node was built but not yet reviewed. Run `/forgeplan:review [node-id]` only.
-     - After each build, run `/forgeplan:review [node-id]` using the public command surface. Do not start the reviewer by hand.
+     - Do **not** invoke `Skill(forgeplan:builder)` or treat `forgeplan:builder` as a public skill. `builder` is an internal agent only.
+     - Do **not** invoke `forgeplan:reviewer` or dispatch internal reviewer agents directly.
+     - Do **not** pre-mutate `active_node` or node `status` before running the inline build or review workflows. Those workflows own the node-level state transitions.
+     - If status is `"pending"`: execute the single-node **autonomous spec workflow inline** (read `${CLAUDE_PLUGIN_ROOT}/skills/spec/SKILL.md` and follow its Autonomous Mode for the specific node). Do **not** use `Skill(forgeplan:spec)` — `spec` has `disable-model-invocation: true`. Generate a complete spec with filled-in acceptance criteria and test fields, verify the spec file exists and has non-empty `test` fields for each AC, then read `${CLAUDE_PLUGIN_ROOT}/skills/build/SKILL.md` and execute the single-node build workflow inline.
+     - If status is `"specced"`: verify the spec has non-empty acceptance criteria test fields (skeleton specs from discover have empty fields). If test fields are empty, re-run the single-node autonomous spec workflow inline to complete them. Then read `${CLAUDE_PLUGIN_ROOT}/skills/build/SKILL.md` and execute the single-node build workflow inline.
+     - If status is `"built"`: node was built but not yet reviewed. Read `${CLAUDE_PLUGIN_ROOT}/skills/review/SKILL.md` and execute the single-node review workflow inline only.
+     - After each build, read `${CLAUDE_PLUGIN_ROOT}/skills/review/SKILL.md` and execute the single-node review workflow inline. Do not start the reviewer by hand.
      - **Bounce exhaustion recovery:** If a node's Stop hook has bounced 3 times (escalated to user), the autonomous deep-build must NOT halt the pipeline. Instead:
        1. Mark the node as `"built"` in state.json with a warning flag: set `nodes.[id].bounce_exhausted: true` and `nodes.[id].unverified_acs` to the list of acceptance criteria that were not verified as passing.
        2. Add each unmet AC as a sweep finding in `sweep_state.findings.pending` with all required fields: `id: "B[N]"` (sequential), `source_model: "stop-hook"`, `node: "[node-id]"`, `category: "code-quality"`, `severity: "HIGH"`, `confidence: 95`, `description: "Unverified AC from bounce exhaustion: [AC text]"`, `pass_found: 0`. Note: `confidence` MUST be included (95 = high confidence these are real issues) or the sweep's <75 filter will silently drop them.
@@ -57,17 +61,17 @@ This is a sequential loop using existing commands:
        ```bash
        node "${CLAUDE_PLUGIN_ROOT}/scripts/state-transition.js" set-node-status "[node-id]" "specced"
        ```
-       then rebuild from scratch
+       then read `${CLAUDE_PLUGIN_ROOT}/skills/build/SKILL.md` and rebuild from scratch inline
      - `"reviewing"` → run:
        ```bash
        node "${CLAUDE_PLUGIN_ROOT}/scripts/state-transition.js" set-node-status "[node-id]" "built"
        ```
-       then re-review
+       then read `${CLAUDE_PLUGIN_ROOT}/skills/review/SKILL.md` and re-review inline
      - `"review-fixing"` → run:
        ```bash
        node "${CLAUDE_PLUGIN_ROOT}/scripts/state-transition.js" set-node-status "[node-id]" "built"
        ```
-       then re-review after fix attempt
+       then read `${CLAUDE_PLUGIN_ROOT}/skills/review/SKILL.md` and re-review after the fix attempt
      - `"revising"` → run:
        ```bash
        node "${CLAUDE_PLUGIN_ROOT}/scripts/state-transition.js" set-node-status "[node-id]" "reviewed"
@@ -86,7 +90,7 @@ This is a sequential loop using existing commands:
      Deep build halted: [message from next-node.js]
      Run /forgeplan:recover to resume or abort.
      ```
-   - `"rebuild_needed"`: for each listed node, run `/forgeplan:build [node-id]` then `/forgeplan:review [node-id]` (same build+review pattern as the recommendation branch — no unreviewed nodes in the autonomous pipeline), then re-run next-node.js
+   - `"rebuild_needed"`: for each listed node, read `${CLAUDE_PLUGIN_ROOT}/skills/build/SKILL.md` and execute the single-node build workflow inline, then read `${CLAUDE_PLUGIN_ROOT}/skills/review/SKILL.md` and execute the single-node review workflow inline (same build+review pattern as the recommendation branch — no unreviewed nodes in the autonomous pipeline), then re-run next-node.js
    - `"sweep_active"`: a sweep is still active from an interrupted run. Run:
      ```bash
      node "${CLAUDE_PLUGIN_ROOT}/scripts/state-transition.js" clear-sweep-state

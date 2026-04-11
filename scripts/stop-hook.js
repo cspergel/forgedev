@@ -91,6 +91,20 @@ function evaluate(input) {
     return { block: false };
   }
 
+  // --- Recovery guard: untouched interrupted builds should not trigger AC verification ---
+  // During /forgeplan:recover, the interrupted node may still be marked "building" even when
+  // no files were ever created or modified before the crash. In that case there is nothing to
+  // verify yet, and blocking stop would incorrectly force AC evaluation during the recovery
+  // prompt itself.
+  const nodeState = (state.nodes && state.nodes[activeNodeId]) || {};
+  const filesCreated = Array.isArray(nodeState.files_created) ? nodeState.files_created : [];
+  const filesModified = Array.isArray(nodeState.files_modified) ? nodeState.files_modified : [];
+  const buildTouchedFiles = filesCreated.length > 0 || filesModified.length > 0;
+
+  if (!buildTouchedFiles) {
+    return { block: false };
+  }
+
   // --- Clear stop_hook_active from previous bounce cycle ---
   // This flag is only meaningful within a single bounce cycle. Clearing it
   // here allows multi-bounce to work (up to 3 bounces before escalation).

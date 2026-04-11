@@ -8,9 +8,14 @@ disable-model-invocation: true
 Detect and recover from interrupted builds, reviews, revisions, review-fix cycles, sweeps, and deep-builds.
 
 **State mutation rule:** Do **not** hand-edit `.forgeplan/state.json` in recovery flows. Use
-`node "${CLAUDE_PLUGIN_ROOT}/scripts/state-transition.js" ...` for node/runtime transitions, or
-delegate to the public `/forgeplan:build`, `/forgeplan:review`, and `/forgeplan:revise` commands,
-which already own their state transitions.
+`node "${CLAUDE_PLUGIN_ROOT}/scripts/state-transition.js" ...` for node/runtime transitions.
+When recovery must continue build/review/revise work, do **not** invoke `Skill(forgeplan:build)`,
+`Skill(forgeplan:review)`, or `Skill(forgeplan:revise)` — those are command skills with
+`disable-model-invocation: true`. Instead, read the corresponding skill file and execute its
+workflow inline:
+- `${CLAUDE_PLUGIN_ROOT}/skills/build/SKILL.md`
+- `${CLAUDE_PLUGIN_ROOT}/skills/review/SKILL.md`
+- `${CLAUDE_PLUGIN_ROOT}/skills/revise/SKILL.md`
 
 ## Process
 
@@ -241,8 +246,10 @@ Recovery complete. Next:
 ## Resume
 
 Resume behavior depends on the crashed operation. Do **not** mutate `.forgeplan/state.json`
-directly here — restore the node to a valid command entry state, then call the public command:
-- **Building:** restore the node to a buildable state, then call `/forgeplan:build [node-id]`
+directly here — restore the node to a valid entry state, then continue the corresponding
+workflow inline from the relevant skill file:
+- **Building:** restore the node to a buildable state, then read
+  `${CLAUDE_PLUGIN_ROOT}/skills/build/SKILL.md` and execute the single-node build workflow inline
   - If `nodes.[node-id].previous_status` is set, run:
     ```bash
     node "${CLAUDE_PLUGIN_ROOT}/scripts/state-transition.js" restore-previous-status "[node-id]"
@@ -255,17 +262,17 @@ directly here — restore the node to a valid command entry state, then call the
   ```bash
   node "${CLAUDE_PLUGIN_ROOT}/scripts/state-transition.js" set-node-status "[node-id]" "built"
   ```
-  then call `/forgeplan:review [node-id]`
+  then read `${CLAUDE_PLUGIN_ROOT}/skills/review/SKILL.md` and execute the single-node review workflow inline
 - **Review-fixing:** run
   ```bash
   node "${CLAUDE_PLUGIN_ROOT}/scripts/state-transition.js" set-node-status "[node-id]" "built"
   ```
-  then call `/forgeplan:review [node-id]` (same as Reviewing resume — the fixer's partial work remains on disk and will be re-reviewed)
+  then read `${CLAUDE_PLUGIN_ROOT}/skills/review/SKILL.md` and execute the single-node review workflow inline (same as Reviewing resume — the fixer's partial work remains on disk and will be re-reviewed)
 - **Revising:** run
   ```bash
   node "${CLAUDE_PLUGIN_ROOT}/scripts/state-transition.js" set-node-status "[node-id]" "reviewed"
   ```
-  then call `/forgeplan:revise [node-id]`
+  then read `${CLAUDE_PLUGIN_ROOT}/skills/revise/SKILL.md` and execute the single-node revise workflow inline
 
 ## Reset (building only)
 
@@ -289,7 +296,7 @@ directly here — restore the node to a valid command entry state, then call the
   ```bash
   node "${CLAUDE_PLUGIN_ROOT}/scripts/state-transition.js" complete-build "[node-id]"
   ```
-- Run `/forgeplan:review [node-id]` to assess partial completion
+- Read `${CLAUDE_PLUGIN_ROOT}/skills/review/SKILL.md` and execute the single-node review workflow inline to assess partial completion
 - The review report will show which acceptance criteria are met and which are not
 - **WARNING:** This bypasses the Stop hook's acceptance criteria verification. The node is marked "built" without verifying all criteria pass. The subsequent review will identify gaps.
 
