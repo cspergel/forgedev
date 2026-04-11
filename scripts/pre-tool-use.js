@@ -623,8 +623,7 @@ function evaluateBash(toolInput, cwd) {
     /^\s*Select-String\b/i,            // PowerShell grep
   ];
 
-  // Split command on chaining operators AND newlines (newlines are command separators in shell)
-  const segments = command.split(/\s*(?:\r?\n|\r|;|&&|\|\||(?<!\|)\|(?!\|))\s*/).filter(Boolean);
+  const segments = splitReadOnlyShellSegments(command);
 
   const allSegmentsSafe = segments.every((seg) => {
     const trimmed = seg.trim();
@@ -661,6 +660,19 @@ function evaluateBash(toolInput, cwd) {
       `shared model guards, and file registration work correctly. ` +
       `Read-only commands (ls, cat, grep, git status, npm test, etc.) are allowed.`,
   };
+}
+
+function splitReadOnlyShellSegments(command) {
+  const simpleForLoop = command.match(/^\s*for\s+\w+\s+in\s+[\s\S]+?;\s*do\s+([\s\S]+?)\s*;?\s*done\s*$/);
+  if (simpleForLoop) {
+    return simpleForLoop[1]
+      .split(/\s*(?:\r?\n|\r|;|&&|\|\||(?<!\|)\|(?!\|))\s*/)
+      .filter(Boolean);
+  }
+
+  return command
+    .split(/\s*(?:\r?\n|\r|;|&&|\|\||(?<!\|)\|(?!\|))\s*/)
+    .filter(Boolean);
 }
 
 function isReadOnlyInlinePython(segment) {

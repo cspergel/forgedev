@@ -275,6 +275,9 @@ function assertStateTransitionBashAllowlist(errors) {
   if (!content.includes("state-transition\\.js")) {
     pushError(errors, "scripts/pre-tool-use.js: Bash allowlist must include state-transition.js helper commands");
   }
+  if (!content.includes("splitReadOnlyShellSegments")) {
+    pushError(errors, "scripts/pre-tool-use.js: Bash guard must support splitting safe read-only shell wrappers");
+  }
 }
 
 function assertTopLevelOrchestrationStateRules(errors) {
