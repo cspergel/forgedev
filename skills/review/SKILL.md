@@ -30,12 +30,16 @@ If the argument is `--all`, review all built nodes sequentially in dependency or
 
 ## Setup
 
-1. **Read** `.forgeplan/state.json`, then **update** (do not overwrite) these fields:
-   - Set `nodes.[node-id].previous_status` to the node's current status (e.g., `"built"` or `"reviewed"`) — this is used by recovery SKIP to restore the correct state
-   - Set `active_node` to `{"node": "[node-id]", "status": "reviewing", "started_at": "[ISO timestamp]"}`
-   - Set `nodes.[node-id].status` to `"reviewing"`
-   - Set `last_updated` to current ISO timestamp
-   - Preserve all other existing fields
+1. Update state using the deterministic helper instead of manual file editing:
+   ```bash
+   node "${CLAUDE_PLUGIN_ROOT}/scripts/state-transition.js" start-review "[node-id]" "[previous-status]"
+   ```
+   This atomically sets:
+   - `nodes.[node-id].previous_status`
+   - `active_node`
+   - `nodes.[node-id].status`
+   - `last_updated`
+   Do not manually edit `.forgeplan/state.json` for this transition.
 
 2. **Read** `.forgeplan/config.yaml` if it exists. Check `review.mode` and `enforcement.mode`. If config doesn't exist, defaults are `review.mode: "native"` and `enforcement.mode: "advisory"`.
 
@@ -104,9 +108,12 @@ Write the native review report to `.forgeplan/reviews/[node-id].md` using the st
 Check `multi_agent_review.enabled` in config.yaml. If true and the native review found issues (REQUEST CHANGES):
 
 **Before dispatching a fixer agent**, transition the status so PreToolUse allows implementation writes:
-- Set `active_node.status` to `"review-fixing"` in state.json
+- Run:
+  ```bash
+  node "${CLAUDE_PLUGIN_ROOT}/scripts/state-transition.js" start-review-fixing "[node-id]"
+  ```
 - This enables the same write enforcement as `"building"` (file_scope, shared model guard, PostToolUse file registration)
-- After the fixer returns, set `active_node.status` back to `"reviewing"` before dispatching the re-reviewer
+- After the fixer returns, re-run the review setup helper to put the node back into `"reviewing"` before dispatching the re-reviewer
 
 1. Spawn a **fresh Builder agent** using `context: fork` (isolated subagent with NO shared context from the current session). Provide it ONLY:
    - The original node spec (read fresh from `.forgeplan/specs/[node-id].yaml`)
@@ -163,15 +170,19 @@ The node advances to `"reviewed"` regardless of the cross-model result. Cross-mo
 The node can only advance to `"reviewed"` if **both** the native review and the cross-model review pass:
 - If the native review recommends APPROVE **and** the cross-model review returns `status: "approved"` → advance to `"reviewed"`
 - If either review has failures → do NOT advance. **Restore node status before suggesting next steps:**
-  1. Set `nodes.[node-id].status` back to `nodes.[node-id].previous_status` (e.g., `"built"`)
-  2. Clear `nodes.[node-id].previous_status` to `null`
-  3. Clear `active_node` to `null`
-  4. Set `last_updated` to current ISO timestamp
+  1. Run:
+     ```bash
+     node "${CLAUDE_PLUGIN_ROOT}/scripts/state-transition.js" restore-previous-status "[node-id]"
+     ```
   Then present the combined failures and suggest:
     - `/forgeplan:build [node-id]` to address the failures and rebuild
     - `/forgeplan:review [node-id]` to re-review after fixes
 
-**If cross-model review errors** (network failure, misconfigured provider, timeout): In strict mode, **restore node status first** (same steps as above — set status back to `previous_status`, clear `previous_status`, clear `active_node`), then warn the user that the cross-model gate could not be evaluated and offer two choices:
+**If cross-model review errors** (network failure, misconfigured provider, timeout): In strict mode, **restore node status first** with:
+```bash
+node "${CLAUDE_PLUGIN_ROOT}/scripts/state-transition.js" restore-previous-status "[node-id]"
+```
+then warn the user that the cross-model gate could not be evaluated and offer two choices:
 1. Retry the cross-model review
 2. Override and advance to `"reviewed"` anyway (with a note in the review report that cross-model verification was skipped)
 
@@ -179,13 +190,11 @@ The node can only advance to `"reviewed"` if **both** the native review and the 
 
 ## Completion
 
-Update state.json:
-- Set `nodes.[node-id].status` to `"reviewed"`
-- Set `nodes.[node-id].last_review` to `".forgeplan/reviews/[node-id].md"`
-- If cross-model review ran, also set `nodes.[node-id].last_crossmodel_review` to `".forgeplan/reviews/[node-id]-crossmodel.md"`
-- Clear `nodes.[node-id].previous_status` to `null`
-- Clear `active_node` to `null`
-- Set `last_updated` to current ISO timestamp
+Update state with the deterministic helper:
+```bash
+node "${CLAUDE_PLUGIN_ROOT}/scripts/state-transition.js" complete-review "[node-id]" ".forgeplan/reviews/[node-id].md" "[.forgeplan/reviews/[node-id]-crossmodel.md|-]"
+```
+This atomically sets reviewed status, persists review report paths, clears `previous_status`, clears `active_node`, and updates `last_updated`.
 
 **After updating state, suggest next steps based on the review outcome:**
 

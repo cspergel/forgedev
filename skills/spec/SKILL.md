@@ -35,7 +35,11 @@ If the argument contains `--autonomous` or `--all --autonomous`, use the Autonom
 5. Write the complete spec to `.forgeplan/specs/[node-id].yaml` using ALL 14 fields from the node spec schema
 6. Run spec validation: `node "${CLAUDE_PLUGIN_ROOT}/scripts/validate-spec.js" .forgeplan/specs/[node-id].yaml .forgeplan/manifest.yaml`
 7. Run manifest validation: `node "${CLAUDE_PLUGIN_ROOT}/scripts/validate-manifest.js" .forgeplan/manifest.yaml`
-8. **Read** `.forgeplan/state.json`, then **update** (do not overwrite): set `nodes.[node-id].status` to `"specced"` (or `"revised"` if the node was previously `"built"` — see Descriptive Spec Refinement above), `nodes.[node-id].spec_type` to the spec's `spec_type` value (e.g., `"prescriptive"`, `"interface-only"`), and `last_updated` to current ISO timestamp. Preserve all other existing fields.
+8. Update state using the deterministic helper instead of manual file editing:
+   ```bash
+   node "${CLAUDE_PLUGIN_ROOT}/scripts/state-transition.js" set-spec-status "[node-id]" "[specced-or-revised]" "[spec_type]"
+   ```
+   This atomically updates `nodes.[node-id].status`, `nodes.[node-id].spec_type`, and `last_updated` while preserving all other state.
 9. Present a summary of the spec and confirm with the user
 
 ## All Nodes Mode (`/forgeplan:spec --all`)

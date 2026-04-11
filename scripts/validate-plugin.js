@@ -171,6 +171,57 @@ function assertPlannerArtifactContract(errors) {
   }
 }
 
+function assertStateTransitionUsage(errors) {
+  const stateTransitionPath = path.join(repoRoot, "scripts", "state-transition.js");
+  if (!fs.existsSync(stateTransitionPath)) {
+    pushError(errors, "scripts/state-transition.js: missing deterministic state transition helper");
+    return;
+  }
+
+  const checks = [
+    {
+      file: path.join(skillsRoot, "build", "SKILL.md"),
+      marker: "state-transition.js\" start-build",
+      message: "skills/build/SKILL.md: build setup must use state-transition.js start-build",
+    },
+    {
+      file: path.join(skillsRoot, "review", "SKILL.md"),
+      marker: "state-transition.js\" start-review",
+      message: "skills/review/SKILL.md: review setup must use state-transition.js start-review",
+    },
+    {
+      file: path.join(skillsRoot, "review", "SKILL.md"),
+      marker: "state-transition.js\" start-review-fixing",
+      message: "skills/review/SKILL.md: multi-agent review fixes must use state-transition.js start-review-fixing",
+    },
+    {
+      file: path.join(skillsRoot, "review", "SKILL.md"),
+      marker: "state-transition.js\" complete-review",
+      message: "skills/review/SKILL.md: review completion must use state-transition.js complete-review",
+    },
+    {
+      file: path.join(skillsRoot, "review", "SKILL.md"),
+      marker: "state-transition.js\" restore-previous-status",
+      message: "skills/review/SKILL.md: strict review recovery must use state-transition.js restore-previous-status",
+    },
+    {
+      file: path.join(skillsRoot, "spec", "SKILL.md"),
+      marker: "state-transition.js\" set-spec-status",
+      message: "skills/spec/SKILL.md: spec completion must use state-transition.js set-spec-status",
+    },
+  ];
+
+  for (const check of checks) {
+    if (!fs.existsSync(check.file)) {
+      continue;
+    }
+    const content = fs.readFileSync(check.file, "utf8");
+    if (!content.includes(check.marker)) {
+      pushError(errors, check.message);
+    }
+  }
+}
+
 const errors = [];
 
 let pluginManifest;
@@ -304,6 +355,7 @@ assertNoNestedSpecSkill(errors);
 assertNoNestedDeepBuildSkill(errors);
 assertDeepBuildSnapshotContract(errors);
 assertPlannerArtifactContract(errors);
+assertStateTransitionUsage(errors);
 
 if (errors.length > 0) {
   console.error("Plugin validation failed:");

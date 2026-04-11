@@ -82,18 +82,22 @@ Build the specified node following its spec with layered enforcement:
    - tier default (`sonnet` for SMALL/MEDIUM, `opus` for LARGE)
    Record both the chosen model and the reason it was selected.
 5. **Snapshot existing files** in the node's `file_scope` before building starts. This enables PostToolUse to distinguish genuinely new files from pre-existing ones. Use the **Glob tool** with the node's `file_scope` pattern to list all matching files. Store the result as `nodes.[node-id].pre_build_files` in state.json. The Glob tool handles all glob patterns correctly regardless of platform.
-6. **Read** `.forgeplan/state.json`, then **update** (do not overwrite) these fields:
-   - Set `nodes.[node-id].previous_status` to the node's current status (e.g., `"specced"`, `"reviewed"`, `"revised"`) — used by recovery SKIP to restore state if the build crashes
-   - Set `active_node` to `{"node": "[node-id]", "status": "building", "started_at": "[ISO timestamp]"}`
-   - Set `nodes.[node-id].status` to `"building"`
-   - Set `nodes.[node-id].selected_builder_model` to the resolved model name
-   - Set `nodes.[node-id].selected_builder_model_reason` to the source (`builder_override`, `models.builder`, or `tier-default`)
-   - Set `nodes.[node-id].pre_build_files` to the list of files from the snapshot above
-   - Set `nodes.[node-id].bounce_count` to `0`
-   - Set `nodes.[node-id].files_created` to `[]`
-   - Set `nodes.[node-id].files_modified` to `[]`
-   - Set `last_updated` to current ISO timestamp
-   - Preserve all other existing fields (`session_id`, `nodes`, `stop_hook_active`, `discovery_complete`)
+6. Update state using the deterministic helper instead of manual file editing:
+   ```bash
+   node "${CLAUDE_PLUGIN_ROOT}/scripts/state-transition.js" start-build "[node-id]" "[previous-status]" "[selected-model]" "[selection-reason]" '[pre-build-files-json]'
+   ```
+   This atomically sets:
+   - `nodes.[node-id].previous_status`
+   - `active_node`
+   - `nodes.[node-id].status`
+   - `nodes.[node-id].selected_builder_model`
+   - `nodes.[node-id].selected_builder_model_reason`
+   - `nodes.[node-id].pre_build_files`
+   - `nodes.[node-id].bounce_count`
+   - `nodes.[node-id].files_created`
+   - `nodes.[node-id].files_modified`
+   - `last_updated`
+   Do not manually edit `.forgeplan/state.json` for this transition.
 
 ## Builder Agent Context
 
