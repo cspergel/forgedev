@@ -146,6 +146,20 @@ function assertNoNestedBuilderSkill(errors) {
   }
 }
 
+function assertNoNestedReviewerSkill(errors) {
+  const deepBuildPath = path.join(skillsRoot, "deep-build", "SKILL.md");
+  if (!fs.existsSync(deepBuildPath)) {
+    return;
+  }
+  const content = fs.readFileSync(deepBuildPath, "utf8");
+  if (!content.includes("forgeplan:reviewer")) {
+    pushError(errors, "skills/deep-build/SKILL.md: must explicitly forbid internal forgeplan:reviewer dispatch");
+  }
+  if (!content.includes("/forgeplan:review [node-id]")) {
+    pushError(errors, "skills/deep-build/SKILL.md: must direct orchestration to the public /forgeplan:review [node-id] entry point");
+  }
+}
+
 function assertDeepBuildSnapshotContract(errors) {
   const deepBuildPath = path.join(skillsRoot, "deep-build", "SKILL.md");
   if (!fs.existsSync(deepBuildPath)) {
@@ -260,6 +274,40 @@ function assertStateTransitionBashAllowlist(errors) {
   const content = fs.readFileSync(preToolUsePath, "utf8");
   if (!content.includes("state-transition\\.js")) {
     pushError(errors, "scripts/pre-tool-use.js: Bash allowlist must include state-transition.js helper commands");
+  }
+}
+
+function assertTopLevelOrchestrationStateRules(errors) {
+  const deepBuildPath = path.join(skillsRoot, "deep-build", "SKILL.md");
+  const recoverPath = path.join(skillsRoot, "recover", "SKILL.md");
+
+  if (fs.existsSync(deepBuildPath)) {
+    const content = fs.readFileSync(deepBuildPath, "utf8");
+    if (!content.includes("Do **not** hand-edit `.forgeplan/state.json`")) {
+      pushError(errors, "skills/deep-build/SKILL.md: must explicitly forbid manual state.json editing");
+    }
+    if (!content.includes("state-transition.js\" set-sweep-state")) {
+      pushError(errors, "skills/deep-build/SKILL.md: deep-build initialization must use state-transition.js set-sweep-state");
+    }
+    if (!content.includes("state-transition.js\" set-sweep-phase")) {
+      pushError(errors, "skills/deep-build/SKILL.md: sweep/deep-build phase changes must use state-transition.js set-sweep-phase");
+    }
+    if (!content.includes("Do **not** pre-mutate `active_node` or node `status`")) {
+      pushError(errors, "skills/deep-build/SKILL.md: build-all loop must forbid pre-mutating node state before /forgeplan:build or /forgeplan:review");
+    }
+  }
+
+  if (fs.existsSync(recoverPath)) {
+    const content = fs.readFileSync(recoverPath, "utf8");
+    if (!content.includes("Do **not** hand-edit `.forgeplan/state.json`")) {
+      pushError(errors, "skills/recover/SKILL.md: must explicitly forbid manual state.json editing");
+    }
+    if (!content.includes("state-transition.js\" set-node-status")) {
+      pushError(errors, "skills/recover/SKILL.md: recovery flows must use state-transition.js set-node-status");
+    }
+    if (!content.includes("/forgeplan:build [node-id]") || !content.includes("/forgeplan:review [node-id]")) {
+      pushError(errors, "skills/recover/SKILL.md: resume flows must route through public /forgeplan:build and /forgeplan:review commands");
+    }
   }
 }
 
@@ -395,10 +443,12 @@ assertDiscoverCompletion(errors);
 assertNoNestedSpecSkill(errors);
 assertNoNestedDeepBuildSkill(errors);
 assertNoNestedBuilderSkill(errors);
+assertNoNestedReviewerSkill(errors);
 assertDeepBuildSnapshotContract(errors);
 assertPlannerArtifactContract(errors);
 assertStateTransitionUsage(errors);
 assertStateTransitionBashAllowlist(errors);
+assertTopLevelOrchestrationStateRules(errors);
 
 if (errors.length > 0) {
   console.error("Plugin validation failed:");

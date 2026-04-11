@@ -7,6 +7,11 @@ disable-model-invocation: true
 
 Detect and recover from interrupted builds, reviews, revisions, review-fix cycles, sweeps, and deep-builds.
 
+**State mutation rule:** Do **not** hand-edit `.forgeplan/state.json` in recovery flows. Use
+`node "${CLAUDE_PLUGIN_ROOT}/scripts/state-transition.js" ...` for node/runtime transitions, or
+delegate to the public `/forgeplan:build`, `/forgeplan:review`, and `/forgeplan:revise` commands,
+which already own their state transitions.
+
 ## Process
 
 **Step 0: Check for interrupted split (Sprint 9)**
@@ -198,13 +203,27 @@ Choose [1/2/3]:
    - Restore backed-up promoted specs and manifest from `phase_advancement.backup_dir`
    - Delete `.forgeplan/phase-advance-backup/`
    - Restore `build_phase_started_at` in state.json from the backup, or clear it to `null` if no backup value exists (prevents stale timestamp from the aborted phase)
-3. **If `active_node` was set (mid-fix):** clear `active_node` to `null`
+3. **If `active_node` was set (mid-fix):** run
+   ```bash
+   node "${CLAUDE_PLUGIN_ROOT}/scripts/state-transition.js" clear-active-node
+   ```
 4. **Scan ALL `state.nodes` entries for orphaned "sweeping" status.** For each node with `status: "sweeping"`:
-   - If `previous_status` is set: restore `status` to `previous_status`, clear `previous_status`
-   - If `previous_status` is not set: set `status` to `"built"` (safest default — the node was built before the sweep started)
+   - If `previous_status` is set: run
+     ```bash
+     node "${CLAUDE_PLUGIN_ROOT}/scripts/state-transition.js" restore-previous-status "[node-id]"
+     ```
+   - If `previous_status` is not set: run
+     ```bash
+     node "${CLAUDE_PLUGIN_ROOT}/scripts/state-transition.js" set-node-status "[node-id]" "built"
+     ```
+     (safest default — the node was built before the sweep started)
    - This handles edge cases where the crash happened between setting node status and setting active_node
-5. **Set `sweep_state` to `null`** in the in-memory state object (AFTER all reads of sweep_state fields are complete).
-6. **Write state.json** atomically (single write with all changes from steps 2-5).
+5. **Set `sweep_state` to `null`** with:
+   ```bash
+   node "${CLAUDE_PLUGIN_ROOT}/scripts/state-transition.js" clear-sweep-state
+   ```
+   Do this only AFTER all reads of `sweep_state` fields are complete.
+6. If `phase_advancement` restored `build_phase_started_at`, preserve that restored value when clearing sweep state. If needed, apply that restoration first, then run `clear-sweep-state`.
 7. Sweep reports remain in `.forgeplan/sweeps/` for reference.
 
 **After any recovery action, suggest next steps:**
@@ -221,11 +240,32 @@ Recovery complete. Next:
 
 ## Resume
 
-Resume behavior depends on the crashed operation. **Read** state.json, then **update** (do not overwrite):
-- **Building:** Set `active_node` to `{"node": "[node-id]", "status": "building", "started_at": "[current ISO timestamp]"}`, reset `nodes.[node-id].bounce_count` to `0`, set `last_updated`, start the **Builder agent** with existing files as context
-- **Reviewing:** Set `active_node` to `{"node": "[node-id]", "status": "reviewing", "started_at": "[current ISO timestamp]"}`, set `last_updated`, start the **Reviewer agent** from scratch
-- **Review-fixing:** Set `active_node` to `{"node": "[node-id]", "status": "reviewing", "started_at": "[current ISO timestamp]"}`, set `nodes.[node-id].status` to `"reviewing"`, set `last_updated`, start the **Reviewer agent** from scratch (same as Reviewing resume — the fixer's partial work remains on disk and will be re-reviewed)
-- **Revising:** Set `active_node` to `{"node": "[node-id]", "status": "revising", "started_at": "[current ISO timestamp]"}`, set `last_updated`, re-read spec and manifest, continue revision
+Resume behavior depends on the crashed operation. Do **not** mutate `.forgeplan/state.json`
+directly here — restore the node to a valid command entry state, then call the public command:
+- **Building:** restore the node to a buildable state, then call `/forgeplan:build [node-id]`
+  - If `nodes.[node-id].previous_status` is set, run:
+    ```bash
+    node "${CLAUDE_PLUGIN_ROOT}/scripts/state-transition.js" restore-previous-status "[node-id]"
+    ```
+  - Otherwise run:
+    ```bash
+    node "${CLAUDE_PLUGIN_ROOT}/scripts/state-transition.js" set-node-status "[node-id]" "specced"
+    ```
+- **Reviewing:** run
+  ```bash
+  node "${CLAUDE_PLUGIN_ROOT}/scripts/state-transition.js" set-node-status "[node-id]" "built"
+  ```
+  then call `/forgeplan:review [node-id]`
+- **Review-fixing:** run
+  ```bash
+  node "${CLAUDE_PLUGIN_ROOT}/scripts/state-transition.js" set-node-status "[node-id]" "built"
+  ```
+  then call `/forgeplan:review [node-id]` (same as Reviewing resume — the fixer's partial work remains on disk and will be re-reviewed)
+- **Revising:** run
+  ```bash
+  node "${CLAUDE_PLUGIN_ROOT}/scripts/state-transition.js" set-node-status "[node-id]" "reviewed"
+  ```
+  then call `/forgeplan:revise [node-id]`
 
 ## Reset (building only)
 
@@ -238,14 +278,18 @@ Resume behavior depends on the crashed operation. **Read** state.json, then **up
   - If no git: list ALL files in `file_scope` and warn that manual confirmation is required
 - **Shared types check:** Read `shared_types_created_by` from state.json. If it matches the crashed node's ID, `src/shared/types/index.ts` was created during this build. Ask whether to remove it. If the user confirms removal, also clear `shared_types_created_by` to `null` in state.json. If other nodes have already been built that depend on it, warn against removal.
 - Present the file list to the user for confirmation before deleting
-- Reset node status to "specced" in state.json
-- Clear active_node in state.json
+- Reset the node with:
+  ```bash
+  node "${CLAUDE_PLUGIN_ROOT}/scripts/state-transition.js" set-node-status "[node-id]" "specced"
+  ```
 
 ## Review (building only)
 
-- Mark the node as "built" in state.json
-- Clear active_node
-- Run the Reviewer to assess partial completion
+- Mark the node built with:
+  ```bash
+  node "${CLAUDE_PLUGIN_ROOT}/scripts/state-transition.js" complete-build "[node-id]"
+  ```
+- Run `/forgeplan:review [node-id]` to assess partial completion
 - The review report will show which acceptance criteria are met and which are not
 - **WARNING:** This bypasses the Stop hook's acceptance criteria verification. The node is marked "built" without verifying all criteria pass. The subsequent review will identify gaps.
 
@@ -255,6 +299,8 @@ Only available when `nodes.[node-id].previous_status` is set (i.e., the node had
 
 - Set `nodes.[node-id].status` to `nodes.[node-id].previous_status`
 - Clear `nodes.[node-id].previous_status` to `null`
-- Clear `active_node` to `null`
-- Set `last_updated` to current ISO timestamp
+- Do this with:
+  ```bash
+  node "${CLAUDE_PLUGIN_ROOT}/scripts/state-transition.js" restore-previous-status "[node-id]"
+  ```
 - Implementation files created during this build remain on disk (not deleted). The node returns to its pre-build state as if the build was never started.

@@ -7,6 +7,10 @@ disable-model-invocation: true
 
 Run the complete ForgePlan pipeline autonomously: build all → design pass (frontend) → verify-runnable → review → integrate → sweep → (runtime verify, Sprint 8) → cross-model (tier-aware) → certified.
 
+**State mutation rule:** Do **not** hand-edit `.forgeplan/state.json` in deep-build. Use
+`node "${CLAUDE_PLUGIN_ROOT}/scripts/state-transition.js" ...` for operation state changes, and
+use the public `/forgeplan:build` and `/forgeplan:review` commands for node-level transitions.
+
 ## Prerequisites
 
 - `.forgeplan/manifest.yaml` exists with nodes defined
@@ -19,27 +23,9 @@ Run the complete ForgePlan pipeline autonomously: build all → design pass (fro
 ### Phase 1: Initialize deep-build state
 
 1. Read `.forgeplan/state.json` and verify prerequisites
-2. Set `sweep_state`:
-   ```json
-   {
-     "sweep_state": {
-       "operation": "deep-building",
-       "started_at": "[ISO timestamp]",
-       "current_phase": "build-all",
-       "pass_number": 1,
-       "current_model": "claude",
-       "fixing_node": null,
-       "consecutive_clean_passes": 0,
-       "max_passes": 10,
-       "needs_manual_attention": [],
-       "failed_agents": [],
-       "blocked_decisions": [],
-       "findings": { "pending": [], "resolved": [] },
-       "modified_files_by_pass": {},
-       "agent_convergence": {},
-       "integration_results": { "last_run": null, "passed": false, "failures": [] }
-     }
-   }
+2. Set `sweep_state` with the deterministic helper:
+   ```bash
+   node "${CLAUDE_PLUGIN_ROOT}/scripts/state-transition.js" set-sweep-state "{\"operation\":\"deep-building\",\"started_at\":\"[ISO timestamp]\",\"current_phase\":\"build-all\",\"pass_number\":1,\"current_model\":\"claude\",\"fixing_node\":null,\"consecutive_clean_passes\":0,\"max_passes\":10,\"needs_manual_attention\":[],\"failed_agents\":[],\"blocked_decisions\":[],\"findings\":{\"pending\":[],\"resolved\":[]},\"modified_files_by_pass\":{},\"agent_convergence\":{},\"integration_results\":{\"last_run\":null,\"passed\":false,\"failures\":[]}}"
    ```
 
    Note: `current_phase` starts as `"build-all"`, NOT `"claude-sweep"`. This is critical — next-node.js allows normal recommendations during the `"build-all"` phase but blocks them during sweep phases.
@@ -53,10 +39,12 @@ This is a sequential loop using existing commands:
    - `"recommendation"`:
      - Before any build starts, snapshot existing files for the node using the **Glob tool** with the node's `file_scope`, exactly as `/forgeplan:build` requires. Persist that list to `nodes.[node-id].pre_build_files` in state. Do **not** use Bash/Node ad hoc file enumeration here; active deep-build enforcement blocks non-whitelisted shell commands during build-all.
      - Do **not** invoke `Skill(forgeplan:builder)` or treat `forgeplan:builder` as a public skill. `builder` is an internal agent only. The public build entry point is `/forgeplan:build [node-id]`, or the inline build workflow from `${CLAUDE_PLUGIN_ROOT}/skills/build/SKILL.md` when orchestration requires it.
+     - Do **not** invoke `forgeplan:reviewer` or dispatch internal reviewer agents directly. The public review entry point is `/forgeplan:review [node-id]`, and it owns its own state transitions.
+     - Do **not** pre-mutate `active_node` or node `status` before calling `/forgeplan:build` or `/forgeplan:review`. Those public commands own the node-level state transitions.
      - If status is `"pending"`: execute the single-node **autonomous spec workflow inline** (read `${CLAUDE_PLUGIN_ROOT}/skills/spec/SKILL.md` and follow its Autonomous Mode for the specific node). Do **not** use `Skill(forgeplan:spec)` — `spec` has `disable-model-invocation: true`. Generate a complete spec with filled-in acceptance criteria and test fields, verify the spec file exists and has non-empty `test` fields for each AC, then `/forgeplan:build [node-id]`.
      - If status is `"specced"`: verify the spec has non-empty acceptance criteria test fields (skeleton specs from discover have empty fields). If test fields are empty, re-run the single-node autonomous spec workflow inline to complete them. Then `/forgeplan:build [node-id]`.
      - If status is `"built"`: node was built but not yet reviewed. Run `/forgeplan:review [node-id]` only.
-     - After each build, run `/forgeplan:review [node-id]`
+     - After each build, run `/forgeplan:review [node-id]` using the public command surface. Do not start the reviewer by hand.
      - **Bounce exhaustion recovery:** If a node's Stop hook has bounced 3 times (escalated to user), the autonomous deep-build must NOT halt the pipeline. Instead:
        1. Mark the node as `"built"` in state.json with a warning flag: set `nodes.[id].bounce_exhausted: true` and `nodes.[id].unverified_acs` to the list of acceptance criteria that were not verified as passing.
        2. Add each unmet AC as a sweep finding in `sweep_state.findings.pending` with all required fields: `id: "B[N]"` (sequential), `source_model: "stop-hook"`, `node: "[node-id]"`, `category: "code-quality"`, `severity: "HIGH"`, `confidence: 95`, `description: "Unverified AC from bounce exhaustion: [AC text]"`, `pass_found: 0`. Note: `confidence` MUST be included (95 = high confidence these are real issues) or the sweep's <75 filter will silently drop them.
@@ -65,19 +53,46 @@ This is a sequential loop using existing commands:
    - `"complete"`: all nodes done, proceed to Phase 2b (design pass) then Phase 3 (verify-runnable)
    - `"phase_complete"`: all current-phase nodes done but future phases remain. Proceed to Phase 2b (design pass) then Phase 3 (verify-runnable). Phase Advancement after Phase 8 handles incrementing `build_phase` and looping back.
    - `"stuck"`: auto-recover stuck nodes based on their current status, then re-run next-node.js. Do NOT invoke interactive `/forgeplan:recover` — deep-build must stay autonomous.
-     - `"building"` → reset to `"specced"` (rebuild from scratch)
-     - `"reviewing"` → reset to `"built"` (re-review)
-     - `"review-fixing"` → reset to `"built"` (re-review after fix attempt)
-     - `"revising"` → reset to `"reviewed"` (re-revise)
-     - `"sweeping"` → restore `previous_status` if set, otherwise reset to `"reviewed"`
-     - Always clear `active_node` after reset.
+     - `"building"` → run:
+       ```bash
+       node "${CLAUDE_PLUGIN_ROOT}/scripts/state-transition.js" set-node-status "[node-id]" "specced"
+       ```
+       then rebuild from scratch
+     - `"reviewing"` → run:
+       ```bash
+       node "${CLAUDE_PLUGIN_ROOT}/scripts/state-transition.js" set-node-status "[node-id]" "built"
+       ```
+       then re-review
+     - `"review-fixing"` → run:
+       ```bash
+       node "${CLAUDE_PLUGIN_ROOT}/scripts/state-transition.js" set-node-status "[node-id]" "built"
+       ```
+       then re-review after fix attempt
+     - `"revising"` → run:
+       ```bash
+       node "${CLAUDE_PLUGIN_ROOT}/scripts/state-transition.js" set-node-status "[node-id]" "reviewed"
+       ```
+       then re-revise
+     - `"sweeping"` → if `previous_status` is set, run:
+       ```bash
+       node "${CLAUDE_PLUGIN_ROOT}/scripts/state-transition.js" restore-previous-status "[node-id]"
+       ```
+       otherwise run:
+       ```bash
+       node "${CLAUDE_PLUGIN_ROOT}/scripts/state-transition.js" set-node-status "[node-id]" "reviewed"
+       ```
    - `"blocked"` or `"error"`: halt deep-build with error message, preserve `sweep_state` for recovery:
      ```
      Deep build halted: [message from next-node.js]
      Run /forgeplan:recover to resume or abort.
      ```
    - `"rebuild_needed"`: for each listed node, run `/forgeplan:build [node-id]` then `/forgeplan:review [node-id]` (same build+review pattern as the recommendation branch — no unreviewed nodes in the autonomous pipeline), then re-run next-node.js
-   - `"sweep_active"`: a sweep is still active from an interrupted run. Clear `sweep_state` to null, clear `active_node` to null, then re-run next-node.js. This resets the stale sweep so the build loop can proceed.
+   - `"sweep_active"`: a sweep is still active from an interrupted run. Run:
+     ```bash
+     node "${CLAUDE_PLUGIN_ROOT}/scripts/state-transition.js" clear-sweep-state
+     node "${CLAUDE_PLUGIN_ROOT}/scripts/state-transition.js" clear-active-node
+     ```
+     then re-run next-node.js. This resets the stale sweep so the build loop can proceed.
 3. Repeat until `"complete"` or `"phase_complete"`.
 
 All existing enforcement (PreToolUse, PostToolUse, Builder agent, Stop hook) applies exactly as in manual builds. The deep-build orchestrator just drives the loop.
@@ -86,13 +101,20 @@ All existing enforcement (PreToolUse, PostToolUse, Builder agent, Stop hook) app
 
 **Phase transition:** After all nodes are built and reviewed:
 1. **(Sprint 9, MEDIUM/LARGE only)** Run `node "${CLAUDE_PLUGIN_ROOT}/scripts/compile-wiki.js"` to compile the knowledge base from specs + source. NOTE: This is the ONLY compile-wiki invocation on the deep-build path — sweep skips Phase 1 when invoked from deep-build (sweep.md line 26), so sweep's Phase 1 step 7 compile does NOT run here.
-2. Update `sweep_state.current_phase` from `"build-all"` to `"design-pass"`.
+2. Update `sweep_state.current_phase` from `"build-all"` to `"design-pass"` with:
+   ```bash
+   node "${CLAUDE_PLUGIN_ROOT}/scripts/state-transition.js" set-sweep-phase "design-pass"
+   ```
 
 ### Phase 2b: Design pass (frontend quality)
 
-**Skip this phase if:** no frontend nodes exist in the manifest (all nodes have `type` other than `frontend`), OR `complexity_tier` is `SMALL` and config does not explicitly enable design pass. If skipping, update `sweep_state.current_phase` to `"verify-runnable"` and proceed directly to Phase 3.
+**Skip this phase if:** no frontend nodes exist in the manifest (all nodes have `type` other than `frontend`), OR `complexity_tier` is `SMALL` and config does not explicitly enable design pass. If skipping, run:
+```bash
+node "${CLAUDE_PLUGIN_ROOT}/scripts/state-transition.js" set-sweep-phase "verify-runnable"
+```
+and proceed directly to Phase 3.
 
-1. Set `sweep_state.current_phase` to `"design-pass"` (already set by Phase 2 transition)
+1. `sweep_state.current_phase` should already be `"design-pass"` from the Phase 2 transition. Do not hand-edit `state.json` here.
 2. Load the `frontend-design` skill directly — the design-pass agent is not in the registry (it's a specialized single-use agent, not a standard sweep/build agent). Read the skill content from `${CLAUDE_PLUGIN_ROOT}/skill-library/core/frontend-design.md` for inclusion in the agent prompt. If the file doesn't exist, skip the design pass with a warning.
 3. Check for optional design context files at `DESIGN.md`, `docs/DESIGN.md`, and `.forgeplan/wiki/design.md`. Also read `.forgeplan/config.yaml` for any configured `design.profiles` and include those bundled profile docs too. Include all of them in the design-pass prompt as the intended design direction. If none exist, note "No explicit design docs detected."
 4. Identify all frontend nodes (nodes with `type: "frontend"` or nodes whose `file_scope` contains frontend files such as `.tsx`, `.jsx`, `.vue`, `.svelte`)
@@ -123,7 +145,11 @@ All existing enforcement (PreToolUse, PostToolUse, Builder agent, Stop hook) app
    - If user provides feedback: dispatch a fix agent with the feedback as instructions, targeting all frontend node files. Re-run design pass after.
    - If user presses enter / says "continue" / no response: proceed.
    - **In autonomous mode (greenfield/deep-build without user interaction):** Skip user steering. The design pass findings + fixes are sufficient.
-10. Update `sweep_state.current_phase` to `"verify-runnable"` and proceed to Phase 3.
+10. Update the phase with:
+    ```bash
+    node "${CLAUDE_PLUGIN_ROOT}/scripts/state-transition.js" set-sweep-phase "verify-runnable"
+    ```
+    then proceed to Phase 3.
 
 ### Phase 3: Run verify-runnable gate (was Phase 2.5)
 
@@ -135,7 +161,11 @@ Before proceeding to integration, verify the project can actually run:
 node "${CLAUDE_PLUGIN_ROOT}/scripts/verify-runnable.js"
 ```
 
-If it returns **`status: "pass"`**: update `sweep_state.current_phase` from `"verify-runnable"` to `"integrate"` and proceed to Phase 4 (integration check).
+If it returns **`status: "pass"`**: run
+```bash
+node "${CLAUDE_PLUGIN_ROOT}/scripts/state-transition.js" set-sweep-phase "integrate"
+```
+and proceed to Phase 4 (integration check).
 
 If it returns **`status: "warnings"`**: treat this as pass-with-warnings. Record the warnings in the deep-build report and proceed to Phase 4.
 
@@ -176,7 +206,10 @@ After Claude sweep fixes, re-integrate (Phase 4 logic).
 
 **Re-anchor:** Re-read `.forgeplan/manifest.yaml` for complexity_tier and node specs.
 
-Update `sweep_state.current_phase` to `"runtime-verify"` before proceeding (for crash recovery).
+Update the phase before proceeding:
+```bash
+node "${CLAUDE_PLUGIN_ROOT}/scripts/state-transition.js" set-sweep-phase "runtime-verify"
+```
 
 **Tier gate:** Read `complexity_tier` (with config.yaml `tier_override` check):
 - **SMALL:** Skip Phase B entirely. Log: "Skipping runtime verification — SMALL tier (Phase A sufficient)." Proceed to Phase 7.
@@ -221,7 +254,10 @@ If cross-model is skipped (SMALL tier or unconfigured MEDIUM tier), note it in t
 
 This phase follows the **exact same logic as sweep Phase 6** (Task 9). All status handling, phase transitions, and error paths apply identically. The deep-build orchestrator executes this inline rather than delegating to `/forgeplan:sweep`.
 
-1. Set `sweep_state.current_phase` to `"cross-check"`
+1. Set the phase with:
+   ```bash
+   node "${CLAUDE_PLUGIN_ROOT}/scripts/state-transition.js" set-sweep-phase "cross-check"
+   ```
 2. Run cross-model bridge:
    ```bash
    node "${CLAUDE_PLUGIN_ROOT}/scripts/cross-model-bridge.js" ".forgeplan/sweeps/sweep-[latest].md"
@@ -237,9 +273,15 @@ This phase follows the **exact same logic as sweep Phase 6** (Task 9). All statu
    - Route by node type (same as sweep Phase 3): real node IDs → `pending`, `"project"` → `needs_manual_attention`
    - Set `consecutive_clean_passes` to 0
    - Increment `sweep_state.pass_number`
-   - Set `sweep_state.current_phase` to `"cross-fix"`
+   - Set the phase with:
+     ```bash
+     node "${CLAUDE_PLUGIN_ROOT}/scripts/state-transition.js" set-sweep-phase "cross-fix"
+     ```
    - Fix findings (node-scoped, same as sweep Phase 4 — save/restore node status, fresh agent per node)
-   - Set `sweep_state.current_phase` to `"integrate"`
+   - Set the phase with:
+     ```bash
+     node "${CLAUDE_PLUGIN_ROOT}/scripts/state-transition.js" set-sweep-phase "integrate"
+     ```
    - Re-integrate (same as sweep Phase 5)
    - Loop back to step 1
 

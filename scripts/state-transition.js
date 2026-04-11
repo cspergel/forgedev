@@ -14,6 +14,9 @@ function usage() {
     "  node scripts/state-transition.js set-spec-status <node-id> <status> <spec-type>\n" +
     "  node scripts/state-transition.js complete-review <node-id> <review-path> [crossmodel-review-path]\n" +
     "  node scripts/state-transition.js restore-previous-status <node-id>\n" +
+    "  node scripts/state-transition.js set-node-status <node-id> <status> [previous-status|-]\n" +
+    "  node scripts/state-transition.js clear-active-node\n" +
+    "  node scripts/state-transition.js set-sweep-phase <phase>\n" +
     "  node scripts/state-transition.js set-sweep-state <json>\n" +
     "  node scripts/state-transition.js clear-sweep-state"
   );
@@ -184,6 +187,43 @@ function main() {
       node.status = node.previous_status || node.status;
       node.previous_status = null;
       state.active_node = null;
+      state.last_updated = ts;
+      break;
+    }
+    case "set-node-status": {
+      const nodeId = process.argv[3];
+      const status = process.argv[4];
+      const previousStatus = process.argv[5];
+      if (!nodeId || !status) {
+        usage();
+      }
+      const node = ensureNode(state, nodeId);
+      node.status = status;
+      if (previousStatus !== undefined) {
+        node.previous_status = previousStatus === "-" ? null : previousStatus;
+      } else {
+        node.previous_status = null;
+      }
+      state.active_node = null;
+      state.stop_hook_active = false;
+      state.last_updated = ts;
+      break;
+    }
+    case "clear-active-node": {
+      state.active_node = null;
+      state.stop_hook_active = false;
+      state.last_updated = ts;
+      break;
+    }
+    case "set-sweep-phase": {
+      const phase = process.argv[3];
+      if (!phase) {
+        usage();
+      }
+      if (!state.sweep_state || typeof state.sweep_state !== "object") {
+        throw new Error("Cannot set sweep phase because sweep_state is not active");
+      }
+      state.sweep_state.current_phase = phase;
       state.last_updated = ts;
       break;
     }
