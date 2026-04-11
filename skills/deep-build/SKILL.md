@@ -139,12 +139,16 @@ and proceed directly to Phase 3.
 
 1. `sweep_state.current_phase` should already be `"design-pass"` from the Phase 2 transition. Do not hand-edit `state.json` here.
 2. Load the `frontend-design` skill directly — the design-pass agent is not in the registry (it's a specialized single-use agent, not a standard sweep/build agent). Do **not** search heuristically for this file. Read the exact path `${CLAUDE_PLUGIN_ROOT}/skill-library/core/frontend-design.md` for inclusion in the agent prompt. If a direct read of that exact path fails, skip the design pass with a warning.
-3. Check for optional design context files at `DESIGN.md`, `docs/DESIGN.md`, and `.forgeplan/wiki/design.md`. Also read `.forgeplan/config.yaml` for any configured `design.profiles` and include those bundled profile docs too. Include all of them in the design-pass prompt as the intended design direction. If none exist, note "No explicit design docs detected."
+3. Build the design-direction brief with:
+   ```bash
+   node "${CLAUDE_PLUGIN_ROOT}/scripts/compose-design-context.js"
+   ```
+   Include that composed brief in the design-pass prompt. If it reports no explicit design context, note that explicitly and continue.
 4. Identify all frontend nodes (nodes with `type: "frontend"` or nodes whose `file_scope` contains frontend files such as `.tsx`, `.jsx`, `.vue`, `.svelte`)
 5. Dispatch the design-pass agent using the Agent tool:
    - Read `agents/design-pass.md` for the system prompt
    - Include the `frontend-design` skill content from `skill-library/core/frontend-design.md`
-   - Include any detected design context files
+   - Include the composed design brief from `compose-design-context.js`
    - Include all frontend node files (read from each frontend node's `file_scope`)
    - Include the manifest for context
    - **Tier-aware depth:** Pass the complexity tier so the agent knows which levels to check:

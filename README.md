@@ -26,7 +26,7 @@ The pipeline: **discover** → **spec** → **build** → **verify** → **revie
 
 Each step scales to your project. A simple app gets 3 sweep agents and finishes in one session. A complex app gets all 5 agents, cross-model verification, and convergence certification.
 
-Optional design direction can live in `DESIGN.md`, `docs/DESIGN.md`, or `.forgeplan/wiki/design.md`. ForgePlan surfaces those files in session status and feeds them into frontend build/design-pass flows when present. You can also enable bundled design profiles in `.forgeplan/config.yaml` via `design.profiles`, for example `operations-command-center`, `calm-clinical-workbench`, or `dense-enterprise-dashboard`.
+Optional design direction can live in `DESIGN.md`, `docs/DESIGN.md`, or `.forgeplan/wiki/design.md`. ForgePlan surfaces those files in session status and feeds them into frontend build/design-pass flows when present. You can also enable bundled design profiles in `.forgeplan/config.yaml` via `design.profiles`, add secondary influences with `design.mixins`, and add synthesis guidance with `design.blend_notes`. Imported external profiles use the `awesome/<slug>` namespace, for example `awesome/vercel`, `awesome/linear.app`, or `awesome/notion`.
 
 ## What you actually do
 
@@ -137,6 +137,30 @@ Tested on a 7-node, 61-file client portal (role-based access, file upload, multi
 - **Skills system** — every agent gets domain-specific SKILL.md files for better output
 - **MCP integrations** — builder validates code against live Supabase/Stripe/Cloudflare during builds
 - **Standalone app** — visual node graph, live preview, real-time build steering
+
+## Design profile library
+
+ForgePlan can vendor public `DESIGN.md` inspiration profiles from `getdesign.md` into `design-profiles/library/awesome-design-md/` and compose them with local project design docs.
+
+```bash
+node scripts/sync-awesome-design-library.js
+node scripts/list-design-profiles.js --search vercel
+node scripts/compose-design-context.js
+```
+
+Use the generated profile IDs in `.forgeplan/config.yaml`:
+
+```yaml
+design:
+  profiles:
+    - operations-command-center
+    - awesome/vercel
+  mixins:
+    - awesome/linear.app
+    - awesome/notion
+  blend_notes: >
+    Keep Vercel's precision, borrow Linear's density, and use Notion only for editorial softness.
+```
 
 ## Links
 

@@ -119,10 +119,26 @@ design:
   profiles:
     # Optional bundled ForgePlan design profiles. These are reusable DESIGN.md-style
     # guides shipped with the plugin and loaded alongside any project-local design docs.
-    # Good starting points for product surfaces before you write a custom DESIGN.md.
+    # The first entry is the primary design north star.
     # Available built-in profiles:
     # - operations-command-center
     # - calm-clinical-workbench
     # - dense-enterprise-dashboard
+    # Imported getdesign profiles use the awesome/<slug> namespace, for example:
+    # - awesome/vercel
+    # - awesome/linear.app
+    # - awesome/notion
     # Example:
     # - operations-command-center
+  mixins:
+    # Optional secondary influences. These should modify specific qualities
+    # such as density, warmth, motion, or typography restraint without replacing
+    # the primary profile.
+    # Example:
+    # - awesome/notion
+    # - awesome/stripe
+  blend_notes: ""
+    # Optional freeform synthesis instructions for the design composer.
+    # Example:
+    # "Keep Vercel's precision, borrow Linear's density, and use Notion only
+    # for editorial softness."

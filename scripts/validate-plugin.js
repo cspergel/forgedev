@@ -372,6 +372,56 @@ function assertTopLevelOrchestrationStateRules(errors) {
   }
 }
 
+function assertDesignLibraryContract(errors) {
+  const designContextPath = path.join(repoRoot, "scripts", "lib", "design-context.js");
+  const composePath = path.join(repoRoot, "scripts", "compose-design-context.js");
+  const listPath = path.join(repoRoot, "scripts", "list-design-profiles.js");
+  const syncPath = path.join(repoRoot, "scripts", "sync-awesome-design-library.js");
+  const buildPath = path.join(skillsRoot, "build", "SKILL.md");
+  const deepBuildPath = path.join(skillsRoot, "deep-build", "SKILL.md");
+  const preToolUsePath = path.join(repoRoot, "scripts", "pre-tool-use.js");
+
+  if (!fs.existsSync(designContextPath)) {
+    pushError(errors, "scripts/lib/design-context.js: missing");
+  }
+  if (!fs.existsSync(composePath)) {
+    pushError(errors, "scripts/compose-design-context.js: missing");
+  }
+  if (!fs.existsSync(listPath)) {
+    pushError(errors, "scripts/list-design-profiles.js: missing");
+  }
+  if (!fs.existsSync(syncPath)) {
+    pushError(errors, "scripts/sync-awesome-design-library.js: missing");
+  }
+
+  if (fs.existsSync(buildPath)) {
+    const content = fs.readFileSync(buildPath, "utf8");
+    if (!content.includes("compose-design-context.js")) {
+      pushError(errors, "skills/build/SKILL.md: frontend builds must use compose-design-context.js");
+    }
+    if (!content.includes("design.mixins") || !content.includes("design.blend_notes")) {
+      pushError(errors, "skills/build/SKILL.md: frontend builds must mention design.mixins and design.blend_notes");
+    }
+  }
+
+  if (fs.existsSync(deepBuildPath)) {
+    const content = fs.readFileSync(deepBuildPath, "utf8");
+    if (!content.includes("compose-design-context.js")) {
+      pushError(errors, "skills/deep-build/SKILL.md: design pass must use compose-design-context.js");
+    }
+  }
+
+  if (fs.existsSync(preToolUsePath)) {
+    const content = fs.readFileSync(preToolUsePath, "utf8");
+    if (!content.includes("compose-design-context.js")) {
+      pushError(errors, "scripts/pre-tool-use.js: Bash allowlist must include compose-design-context.js");
+    }
+    if (!content.includes("list-design-profiles.js")) {
+      pushError(errors, "scripts/pre-tool-use.js: Bash allowlist must include list-design-profiles.js");
+    }
+  }
+}
+
 const errors = [];
 
 let pluginManifest;
@@ -510,6 +560,7 @@ assertPlannerArtifactContract(errors);
 assertStateTransitionUsage(errors);
 assertStateTransitionBashAllowlist(errors);
 assertTopLevelOrchestrationStateRules(errors);
+assertDesignLibraryContract(errors);
 
 if (errors.length > 0) {
   console.error("Plugin validation failed:");

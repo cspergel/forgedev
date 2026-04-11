@@ -11,48 +11,46 @@ const AWESOME_CATALOG_PATH = path.join(AWESOME_LIBRARY_DIR, "catalog.json");
 const AWESOME_PROFILES_DIR = path.join(AWESOME_LIBRARY_DIR, "profiles");
 
 function hasFrontendSurface(manifest) {
-  const techFrontend =
+  const frontend =
     manifest &&
     manifest.project &&
     manifest.project.tech_stack &&
     manifest.project.tech_stack.frontend;
-  if (techFrontend && techFrontend !== "none") return true;
+  if (frontend && frontend !== "none") return true;
 
   const nodes = manifest && manifest.nodes ? Object.values(manifest.nodes) : [];
   return nodes.some((node) => {
     if (!node || typeof node !== "object") return false;
     if (node.type === "frontend") return true;
     const scope = String(node.file_scope || "");
-    return [".tsx", ".jsx", ".vue", ".svelte"].some((ext) => scope.includes(ext));
+    return [".tsx", ".jsx", ".vue", ".svelte", ".astro"].some((ext) => scope.includes(ext));
   });
 }
 
 function isDesignEnabled(manifest, config) {
-  const value = config && config.design ? config.design.enabled : undefined;
-  if (value === false) return false;
-  if (value === true) return true;
+  const configured = config && config.design ? config.design.enabled : undefined;
+  if (configured === false) return false;
+  if (configured === true) return true;
   return hasFrontendSurface(manifest);
 }
 
-function getDesignSources(config) {
-  const configured = config && config.design && Array.isArray(config.design.sources)
-    ? config.design.sources.filter((entry) => typeof entry === "string" && entry.trim())
+function filterStringList(value) {
+  return Array.isArray(value)
+    ? value.map((entry) => String(entry || "").trim()).filter(Boolean)
     : [];
+}
+
+function getDesignSources(config) {
+  const configured = filterStringList(config && config.design && config.design.sources);
   return configured.length > 0 ? configured : DEFAULT_SOURCES.slice();
 }
 
 function getDesignProfiles(config) {
-  const configured = config && config.design && Array.isArray(config.design.profiles)
-    ? config.design.profiles.filter((entry) => typeof entry === "string" && entry.trim())
-    : [];
-  return configured.length > 0 ? configured : [];
+  return filterStringList(config && config.design && config.design.profiles);
 }
 
 function getDesignMixins(config) {
-  const configured = config && config.design && Array.isArray(config.design.mixins)
-    ? config.design.mixins.filter((entry) => typeof entry === "string" && entry.trim())
-    : [];
-  return configured.length > 0 ? configured : [];
+  return filterStringList(config && config.design && config.design.mixins);
 }
 
 function getDesignBlendNotes(config) {
@@ -88,14 +86,14 @@ function loadBuiltinCatalog() {
       return {
         id,
         aliases: [id],
-        name: frontmatter.name || headingMatch && headingMatch[1] || id,
+        name: frontmatter.name || (headingMatch ? headingMatch[1] : id),
         summary: frontmatter.description || "",
         source: "forgeplan/internal",
         category: "ForgePlan Built-In",
         absolutePath,
         relativePath: `design-profile:${entry.name.replace(/\\/g, "/")}`,
-        theme: "mixed",
-        density: "balanced",
+        theme: frontmatter.theme || "balanced",
+        density: frontmatter.density || "balanced",
         traits: [],
         accents: [],
         upstream_url: null,
@@ -105,19 +103,22 @@ function loadBuiltinCatalog() {
 
 function loadAwesomeCatalog() {
   if (!fs.existsSync(AWESOME_CATALOG_PATH)) return [];
-  let raw = [];
+
+  let raw;
   try {
     raw = JSON.parse(fs.readFileSync(AWESOME_CATALOG_PATH, "utf-8"));
   } catch {
     return [];
   }
 
-  return raw.map((entry) => ({
-    ...entry,
-    aliases: [entry.id, entry.slug],
-    absolutePath: path.join(AWESOME_PROFILES_DIR, `${entry.slug}.md`),
-    relativePath: `design-profile:${entry.id}`,
-  })).filter((entry) => fs.existsSync(entry.absolutePath));
+  return raw
+    .map((entry) => ({
+      ...entry,
+      aliases: [entry.id, entry.slug, `awesome/${entry.slug}`],
+      absolutePath: path.join(AWESOME_PROFILES_DIR, `${entry.slug}.md`),
+      relativePath: `design-profile:${entry.id}`,
+    }))
+    .filter((entry) => fs.existsSync(entry.absolutePath));
 }
 
 function loadProfileCatalog() {
@@ -135,36 +136,48 @@ function loadProfileCatalog() {
   return { entries, byId, byAlias };
 }
 
-function resolveProfileEntry(profileName, catalog) {
+function resolveProfileEntry(profileName, catalog = loadProfileCatalog()) {
   const key = String(profileName || "").trim();
   if (!key) return null;
   return catalog.byId.get(key) || catalog.byAlias.get(key) || null;
 }
 
+function resolveProfileFile(profileName, catalog = loadProfileCatalog()) {
+  const entry = resolveProfileEntry(profileName, catalog);
+  return entry ? entry.absolutePath : null;
+}
+
 function resolveDesignFiles(projectRoot, config) {
   const seen = new Set();
-  const files = getDesignSources(config)
-    .map((relativePath) => ({
-      kind: "document",
-      relativePath,
-      absolutePath: path.join(projectRoot, relativePath),
-    }))
-    .filter((entry) => fs.existsSync(entry.absolutePath));
+  const files = [];
 
-  for (const file of files) {
-    seen.add(path.resolve(file.absolutePath));
+  for (const relativePath of getDesignSources(config)) {
+    const absolutePath = path.join(projectRoot, relativePath);
+    if (!fs.existsSync(absolutePath)) continue;
+    files.push({
+      kind: "document",
+      role: "local",
+      relativePath,
+      absolutePath,
+    });
+    seen.add(path.resolve(absolutePath));
   }
 
   const catalog = loadProfileCatalog();
-  const profileNames = [...getDesignProfiles(config), ...getDesignMixins(config)];
-  for (const profileName of profileNames) {
-    const profile = resolveProfileEntry(profileName, catalog);
+  const requestedProfiles = [
+    ...getDesignProfiles(config).map((name) => ({ name, role: "primary" })),
+    ...getDesignMixins(config).map((name) => ({ name, role: "mixin" })),
+  ];
+
+  for (const requested of requestedProfiles) {
+    const profile = resolveProfileEntry(requested.name, catalog);
     if (!profile) continue;
     const resolved = path.resolve(profile.absolutePath);
     if (seen.has(resolved)) continue;
     seen.add(resolved);
     files.push({
       kind: "profile",
+      role: requested.role,
       id: profile.id,
       relativePath: profile.relativePath,
       absolutePath: profile.absolutePath,
@@ -204,20 +217,24 @@ function composeDesignContext(projectRoot, manifest, config) {
     .map((name) => ({ requested: name, entry: resolveProfileEntry(name, catalog) }))
     .filter((item) => item.entry);
   const missing = [
-    ...getDesignProfiles(config).filter((name) => !resolveProfileEntry(name, catalog)).map((name) => ({ type: "profile", name })),
-    ...getDesignMixins(config).filter((name) => !resolveProfileEntry(name, catalog)).map((name) => ({ type: "mixin", name })),
+    ...getDesignProfiles(config)
+      .filter((name) => !resolveProfileEntry(name, catalog))
+      .map((name) => ({ type: "profile", name })),
+    ...getDesignMixins(config)
+      .filter((name) => !resolveProfileEntry(name, catalog))
+      .map((name) => ({ type: "mixin", name })),
   ];
   const localDocs = files.filter((entry) => entry.kind === "document");
   const blendNotes = getDesignBlendNotes(config);
 
   if (localDocs.length === 0 && profiles.length === 0 && mixins.length === 0 && !blendNotes) {
-    return { enabled: true, markdown: "", files, profiles, mixins, missing };
+    return { enabled: true, markdown: "", files, profiles, mixins, missing, blendNotes };
   }
 
   const lines = [
     "# ForgePlan Composed Design Context",
     "",
-    "Use this as a synthesis brief. Project-local DESIGN.md-style documents override bundled profiles on direct conflict.",
+    "Use this as a synthesis brief. Project-local DESIGN.md files override imported profiles on direct conflict.",
     "",
   ];
 
@@ -235,8 +252,9 @@ function composeDesignContext(projectRoot, manifest, config) {
     lines.push("");
     for (const item of profiles) {
       const entry = item.entry;
-      lines.push(`- \`${entry.id}\` — ${entry.summary}`);
-      lines.push(`  ${formatTraits(entry)}`);
+      lines.push(`- \`${entry.id}\` - ${entry.summary}`);
+      const traits = formatTraits(entry);
+      if (traits) lines.push(`  ${traits}`);
       if (entry.upstream_url) lines.push(`  source: ${entry.upstream_url}`);
     }
     lines.push("");
@@ -245,12 +263,13 @@ function composeDesignContext(projectRoot, manifest, config) {
   if (mixins.length > 0) {
     lines.push("## Secondary Mixins");
     lines.push("");
-    lines.push("Borrow selectively. These are secondary influences, not a license to mash together incompatible systems.");
+    lines.push("Borrow selectively. Mixins should influence specific qualities, not replace the primary direction.");
     lines.push("");
     for (const item of mixins) {
       const entry = item.entry;
-      lines.push(`- \`${entry.id}\` — ${entry.summary}`);
-      lines.push(`  ${formatTraits(entry)}`);
+      lines.push(`- \`${entry.id}\` - ${entry.summary}`);
+      const traits = formatTraits(entry);
+      if (traits) lines.push(`  ${traits}`);
       if (entry.upstream_url) lines.push(`  source: ${entry.upstream_url}`);
     }
     lines.push("");
@@ -266,9 +285,9 @@ function composeDesignContext(projectRoot, manifest, config) {
   lines.push("## Composition Rules");
   lines.push("");
   lines.push("- Keep one coherent typography hierarchy and one dominant accent system.");
-  lines.push("- The first primary profile sets the baseline atmosphere unless project-local design docs say otherwise.");
-  lines.push("- Mixins should influence specific qualities only: density, restraint, warmth, or interaction tone.");
-  lines.push("- Do not produce a collage of unrelated brand cues. Resolve conflicts toward clarity and product fit.");
+  lines.push("- The first primary profile sets the baseline atmosphere unless project-local docs say otherwise.");
+  lines.push("- Mixins should modify targeted qualities only: density, restraint, warmth, or interaction tone.");
+  lines.push("- Avoid a collage of unrelated brand cues. Resolve conflicts toward clarity and product fit.");
   lines.push("");
 
   if (missing.length > 0) {
@@ -325,4 +344,5 @@ module.exports = {
   loadProfileCatalog,
   resolveDesignFiles,
   resolveProfileEntry,
+  resolveProfileFile,
 };

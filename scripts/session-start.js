@@ -435,6 +435,7 @@ function buildAmbientStatus(forgePlanDir, manifestPath, statePath, state) {
       const expected = [
         ...(designStatus.expectedSources || []),
         ...((designStatus.expectedProfiles || []).map((profile) => `design-profile:${profile}`)),
+        ...((designStatus.expectedMixins || []).map((profile) => `design-mixin:${profile}`)),
       ];
       lines.push(`  Design docs: none detected (${expected.join(", ")})`);
     }

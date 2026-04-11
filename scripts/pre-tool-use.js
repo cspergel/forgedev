@@ -617,6 +617,8 @@ function evaluateBash(toolInput, cwd) {
     nodeScriptPattern("worktree-manager.js"),     // our own worktree manager
     nodeScriptPattern("compact-context.js"),      // our own compaction context script
     nodeScriptPattern("compile-wiki.js"),         // Sprint 9: wiki knowledge compilation
+    nodeScriptPattern("compose-design-context.js"), // design context composition for frontend builds/design pass
+    nodeScriptPattern("list-design-profiles.js"), // design profile catalog inspection
     nodeScriptPattern("verify-cross-phase.js"),   // Sprint 10B: cross-phase implementation verification
     nodeScriptPattern("blast-radius.js"),          // Sprint 11: dependency graph + blast radius analysis
     nodeScriptPattern("skill-registry.js"),        // Sprint 11: skill registry generation/refresh/validation

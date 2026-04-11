@@ -1,0 +1,1378 @@
+[
+  {
+    "id": "awesome/airbnb",
+    "slug": "airbnb",
+    "name": "Airbnb",
+    "summary": "Travel marketplace. Warm coral accent, photography-driven, rounded UI",
+    "category": "E-commerce & Retail",
+    "source": "getdesign.md",
+    "terms_url": "https://getdesign.md/terms",
+    "about_url": "https://getdesign.md/about",
+    "upstream_url": "https://getdesign.md/airbnb/design-md",
+    "imported_at": "2026-04-11T22:06:02.617Z",
+    "theme": "balanced",
+    "density": "balanced",
+    "accents": [
+      "coral"
+    ],
+    "traits": [
+      "friendly"
+    ],
+    "relativePath": "design-profiles/library/awesome-design-md/profiles/airbnb.md"
+  },
+  {
+    "id": "awesome/airtable",
+    "slug": "airtable",
+    "name": "Airtable",
+    "summary": "Spreadsheet-database hybrid. Colorful, friendly, structured data aesthetic",
+    "category": "Design & Creative Tools",
+    "source": "getdesign.md",
+    "terms_url": "https://getdesign.md/terms",
+    "about_url": "https://getdesign.md/about",
+    "upstream_url": "https://getdesign.md/airtable/design-md",
+    "imported_at": "2026-04-11T22:06:03.920Z",
+    "theme": "balanced",
+    "density": "dense",
+    "accents": [],
+    "traits": [
+      "precision",
+      "friendly"
+    ],
+    "relativePath": "design-profiles/library/awesome-design-md/profiles/airtable.md"
+  },
+  {
+    "id": "awesome/apple",
+    "slug": "apple",
+    "name": "Apple",
+    "summary": "Consumer electronics. Premium white space, SF Pro, cinematic imagery",
+    "category": "Media & Consumer Tech",
+    "source": "getdesign.md",
+    "terms_url": "https://getdesign.md/terms",
+    "about_url": "https://getdesign.md/about",
+    "upstream_url": "https://getdesign.md/apple/design-md",
+    "imported_at": "2026-04-11T22:06:05.082Z",
+    "theme": "dark",
+    "density": "airy",
+    "accents": [
+      "white"
+    ],
+    "traits": [
+      "premium"
+    ],
+    "relativePath": "design-profiles/library/awesome-design-md/profiles/apple.md"
+  },
+  {
+    "id": "awesome/binance",
+    "slug": "binance",
+    "name": "Binance.US",
+    "summary": "Crypto exchange. Bold Binance Yellow on monochrome, trading-floor urgency",
+    "category": "Fintech & Crypto",
+    "source": "getdesign.md",
+    "terms_url": "https://getdesign.md/terms",
+    "about_url": "https://getdesign.md/about",
+    "upstream_url": "https://getdesign.md/binance/design-md",
+    "imported_at": "2026-04-11T22:06:06.200Z",
+    "theme": "dark",
+    "density": "dense",
+    "accents": [
+      "yellow",
+      "monochrome"
+    ],
+    "traits": [
+      "operational"
+    ],
+    "relativePath": "design-profiles/library/awesome-design-md/profiles/binance.md"
+  },
+  {
+    "id": "awesome/bmw",
+    "slug": "bmw",
+    "name": "BMW",
+    "summary": "Luxury automotive. Dark premium surfaces, precise German engineering aesthetic",
+    "category": "Automotive",
+    "source": "getdesign.md",
+    "terms_url": "https://getdesign.md/terms",
+    "about_url": "https://getdesign.md/about",
+    "upstream_url": "https://getdesign.md/bmw/design-md",
+    "imported_at": "2026-04-11T22:06:07.341Z",
+    "theme": "dark",
+    "density": "balanced",
+    "accents": [],
+    "traits": [
+      "premium",
+      "developer-tool"
+    ],
+    "relativePath": "design-profiles/library/awesome-design-md/profiles/bmw.md"
+  },
+  {
+    "id": "awesome/bugatti",
+    "slug": "bugatti",
+    "name": "Bugatti",
+    "summary": "Luxury hypercar. Cinema-black canvas, monochrome austerity, monumental display type",
+    "category": "Automotive",
+    "source": "getdesign.md",
+    "terms_url": "https://getdesign.md/terms",
+    "about_url": "https://getdesign.md/about",
+    "upstream_url": "https://getdesign.md/bugatti/design-md",
+    "imported_at": "2026-04-11T22:06:08.868Z",
+    "theme": "dark",
+    "density": "balanced",
+    "accents": [
+      "black",
+      "monochrome"
+    ],
+    "traits": [
+      "premium"
+    ],
+    "relativePath": "design-profiles/library/awesome-design-md/profiles/bugatti.md"
+  },
+  {
+    "id": "awesome/cal",
+    "slug": "cal",
+    "name": "Cal.com",
+    "summary": "Open-source scheduling. Clean neutral UI, developer-oriented simplicity",
+    "category": "Productivity & SaaS",
+    "source": "getdesign.md",
+    "terms_url": "https://getdesign.md/terms",
+    "about_url": "https://getdesign.md/about",
+    "upstream_url": "https://getdesign.md/cal/design-md",
+    "imported_at": "2026-04-11T22:06:10.406Z",
+    "theme": "balanced",
+    "density": "airy",
+    "accents": [],
+    "traits": [
+      "precision",
+      "developer-tool"
+    ],
+    "relativePath": "design-profiles/library/awesome-design-md/profiles/cal.md"
+  },
+  {
+    "id": "awesome/claude",
+    "slug": "claude",
+    "name": "Claude (Anthropic)",
+    "summary": "Anthropic's AI assistant. Warm terracotta accent, clean editorial layout",
+    "category": "AI & LLM Platforms",
+    "source": "getdesign.md",
+    "terms_url": "https://getdesign.md/terms",
+    "about_url": "https://getdesign.md/about",
+    "upstream_url": "https://getdesign.md/claude/design-md",
+    "imported_at": "2026-04-11T22:06:11.946Z",
+    "theme": "balanced",
+    "density": "airy",
+    "accents": [
+      "terracotta"
+    ],
+    "traits": [
+      "precision",
+      "editorial",
+      "friendly"
+    ],
+    "relativePath": "design-profiles/library/awesome-design-md/profiles/claude.md"
+  },
+  {
+    "id": "awesome/clay",
+    "slug": "clay",
+    "name": "Clay",
+    "summary": "Creative agency. Organic shapes, soft gradients, art-directed layout",
+    "category": "Design & Creative Tools",
+    "source": "getdesign.md",
+    "terms_url": "https://getdesign.md/terms",
+    "about_url": "https://getdesign.md/about",
+    "upstream_url": "https://getdesign.md/clay/design-md",
+    "imported_at": "2026-04-11T22:06:13.249Z",
+    "theme": "balanced",
+    "density": "balanced",
+    "accents": [],
+    "traits": [
+      "general"
+    ],
+    "relativePath": "design-profiles/library/awesome-design-md/profiles/clay.md"
+  },
+  {
+    "id": "awesome/clickhouse",
+    "slug": "clickhouse",
+    "name": "ClickHouse",
+    "summary": "Fast analytics database. Yellow-accented, technical documentation style",
+    "category": "Backend, Database & DevOps",
+    "source": "getdesign.md",
+    "terms_url": "https://getdesign.md/terms",
+    "about_url": "https://getdesign.md/about",
+    "upstream_url": "https://getdesign.md/clickhouse/design-md",
+    "imported_at": "2026-04-11T22:06:14.354Z",
+    "theme": "balanced",
+    "density": "dense",
+    "accents": [
+      "yellow"
+    ],
+    "traits": [
+      "operational"
+    ],
+    "relativePath": "design-profiles/library/awesome-design-md/profiles/clickhouse.md"
+  },
+  {
+    "id": "awesome/cohere",
+    "slug": "cohere",
+    "name": "Cohere",
+    "summary": "Enterprise AI platform. Vibrant gradients, data-rich dashboard aesthetic",
+    "category": "AI & LLM Platforms",
+    "source": "getdesign.md",
+    "terms_url": "https://getdesign.md/terms",
+    "about_url": "https://getdesign.md/about",
+    "upstream_url": "https://getdesign.md/cohere/design-md",
+    "imported_at": "2026-04-11T22:06:15.520Z",
+    "theme": "balanced",
+    "density": "dense",
+    "accents": [],
+    "traits": [
+      "operational"
+    ],
+    "relativePath": "design-profiles/library/awesome-design-md/profiles/cohere.md"
+  },
+  {
+    "id": "awesome/coinbase",
+    "slug": "coinbase",
+    "name": "Coinbase",
+    "summary": "Crypto exchange. Clean blue identity, trust-focused, institutional feel",
+    "category": "Fintech & Crypto",
+    "source": "getdesign.md",
+    "terms_url": "https://getdesign.md/terms",
+    "about_url": "https://getdesign.md/about",
+    "upstream_url": "https://getdesign.md/coinbase/design-md",
+    "imported_at": "2026-04-11T22:06:16.681Z",
+    "theme": "balanced",
+    "density": "airy",
+    "accents": [
+      "blue"
+    ],
+    "traits": [
+      "precision"
+    ],
+    "relativePath": "design-profiles/library/awesome-design-md/profiles/coinbase.md"
+  },
+  {
+    "id": "awesome/composio",
+    "slug": "composio",
+    "name": "Composio",
+    "summary": "Tool integration platform. Modern dark with colorful integration icons",
+    "category": "Backend, Database & DevOps",
+    "source": "getdesign.md",
+    "terms_url": "https://getdesign.md/terms",
+    "about_url": "https://getdesign.md/about",
+    "upstream_url": "https://getdesign.md/composio/design-md",
+    "imported_at": "2026-04-11T22:06:17.808Z",
+    "theme": "dark",
+    "density": "balanced",
+    "accents": [],
+    "traits": [
+      "operational"
+    ],
+    "relativePath": "design-profiles/library/awesome-design-md/profiles/composio.md"
+  },
+  {
+    "id": "awesome/cursor",
+    "slug": "cursor",
+    "name": "Cursor",
+    "summary": "AI-first code editor. Sleek dark interface, gradient accents",
+    "category": "Developer Tools & IDEs",
+    "source": "getdesign.md",
+    "terms_url": "https://getdesign.md/terms",
+    "about_url": "https://getdesign.md/about",
+    "upstream_url": "https://getdesign.md/cursor/design-md",
+    "imported_at": "2026-04-11T22:06:18.932Z",
+    "theme": "dark",
+    "density": "balanced",
+    "accents": [],
+    "traits": [
+      "developer-tool"
+    ],
+    "relativePath": "design-profiles/library/awesome-design-md/profiles/cursor.md"
+  },
+  {
+    "id": "awesome/elevenlabs",
+    "slug": "elevenlabs",
+    "name": "ElevenLabs",
+    "summary": "AI voice platform. Dark cinematic UI, audio-waveform aesthetics",
+    "category": "AI & LLM Platforms",
+    "source": "getdesign.md",
+    "terms_url": "https://getdesign.md/terms",
+    "about_url": "https://getdesign.md/about",
+    "upstream_url": "https://getdesign.md/elevenlabs/design-md",
+    "imported_at": "2026-04-11T22:06:20.073Z",
+    "theme": "dark",
+    "density": "balanced",
+    "accents": [],
+    "traits": [
+      "premium"
+    ],
+    "relativePath": "design-profiles/library/awesome-design-md/profiles/elevenlabs.md"
+  },
+  {
+    "id": "awesome/expo",
+    "slug": "expo",
+    "name": "Expo",
+    "summary": "React Native platform. Dark theme, tight letter-spacing, code-centric",
+    "category": "Developer Tools & IDEs",
+    "source": "getdesign.md",
+    "terms_url": "https://getdesign.md/terms",
+    "about_url": "https://getdesign.md/about",
+    "upstream_url": "https://getdesign.md/expo/design-md",
+    "imported_at": "2026-04-11T22:06:21.229Z",
+    "theme": "dark",
+    "density": "balanced",
+    "accents": [],
+    "traits": [
+      "developer-tool"
+    ],
+    "relativePath": "design-profiles/library/awesome-design-md/profiles/expo.md"
+  },
+  {
+    "id": "awesome/ferrari",
+    "slug": "ferrari",
+    "name": "Ferrari",
+    "summary": "Luxury automotive. Chiaroscuro black-white editorial, Ferrari Red with extreme sparseness",
+    "category": "Automotive",
+    "source": "getdesign.md",
+    "terms_url": "https://getdesign.md/terms",
+    "about_url": "https://getdesign.md/about",
+    "upstream_url": "https://getdesign.md/ferrari/design-md",
+    "imported_at": "2026-04-11T22:06:22.359Z",
+    "theme": "dark",
+    "density": "airy",
+    "accents": [
+      "black",
+      "white",
+      "red"
+    ],
+    "traits": [
+      "editorial",
+      "premium"
+    ],
+    "relativePath": "design-profiles/library/awesome-design-md/profiles/ferrari.md"
+  },
+  {
+    "id": "awesome/figma",
+    "slug": "figma",
+    "name": "Figma",
+    "summary": "Collaborative design tool. Vibrant multi-color, playful yet professional",
+    "category": "Design & Creative Tools",
+    "source": "getdesign.md",
+    "terms_url": "https://getdesign.md/terms",
+    "about_url": "https://getdesign.md/about",
+    "upstream_url": "https://getdesign.md/figma/design-md",
+    "imported_at": "2026-04-11T22:06:23.538Z",
+    "theme": "balanced",
+    "density": "balanced",
+    "accents": [],
+    "traits": [
+      "friendly"
+    ],
+    "relativePath": "design-profiles/library/awesome-design-md/profiles/figma.md"
+  },
+  {
+    "id": "awesome/framer",
+    "slug": "framer",
+    "name": "Framer",
+    "summary": "Website builder. Bold black and blue, motion-first, design-forward",
+    "category": "Design & Creative Tools",
+    "source": "getdesign.md",
+    "terms_url": "https://getdesign.md/terms",
+    "about_url": "https://getdesign.md/about",
+    "upstream_url": "https://getdesign.md/framer/design-md",
+    "imported_at": "2026-04-11T22:06:24.672Z",
+    "theme": "dark",
+    "density": "balanced",
+    "accents": [
+      "black",
+      "blue"
+    ],
+    "traits": [
+      "general"
+    ],
+    "relativePath": "design-profiles/library/awesome-design-md/profiles/framer.md"
+  },
+  {
+    "id": "awesome/hashicorp",
+    "slug": "hashicorp",
+    "name": "HashiCorp",
+    "summary": "Infrastructure automation. Enterprise-clean, black and white",
+    "category": "Backend, Database & DevOps",
+    "source": "getdesign.md",
+    "terms_url": "https://getdesign.md/terms",
+    "about_url": "https://getdesign.md/about",
+    "upstream_url": "https://getdesign.md/hashicorp/design-md",
+    "imported_at": "2026-04-11T22:06:25.803Z",
+    "theme": "dark",
+    "density": "airy",
+    "accents": [
+      "black",
+      "white"
+    ],
+    "traits": [
+      "precision",
+      "operational",
+      "developer-tool"
+    ],
+    "relativePath": "design-profiles/library/awesome-design-md/profiles/hashicorp.md"
+  },
+  {
+    "id": "awesome/ibm",
+    "slug": "ibm",
+    "name": "IBM",
+    "summary": "Enterprise technology. Carbon design system, structured blue palette",
+    "category": "Media & Consumer Tech",
+    "source": "getdesign.md",
+    "terms_url": "https://getdesign.md/terms",
+    "about_url": "https://getdesign.md/about",
+    "upstream_url": "https://getdesign.md/ibm/design-md",
+    "imported_at": "2026-04-11T22:06:26.946Z",
+    "theme": "balanced",
+    "density": "dense",
+    "accents": [
+      "blue"
+    ],
+    "traits": [
+      "precision"
+    ],
+    "relativePath": "design-profiles/library/awesome-design-md/profiles/ibm.md"
+  },
+  {
+    "id": "awesome/intercom",
+    "slug": "intercom",
+    "name": "Intercom",
+    "summary": "Customer messaging. Friendly blue palette, conversational UI patterns",
+    "category": "Productivity & SaaS",
+    "source": "getdesign.md",
+    "terms_url": "https://getdesign.md/terms",
+    "about_url": "https://getdesign.md/about",
+    "upstream_url": "https://getdesign.md/intercom/design-md",
+    "imported_at": "2026-04-11T22:06:28.100Z",
+    "theme": "balanced",
+    "density": "balanced",
+    "accents": [
+      "blue"
+    ],
+    "traits": [
+      "friendly"
+    ],
+    "relativePath": "design-profiles/library/awesome-design-md/profiles/intercom.md"
+  },
+  {
+    "id": "awesome/kraken",
+    "slug": "kraken",
+    "name": "Kraken",
+    "summary": "Crypto trading platform. Purple-accented dark UI, data-dense dashboards",
+    "category": "Fintech & Crypto",
+    "source": "getdesign.md",
+    "terms_url": "https://getdesign.md/terms",
+    "about_url": "https://getdesign.md/about",
+    "upstream_url": "https://getdesign.md/kraken/design-md",
+    "imported_at": "2026-04-11T22:06:29.291Z",
+    "theme": "dark",
+    "density": "dense",
+    "accents": [
+      "purple"
+    ],
+    "traits": [
+      "operational"
+    ],
+    "relativePath": "design-profiles/library/awesome-design-md/profiles/kraken.md"
+  },
+  {
+    "id": "awesome/lamborghini",
+    "slug": "lamborghini",
+    "name": "Lamborghini",
+    "summary": "Luxury automotive. True black cathedral, gold accent, LamboType custom Neo-Grotesk",
+    "category": "Automotive",
+    "source": "getdesign.md",
+    "terms_url": "https://getdesign.md/terms",
+    "about_url": "https://getdesign.md/about",
+    "upstream_url": "https://getdesign.md/lamborghini/design-md",
+    "imported_at": "2026-04-11T22:06:30.405Z",
+    "theme": "dark",
+    "density": "balanced",
+    "accents": [
+      "black",
+      "gold"
+    ],
+    "traits": [
+      "premium"
+    ],
+    "relativePath": "design-profiles/library/awesome-design-md/profiles/lamborghini.md"
+  },
+  {
+    "id": "awesome/linear.app",
+    "slug": "linear.app",
+    "name": "Linear",
+    "summary": "Project management for engineers. Ultra-minimal, precise, purple accent",
+    "category": "Productivity & SaaS",
+    "source": "getdesign.md",
+    "terms_url": "https://getdesign.md/terms",
+    "about_url": "https://getdesign.md/about",
+    "upstream_url": "https://getdesign.md/linear.app/design-md",
+    "imported_at": "2026-04-11T22:06:31.524Z",
+    "theme": "balanced",
+    "density": "airy",
+    "accents": [
+      "purple"
+    ],
+    "traits": [
+      "precision"
+    ],
+    "relativePath": "design-profiles/library/awesome-design-md/profiles/linear.app.md"
+  },
+  {
+    "id": "awesome/lovable",
+    "slug": "lovable",
+    "name": "Lovable",
+    "summary": "AI full-stack builder. Playful gradients, friendly dev aesthetic",
+    "category": "Developer Tools & IDEs",
+    "source": "getdesign.md",
+    "terms_url": "https://getdesign.md/terms",
+    "about_url": "https://getdesign.md/about",
+    "upstream_url": "https://getdesign.md/lovable/design-md",
+    "imported_at": "2026-04-11T22:06:32.642Z",
+    "theme": "balanced",
+    "density": "balanced",
+    "accents": [],
+    "traits": [
+      "friendly",
+      "developer-tool"
+    ],
+    "relativePath": "design-profiles/library/awesome-design-md/profiles/lovable.md"
+  },
+  {
+    "id": "awesome/meta",
+    "slug": "meta",
+    "name": "Meta (Store)",
+    "summary": "Tech retail store. Photography-first, binary light/dark surfaces, Meta Blue CTAs",
+    "category": "E-commerce & Retail",
+    "source": "getdesign.md",
+    "terms_url": "https://getdesign.md/terms",
+    "about_url": "https://getdesign.md/about",
+    "upstream_url": "https://getdesign.md/meta/design-md",
+    "imported_at": "2026-04-11T22:06:33.732Z",
+    "theme": "dark",
+    "density": "balanced",
+    "accents": [
+      "blue"
+    ],
+    "traits": [
+      "general"
+    ],
+    "relativePath": "design-profiles/library/awesome-design-md/profiles/meta.md"
+  },
+  {
+    "id": "awesome/minimax",
+    "slug": "minimax",
+    "name": "MiniMax",
+    "summary": "AI model provider. Bold dark interface with neon accents",
+    "category": "AI & LLM Platforms",
+    "source": "getdesign.md",
+    "terms_url": "https://getdesign.md/terms",
+    "about_url": "https://getdesign.md/about",
+    "upstream_url": "https://getdesign.md/minimax/design-md",
+    "imported_at": "2026-04-11T22:06:34.994Z",
+    "theme": "dark",
+    "density": "balanced",
+    "accents": [],
+    "traits": [
+      "general"
+    ],
+    "relativePath": "design-profiles/library/awesome-design-md/profiles/minimax.md"
+  },
+  {
+    "id": "awesome/mintlify",
+    "slug": "mintlify",
+    "name": "Mintlify",
+    "summary": "Documentation platform. Clean, green-accented, reading-optimized",
+    "category": "Productivity & SaaS",
+    "source": "getdesign.md",
+    "terms_url": "https://getdesign.md/terms",
+    "about_url": "https://getdesign.md/about",
+    "upstream_url": "https://getdesign.md/mintlify/design-md",
+    "imported_at": "2026-04-11T22:06:36.129Z",
+    "theme": "balanced",
+    "density": "airy",
+    "accents": [
+      "green"
+    ],
+    "traits": [
+      "precision",
+      "editorial"
+    ],
+    "relativePath": "design-profiles/library/awesome-design-md/profiles/mintlify.md"
+  },
+  {
+    "id": "awesome/miro",
+    "slug": "miro",
+    "name": "Miro",
+    "summary": "Visual collaboration. Bright yellow accent, infinite canvas aesthetic",
+    "category": "Design & Creative Tools",
+    "source": "getdesign.md",
+    "terms_url": "https://getdesign.md/terms",
+    "about_url": "https://getdesign.md/about",
+    "upstream_url": "https://getdesign.md/miro/design-md",
+    "imported_at": "2026-04-11T22:06:37.261Z",
+    "theme": "light",
+    "density": "balanced",
+    "accents": [
+      "yellow"
+    ],
+    "traits": [
+      "general"
+    ],
+    "relativePath": "design-profiles/library/awesome-design-md/profiles/miro.md"
+  },
+  {
+    "id": "awesome/mistral.ai",
+    "slug": "mistral.ai",
+    "name": "Mistral AI",
+    "summary": "Open-weight LLM provider. French-engineered minimalism, purple-toned",
+    "category": "AI & LLM Platforms",
+    "source": "getdesign.md",
+    "terms_url": "https://getdesign.md/terms",
+    "about_url": "https://getdesign.md/about",
+    "upstream_url": "https://getdesign.md/mistral.ai/design-md",
+    "imported_at": "2026-04-11T22:06:38.478Z",
+    "theme": "balanced",
+    "density": "airy",
+    "accents": [
+      "purple"
+    ],
+    "traits": [
+      "precision"
+    ],
+    "relativePath": "design-profiles/library/awesome-design-md/profiles/mistral.ai.md"
+  },
+  {
+    "id": "awesome/mongodb",
+    "slug": "mongodb",
+    "name": "MongoDB",
+    "summary": "Document database. Green leaf branding, developer documentation focus",
+    "category": "Backend, Database & DevOps",
+    "source": "getdesign.md",
+    "terms_url": "https://getdesign.md/terms",
+    "about_url": "https://getdesign.md/about",
+    "upstream_url": "https://getdesign.md/mongodb/design-md",
+    "imported_at": "2026-04-11T22:06:39.611Z",
+    "theme": "balanced",
+    "density": "balanced",
+    "accents": [
+      "green"
+    ],
+    "traits": [
+      "operational",
+      "developer-tool"
+    ],
+    "relativePath": "design-profiles/library/awesome-design-md/profiles/mongodb.md"
+  },
+  {
+    "id": "awesome/nike",
+    "slug": "nike",
+    "name": "Nike",
+    "summary": "Athletic retail. Monochrome UI, massive uppercase Futura, full-bleed photography",
+    "category": "E-commerce & Retail",
+    "source": "getdesign.md",
+    "terms_url": "https://getdesign.md/terms",
+    "about_url": "https://getdesign.md/about",
+    "upstream_url": "https://getdesign.md/nike/design-md",
+    "imported_at": "2026-04-11T22:06:40.749Z",
+    "theme": "dark",
+    "density": "balanced",
+    "accents": [
+      "monochrome"
+    ],
+    "traits": [
+      "general"
+    ],
+    "relativePath": "design-profiles/library/awesome-design-md/profiles/nike.md"
+  },
+  {
+    "id": "awesome/notion",
+    "slug": "notion",
+    "name": "Notion",
+    "summary": "All-in-one workspace. Warm minimalism, serif headings, soft surfaces",
+    "category": "Productivity & SaaS",
+    "source": "getdesign.md",
+    "terms_url": "https://getdesign.md/terms",
+    "about_url": "https://getdesign.md/about",
+    "upstream_url": "https://getdesign.md/notion/design-md",
+    "imported_at": "2026-04-11T22:06:41.865Z",
+    "theme": "balanced",
+    "density": "airy",
+    "accents": [],
+    "traits": [
+      "precision",
+      "editorial",
+      "friendly"
+    ],
+    "relativePath": "design-profiles/library/awesome-design-md/profiles/notion.md"
+  },
+  {
+    "id": "awesome/nvidia",
+    "slug": "nvidia",
+    "name": "NVIDIA",
+    "summary": "GPU computing. Green-black energy, technical power aesthetic",
+    "category": "Media & Consumer Tech",
+    "source": "getdesign.md",
+    "terms_url": "https://getdesign.md/terms",
+    "about_url": "https://getdesign.md/about",
+    "upstream_url": "https://getdesign.md/nvidia/design-md",
+    "imported_at": "2026-04-11T22:06:43.036Z",
+    "theme": "dark",
+    "density": "dense",
+    "accents": [
+      "black",
+      "green"
+    ],
+    "traits": [
+      "operational"
+    ],
+    "relativePath": "design-profiles/library/awesome-design-md/profiles/nvidia.md"
+  },
+  {
+    "id": "awesome/ollama",
+    "slug": "ollama",
+    "name": "Ollama",
+    "summary": "Run LLMs locally. Terminal-first, monochrome simplicity",
+    "category": "AI & LLM Platforms",
+    "source": "getdesign.md",
+    "terms_url": "https://getdesign.md/terms",
+    "about_url": "https://getdesign.md/about",
+    "upstream_url": "https://getdesign.md/ollama/design-md",
+    "imported_at": "2026-04-11T22:06:44.248Z",
+    "theme": "dark",
+    "density": "balanced",
+    "accents": [
+      "monochrome"
+    ],
+    "traits": [
+      "developer-tool"
+    ],
+    "relativePath": "design-profiles/library/awesome-design-md/profiles/ollama.md"
+  },
+  {
+    "id": "awesome/opencode.ai",
+    "slug": "opencode.ai",
+    "name": "OpenCode",
+    "summary": "AI coding platform. Developer-centric dark theme",
+    "category": "AI & LLM Platforms",
+    "source": "getdesign.md",
+    "terms_url": "https://getdesign.md/terms",
+    "about_url": "https://getdesign.md/about",
+    "upstream_url": "https://getdesign.md/opencode.ai/design-md",
+    "imported_at": "2026-04-11T22:06:45.364Z",
+    "theme": "dark",
+    "density": "balanced",
+    "accents": [],
+    "traits": [
+      "developer-tool"
+    ],
+    "relativePath": "design-profiles/library/awesome-design-md/profiles/opencode.ai.md"
+  },
+  {
+    "id": "awesome/pinterest",
+    "slug": "pinterest",
+    "name": "Pinterest",
+    "summary": "Visual discovery platform. Red accent, masonry grid, image-first",
+    "category": "Media & Consumer Tech",
+    "source": "getdesign.md",
+    "terms_url": "https://getdesign.md/terms",
+    "about_url": "https://getdesign.md/about",
+    "upstream_url": "https://getdesign.md/pinterest/design-md",
+    "imported_at": "2026-04-11T22:06:46.529Z",
+    "theme": "balanced",
+    "density": "balanced",
+    "accents": [
+      "red"
+    ],
+    "traits": [
+      "general"
+    ],
+    "relativePath": "design-profiles/library/awesome-design-md/profiles/pinterest.md"
+  },
+  {
+    "id": "awesome/playstation",
+    "slug": "playstation",
+    "name": "PlayStation",
+    "summary": "Gaming console retail. Three-surface channel layout, cyan hover-scale interaction",
+    "category": "Media & Consumer Tech",
+    "source": "getdesign.md",
+    "terms_url": "https://getdesign.md/terms",
+    "about_url": "https://getdesign.md/about",
+    "upstream_url": "https://getdesign.md/playstation/design-md",
+    "imported_at": "2026-04-11T22:06:47.662Z",
+    "theme": "balanced",
+    "density": "balanced",
+    "accents": [
+      "cyan"
+    ],
+    "traits": [
+      "general"
+    ],
+    "relativePath": "design-profiles/library/awesome-design-md/profiles/playstation.md"
+  },
+  {
+    "id": "awesome/posthog",
+    "slug": "posthog",
+    "name": "PostHog",
+    "summary": "Product analytics. Playful hedgehog branding, developer-friendly dark UI",
+    "category": "Backend, Database & DevOps",
+    "source": "getdesign.md",
+    "terms_url": "https://getdesign.md/terms",
+    "about_url": "https://getdesign.md/about",
+    "upstream_url": "https://getdesign.md/posthog/design-md",
+    "imported_at": "2026-04-11T22:06:48.832Z",
+    "theme": "dark",
+    "density": "balanced",
+    "accents": [],
+    "traits": [
+      "operational",
+      "friendly",
+      "developer-tool"
+    ],
+    "relativePath": "design-profiles/library/awesome-design-md/profiles/posthog.md"
+  },
+  {
+    "id": "awesome/raycast",
+    "slug": "raycast",
+    "name": "Raycast",
+    "summary": "Productivity launcher. Sleek dark chrome, vibrant gradient accents",
+    "category": "Developer Tools & IDEs",
+    "source": "getdesign.md",
+    "terms_url": "https://getdesign.md/terms",
+    "about_url": "https://getdesign.md/about",
+    "upstream_url": "https://getdesign.md/raycast/design-md",
+    "imported_at": "2026-04-11T22:06:50.031Z",
+    "theme": "dark",
+    "density": "balanced",
+    "accents": [],
+    "traits": [
+      "developer-tool"
+    ],
+    "relativePath": "design-profiles/library/awesome-design-md/profiles/raycast.md"
+  },
+  {
+    "id": "awesome/renault",
+    "slug": "renault",
+    "name": "Renault",
+    "summary": "French automotive. Vivid aurora gradients, NouvelR proprietary typeface, zero-radius buttons",
+    "category": "Automotive",
+    "source": "getdesign.md",
+    "terms_url": "https://getdesign.md/terms",
+    "about_url": "https://getdesign.md/about",
+    "upstream_url": "https://getdesign.md/renault/design-md",
+    "imported_at": "2026-04-11T22:06:51.208Z",
+    "theme": "balanced",
+    "density": "balanced",
+    "accents": [],
+    "traits": [
+      "general"
+    ],
+    "relativePath": "design-profiles/library/awesome-design-md/profiles/renault.md"
+  },
+  {
+    "id": "awesome/replicate",
+    "slug": "replicate",
+    "name": "Replicate",
+    "summary": "Run ML models via API. Clean white canvas, code-forward",
+    "category": "AI & LLM Platforms",
+    "source": "getdesign.md",
+    "terms_url": "https://getdesign.md/terms",
+    "about_url": "https://getdesign.md/about",
+    "upstream_url": "https://getdesign.md/replicate/design-md",
+    "imported_at": "2026-04-11T22:06:52.396Z",
+    "theme": "light",
+    "density": "airy",
+    "accents": [
+      "white"
+    ],
+    "traits": [
+      "precision",
+      "developer-tool"
+    ],
+    "relativePath": "design-profiles/library/awesome-design-md/profiles/replicate.md"
+  },
+  {
+    "id": "awesome/resend",
+    "slug": "resend",
+    "name": "Resend",
+    "summary": "Email API for developers. Minimal dark theme, monospace accents",
+    "category": "Productivity & SaaS",
+    "source": "getdesign.md",
+    "terms_url": "https://getdesign.md/terms",
+    "about_url": "https://getdesign.md/about",
+    "upstream_url": "https://getdesign.md/resend/design-md",
+    "imported_at": "2026-04-11T22:06:53.535Z",
+    "theme": "dark",
+    "density": "airy",
+    "accents": [],
+    "traits": [
+      "precision",
+      "developer-tool"
+    ],
+    "relativePath": "design-profiles/library/awesome-design-md/profiles/resend.md"
+  },
+  {
+    "id": "awesome/revolut",
+    "slug": "revolut",
+    "name": "Revolut",
+    "summary": "Digital banking. Sleek dark interface, gradient cards, fintech precision",
+    "category": "Fintech & Crypto",
+    "source": "getdesign.md",
+    "terms_url": "https://getdesign.md/terms",
+    "about_url": "https://getdesign.md/about",
+    "upstream_url": "https://getdesign.md/revolut/design-md",
+    "imported_at": "2026-04-11T22:06:54.650Z",
+    "theme": "dark",
+    "density": "balanced",
+    "accents": [],
+    "traits": [
+      "precision"
+    ],
+    "relativePath": "design-profiles/library/awesome-design-md/profiles/revolut.md"
+  },
+  {
+    "id": "awesome/runwayml",
+    "slug": "runwayml",
+    "name": "Runway",
+    "summary": "AI video generation. Cinematic dark UI, media-rich layout",
+    "category": "AI & LLM Platforms",
+    "source": "getdesign.md",
+    "terms_url": "https://getdesign.md/terms",
+    "about_url": "https://getdesign.md/about",
+    "upstream_url": "https://getdesign.md/runwayml/design-md",
+    "imported_at": "2026-04-11T22:06:55.823Z",
+    "theme": "dark",
+    "density": "balanced",
+    "accents": [],
+    "traits": [
+      "premium"
+    ],
+    "relativePath": "design-profiles/library/awesome-design-md/profiles/runwayml.md"
+  },
+  {
+    "id": "awesome/sanity",
+    "slug": "sanity",
+    "name": "Sanity",
+    "summary": "Headless CMS. Red accent, content-first editorial layout",
+    "category": "Backend, Database & DevOps",
+    "source": "getdesign.md",
+    "terms_url": "https://getdesign.md/terms",
+    "about_url": "https://getdesign.md/about",
+    "upstream_url": "https://getdesign.md/sanity/design-md",
+    "imported_at": "2026-04-11T22:06:56.935Z",
+    "theme": "balanced",
+    "density": "airy",
+    "accents": [
+      "red"
+    ],
+    "traits": [
+      "editorial",
+      "operational"
+    ],
+    "relativePath": "design-profiles/library/awesome-design-md/profiles/sanity.md"
+  },
+  {
+    "id": "awesome/sentry",
+    "slug": "sentry",
+    "name": "Sentry",
+    "summary": "Error monitoring. Dark dashboard, data-dense, pink-purple accent",
+    "category": "Backend, Database & DevOps",
+    "source": "getdesign.md",
+    "terms_url": "https://getdesign.md/terms",
+    "about_url": "https://getdesign.md/about",
+    "upstream_url": "https://getdesign.md/sentry/design-md",
+    "imported_at": "2026-04-11T22:06:58.083Z",
+    "theme": "dark",
+    "density": "dense",
+    "accents": [
+      "purple",
+      "pink"
+    ],
+    "traits": [
+      "operational"
+    ],
+    "relativePath": "design-profiles/library/awesome-design-md/profiles/sentry.md"
+  },
+  {
+    "id": "awesome/shopify",
+    "slug": "shopify",
+    "name": "Shopify",
+    "summary": "E-commerce platform. Dark-first cinematic, neon green accent, ultra-light display type",
+    "category": "E-commerce & Retail",
+    "source": "getdesign.md",
+    "terms_url": "https://getdesign.md/terms",
+    "about_url": "https://getdesign.md/about",
+    "upstream_url": "https://getdesign.md/shopify/design-md",
+    "imported_at": "2026-04-11T22:06:59.229Z",
+    "theme": "dark",
+    "density": "balanced",
+    "accents": [
+      "green"
+    ],
+    "traits": [
+      "premium"
+    ],
+    "relativePath": "design-profiles/library/awesome-design-md/profiles/shopify.md"
+  },
+  {
+    "id": "awesome/spacex",
+    "slug": "spacex",
+    "name": "SpaceX",
+    "summary": "Space technology. Stark black and white, full-bleed imagery, futuristic",
+    "category": "Media & Consumer Tech",
+    "source": "getdesign.md",
+    "terms_url": "https://getdesign.md/terms",
+    "about_url": "https://getdesign.md/about",
+    "upstream_url": "https://getdesign.md/spacex/design-md",
+    "imported_at": "2026-04-11T22:07:00.407Z",
+    "theme": "dark",
+    "density": "balanced",
+    "accents": [
+      "black",
+      "white"
+    ],
+    "traits": [
+      "general"
+    ],
+    "relativePath": "design-profiles/library/awesome-design-md/profiles/spacex.md"
+  },
+  {
+    "id": "awesome/spotify",
+    "slug": "spotify",
+    "name": "Spotify",
+    "summary": "Music streaming. Vibrant green on dark, bold type, album-art-driven",
+    "category": "Media & Consumer Tech",
+    "source": "getdesign.md",
+    "terms_url": "https://getdesign.md/terms",
+    "about_url": "https://getdesign.md/about",
+    "upstream_url": "https://getdesign.md/spotify/design-md",
+    "imported_at": "2026-04-11T22:07:01.528Z",
+    "theme": "dark",
+    "density": "balanced",
+    "accents": [
+      "green"
+    ],
+    "traits": [
+      "general"
+    ],
+    "relativePath": "design-profiles/library/awesome-design-md/profiles/spotify.md"
+  },
+  {
+    "id": "awesome/stripe",
+    "slug": "stripe",
+    "name": "Stripe",
+    "summary": "Payment infrastructure. Signature purple gradients, weight-300 elegance",
+    "category": "Fintech & Crypto",
+    "source": "getdesign.md",
+    "terms_url": "https://getdesign.md/terms",
+    "about_url": "https://getdesign.md/about",
+    "upstream_url": "https://getdesign.md/stripe/design-md",
+    "imported_at": "2026-04-11T22:07:02.656Z",
+    "theme": "balanced",
+    "density": "balanced",
+    "accents": [
+      "purple"
+    ],
+    "traits": [
+      "developer-tool"
+    ],
+    "relativePath": "design-profiles/library/awesome-design-md/profiles/stripe.md"
+  },
+  {
+    "id": "awesome/supabase",
+    "slug": "supabase",
+    "name": "Supabase",
+    "summary": "Open-source Firebase alternative. Dark emerald theme, code-first",
+    "category": "Backend, Database & DevOps",
+    "source": "getdesign.md",
+    "terms_url": "https://getdesign.md/terms",
+    "about_url": "https://getdesign.md/about",
+    "upstream_url": "https://getdesign.md/supabase/design-md",
+    "imported_at": "2026-04-11T22:07:04.043Z",
+    "theme": "dark",
+    "density": "balanced",
+    "accents": [
+      "emerald"
+    ],
+    "traits": [
+      "operational",
+      "developer-tool"
+    ],
+    "relativePath": "design-profiles/library/awesome-design-md/profiles/supabase.md"
+  },
+  {
+    "id": "awesome/superhuman",
+    "slug": "superhuman",
+    "name": "Superhuman",
+    "summary": "Fast email client. Premium dark UI, keyboard-first, purple glow",
+    "category": "Developer Tools & IDEs",
+    "source": "getdesign.md",
+    "terms_url": "https://getdesign.md/terms",
+    "about_url": "https://getdesign.md/about",
+    "upstream_url": "https://getdesign.md/superhuman/design-md",
+    "imported_at": "2026-04-11T22:07:05.445Z",
+    "theme": "dark",
+    "density": "balanced",
+    "accents": [
+      "purple"
+    ],
+    "traits": [
+      "premium",
+      "developer-tool"
+    ],
+    "relativePath": "design-profiles/library/awesome-design-md/profiles/superhuman.md"
+  },
+  {
+    "id": "awesome/tesla",
+    "slug": "tesla",
+    "name": "Tesla",
+    "summary": "Electric vehicles. Radical subtraction, cinematic full-viewport photography, Universal Sans",
+    "category": "Automotive",
+    "source": "getdesign.md",
+    "terms_url": "https://getdesign.md/terms",
+    "about_url": "https://getdesign.md/about",
+    "upstream_url": "https://getdesign.md/tesla/design-md",
+    "imported_at": "2026-04-11T22:07:06.566Z",
+    "theme": "dark",
+    "density": "airy",
+    "accents": [],
+    "traits": [
+      "premium"
+    ],
+    "relativePath": "design-profiles/library/awesome-design-md/profiles/tesla.md"
+  },
+  {
+    "id": "awesome/theverge",
+    "slug": "theverge",
+    "name": "The Verge",
+    "summary": "Tech editorial media. Acid-mint and ultraviolet accents, Manuka display type",
+    "category": "Media & Consumer Tech",
+    "source": "getdesign.md",
+    "terms_url": "https://getdesign.md/terms",
+    "about_url": "https://getdesign.md/about",
+    "upstream_url": "https://getdesign.md/theverge/design-md",
+    "imported_at": "2026-04-11T22:07:07.705Z",
+    "theme": "balanced",
+    "density": "airy",
+    "accents": [
+      "mint"
+    ],
+    "traits": [
+      "editorial"
+    ],
+    "relativePath": "design-profiles/library/awesome-design-md/profiles/theverge.md"
+  },
+  {
+    "id": "awesome/together.ai",
+    "slug": "together.ai",
+    "name": "Together AI",
+    "summary": "Open-source AI infrastructure. Technical, blueprint-style design",
+    "category": "AI & LLM Platforms",
+    "source": "getdesign.md",
+    "terms_url": "https://getdesign.md/terms",
+    "about_url": "https://getdesign.md/about",
+    "upstream_url": "https://getdesign.md/together.ai/design-md",
+    "imported_at": "2026-04-11T22:07:08.842Z",
+    "theme": "balanced",
+    "density": "dense",
+    "accents": [],
+    "traits": [
+      "operational",
+      "developer-tool"
+    ],
+    "relativePath": "design-profiles/library/awesome-design-md/profiles/together.ai.md"
+  },
+  {
+    "id": "awesome/uber",
+    "slug": "uber",
+    "name": "Uber",
+    "summary": "Mobility platform. Bold black and white, tight type, urban energy",
+    "category": "Media & Consumer Tech",
+    "source": "getdesign.md",
+    "terms_url": "https://getdesign.md/terms",
+    "about_url": "https://getdesign.md/about",
+    "upstream_url": "https://getdesign.md/uber/design-md",
+    "imported_at": "2026-04-11T22:07:09.976Z",
+    "theme": "dark",
+    "density": "balanced",
+    "accents": [
+      "black",
+      "white"
+    ],
+    "traits": [
+      "general"
+    ],
+    "relativePath": "design-profiles/library/awesome-design-md/profiles/uber.md"
+  },
+  {
+    "id": "awesome/vercel",
+    "slug": "vercel",
+    "name": "Vercel",
+    "summary": "Frontend deployment platform. Black and white precision, Geist font",
+    "category": "Developer Tools & IDEs",
+    "source": "getdesign.md",
+    "terms_url": "https://getdesign.md/terms",
+    "about_url": "https://getdesign.md/about",
+    "upstream_url": "https://getdesign.md/vercel/design-md",
+    "imported_at": "2026-04-11T22:07:11.112Z",
+    "theme": "dark",
+    "density": "balanced",
+    "accents": [
+      "black",
+      "white"
+    ],
+    "traits": [
+      "precision",
+      "developer-tool"
+    ],
+    "relativePath": "design-profiles/library/awesome-design-md/profiles/vercel.md"
+  },
+  {
+    "id": "awesome/voltagent",
+    "slug": "voltagent",
+    "name": "VoltAgent",
+    "summary": "AI agent framework. Void-black canvas, emerald accent, terminal-native",
+    "category": "AI & LLM Platforms",
+    "source": "getdesign.md",
+    "terms_url": "https://getdesign.md/terms",
+    "about_url": "https://getdesign.md/about",
+    "upstream_url": "https://getdesign.md/voltagent/design-md",
+    "imported_at": "2026-04-11T22:07:12.234Z",
+    "theme": "dark",
+    "density": "balanced",
+    "accents": [
+      "black",
+      "emerald"
+    ],
+    "traits": [
+      "developer-tool"
+    ],
+    "relativePath": "design-profiles/library/awesome-design-md/profiles/voltagent.md"
+  },
+  {
+    "id": "awesome/warp",
+    "slug": "warp",
+    "name": "Warp",
+    "summary": "Modern terminal. Dark IDE-like interface, block-based command UI",
+    "category": "Developer Tools & IDEs",
+    "source": "getdesign.md",
+    "terms_url": "https://getdesign.md/terms",
+    "about_url": "https://getdesign.md/about",
+    "upstream_url": "https://getdesign.md/warp/design-md",
+    "imported_at": "2026-04-11T22:07:13.396Z",
+    "theme": "dark",
+    "density": "balanced",
+    "accents": [],
+    "traits": [
+      "developer-tool"
+    ],
+    "relativePath": "design-profiles/library/awesome-design-md/profiles/warp.md"
+  },
+  {
+    "id": "awesome/webflow",
+    "slug": "webflow",
+    "name": "Webflow",
+    "summary": "Visual web builder. Blue-accented, polished marketing site aesthetic",
+    "category": "Design & Creative Tools",
+    "source": "getdesign.md",
+    "terms_url": "https://getdesign.md/terms",
+    "about_url": "https://getdesign.md/about",
+    "upstream_url": "https://getdesign.md/webflow/design-md",
+    "imported_at": "2026-04-11T22:07:14.526Z",
+    "theme": "balanced",
+    "density": "balanced",
+    "accents": [
+      "blue"
+    ],
+    "traits": [
+      "general"
+    ],
+    "relativePath": "design-profiles/library/awesome-design-md/profiles/webflow.md"
+  },
+  {
+    "id": "awesome/wired",
+    "slug": "wired",
+    "name": "WIRED",
+    "summary": "Tech magazine. Paper-white broadsheet density, custom serif, ink-blue links",
+    "category": "Media & Consumer Tech",
+    "source": "getdesign.md",
+    "terms_url": "https://getdesign.md/terms",
+    "about_url": "https://getdesign.md/about",
+    "upstream_url": "https://getdesign.md/wired/design-md",
+    "imported_at": "2026-04-11T22:07:15.710Z",
+    "theme": "light",
+    "density": "balanced",
+    "accents": [
+      "white",
+      "blue"
+    ],
+    "traits": [
+      "editorial"
+    ],
+    "relativePath": "design-profiles/library/awesome-design-md/profiles/wired.md"
+  },
+  {
+    "id": "awesome/wise",
+    "slug": "wise",
+    "name": "Wise",
+    "summary": "International money transfer. Bright green accent, friendly and clear",
+    "category": "Fintech & Crypto",
+    "source": "getdesign.md",
+    "terms_url": "https://getdesign.md/terms",
+    "about_url": "https://getdesign.md/about",
+    "upstream_url": "https://getdesign.md/wise/design-md",
+    "imported_at": "2026-04-11T22:07:16.829Z",
+    "theme": "light",
+    "density": "balanced",
+    "accents": [
+      "green"
+    ],
+    "traits": [
+      "friendly"
+    ],
+    "relativePath": "design-profiles/library/awesome-design-md/profiles/wise.md"
+  },
+  {
+    "id": "awesome/x.ai",
+    "slug": "x.ai",
+    "name": "xAI",
+    "summary": "Elon Musk's AI lab. Stark monochrome, futuristic minimalism",
+    "category": "AI & LLM Platforms",
+    "source": "getdesign.md",
+    "terms_url": "https://getdesign.md/terms",
+    "about_url": "https://getdesign.md/about",
+    "upstream_url": "https://getdesign.md/x.ai/design-md",
+    "imported_at": "2026-04-11T22:07:17.988Z",
+    "theme": "dark",
+    "density": "airy",
+    "accents": [
+      "monochrome"
+    ],
+    "traits": [
+      "precision"
+    ],
+    "relativePath": "design-profiles/library/awesome-design-md/profiles/x.ai.md"
+  },
+  {
+    "id": "awesome/zapier",
+    "slug": "zapier",
+    "name": "Zapier",
+    "summary": "Automation platform. Warm orange, friendly illustration-driven",
+    "category": "Productivity & SaaS",
+    "source": "getdesign.md",
+    "terms_url": "https://getdesign.md/terms",
+    "about_url": "https://getdesign.md/about",
+    "upstream_url": "https://getdesign.md/zapier/design-md",
+    "imported_at": "2026-04-11T22:07:19.164Z",
+    "theme": "balanced",
+    "density": "balanced",
+    "accents": [
+      "orange"
+    ],
+    "traits": [
+      "friendly"
+    ],
+    "relativePath": "design-profiles/library/awesome-design-md/profiles/zapier.md"
+  }
+]
