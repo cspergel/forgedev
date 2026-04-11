@@ -7,6 +7,7 @@ function usage() {
   console.error(
     "Usage:\n" +
     "  node scripts/state-transition.js start-build <node-id> <previous-status> <model> <reason> [pre-build-files-json]\n" +
+    "  node scripts/state-transition.js increment-bounce <node-id>\n" +
     "  node scripts/state-transition.js complete-build <node-id>\n" +
     "  node scripts/state-transition.js start-review <node-id> <previous-status>\n" +
     "  node scripts/state-transition.js start-review-fixing <node-id>\n" +
@@ -105,6 +106,25 @@ function main() {
       node.previous_status = previousStatus;
       node.status = "reviewing";
       state.active_node = { node: nodeId, status: "reviewing", started_at: ts };
+      state.last_updated = ts;
+      break;
+    }
+    case "increment-bounce": {
+      const nodeId = process.argv[3];
+      if (!nodeId) {
+        usage();
+      }
+      const node = ensureNode(state, nodeId);
+      node.status = "building";
+      node.bounce_count = (node.bounce_count || 0) + 1;
+      state.active_node = {
+        node: nodeId,
+        status: "building",
+        started_at: state.active_node && state.active_node.node === nodeId && state.active_node.started_at
+          ? state.active_node.started_at
+          : ts,
+      };
+      state.stop_hook_active = false;
       state.last_updated = ts;
       break;
     }

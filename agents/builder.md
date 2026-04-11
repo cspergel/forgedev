@@ -22,6 +22,7 @@ You are building the **$ARGUMENTS** component.
    - `.forgeplan/conversations/nodes/[node-id].md` — your build log
    - `src/shared/types/index.ts` — the canonical shared types module. See "Shared Types Materialization" below.
    - `.forgeplan/state.json` — status updates
+   - **Do not edit project-root aggregators or bootstrap files** such as `main.py`, `app.py`, root router registries, navigation registries, or other cross-node wiring files from inside a node build. If the node needs root-level registration, record that need in the conversation log and continue the node build. Root wiring is handled by the owning integration/root node or by the integration phase.
 4. **If the spec is ambiguous and you did not resolve it in the pre-build challenge, ask the user — do not improvise.**
 5. **Use shared model types** for all types listed in the spec's `shared_dependencies`. Import them from `src/shared/types/` — do not define them locally within your node's `file_scope`.
 6. **Anchor comments in source code files** (files where `//` is valid comment syntax — `.ts`, `.js`, `.tsx`, `.jsx`, etc.):
@@ -162,6 +163,7 @@ Write at minimum 1 decision marker per node for the most significant architectur
 9. Ensure all constraints are respected
 10. Ensure no non-goals are implemented
 11. Log decisions and progress to `.forgeplan/conversations/nodes/[node-id].md` (exempt cross-scope write)
+12. If you discover required root-level integration work outside this node's `file_scope` (for example router registration in `main.py`), do **not** attempt it during the node build. Record the exact follow-up in the conversation log instead.
 
 ## Completion
 

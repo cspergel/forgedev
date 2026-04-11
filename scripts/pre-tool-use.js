@@ -575,6 +575,9 @@ function evaluateBash(toolInput, cwd) {
 
   // Whitelist: known-safe read-only commands that cannot mutate files
   const safePatterns = [
+    /^\s*cd\s+/,                        // change directory wrapper for a later safe command
+    /^\s*pushd\s+/,                     // push directory wrapper
+    /^\s*popd\b/,                       // pop directory wrapper
     /^\s*ls\b/,                         // list files
     /^\s*dir\b/,                        // list files (Windows)
     /^\s*cat\s/,                        // read file (without redirection)
@@ -595,7 +598,7 @@ function evaluateBash(toolInput, cwd) {
     nodeScriptPattern("next-node.js"),         // our own next-node script
     nodeScriptPattern(
       "state-transition.js",
-      String.raw`\s+(start-build|complete-build|start-review|start-review-fixing|start-revising|set-spec-status|complete-review|restore-previous-status|set-node-status|clear-active-node|set-sweep-phase|set-sweep-state|clear-sweep-state)\b`
+      String.raw`\s+(start-build|increment-bounce|complete-build|start-review|start-review-fixing|start-revising|set-spec-status|complete-review|restore-previous-status|set-node-status|clear-active-node|set-sweep-phase|set-sweep-state|clear-sweep-state)\b`
     ), // deterministic state transitions
     nodeScriptPattern("session-start.js"),     // our own session-start script
     nodeScriptPattern("topo-sort.js"),         // our own topo-sort script
@@ -626,6 +629,7 @@ function evaluateBash(toolInput, cwd) {
     /^\s*npx\s+tsc\s+--noEmit\s*$/,      // tsc type checking only (--noEmit mandatory — bare tsc writes .js files)
     /^\s*pwd\b/,                        // print working directory
     /^\s*echo\s/,                       // echo without redirection (checked below)
+    /^\s*Set-Location\b/i,             // PowerShell cd wrapper
     /^\s*Get-Content\b/i,              // PowerShell read
     /^\s*Get-ChildItem\b/i,            // PowerShell list
     /^\s*Get-Item\b/i,                 // PowerShell get item

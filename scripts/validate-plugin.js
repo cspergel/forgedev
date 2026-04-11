@@ -214,6 +214,11 @@ function assertStateTransitionUsage(errors) {
     },
     {
       file: path.join(skillsRoot, "build", "SKILL.md"),
+      marker: "state-transition.js\" increment-bounce",
+      message: "skills/build/SKILL.md: failed AC evaluation must use state-transition.js increment-bounce",
+    },
+    {
+      file: path.join(skillsRoot, "build", "SKILL.md"),
       marker: "state-transition.js\" complete-build",
       message: "skills/build/SKILL.md: build completion must use state-transition.js complete-build",
     },
@@ -281,6 +286,9 @@ function assertStateTransitionBashAllowlist(errors) {
   if (!content.includes("nodeScriptPattern(")) {
     pushError(errors, "scripts/pre-tool-use.js: Bash allowlist must support quoted node script paths via nodeScriptPattern()");
   }
+  if (!content.includes("/^\\s*cd\\s+/")) {
+    pushError(errors, "scripts/pre-tool-use.js: Bash allowlist must allow cd wrappers around otherwise safe commands");
+  }
   if (!content.includes("splitReadOnlyShellSegments")) {
     pushError(errors, "scripts/pre-tool-use.js: Bash guard must support splitting safe read-only shell wrappers");
   }
@@ -289,6 +297,22 @@ function assertStateTransitionBashAllowlist(errors) {
 function assertTopLevelOrchestrationStateRules(errors) {
   const deepBuildPath = path.join(skillsRoot, "deep-build", "SKILL.md");
   const recoverPath = path.join(skillsRoot, "recover", "SKILL.md");
+  const buildPath = path.join(skillsRoot, "build", "SKILL.md");
+  const builderAgentPath = path.join(repoRoot, "agents", "builder.md");
+
+  if (fs.existsSync(buildPath)) {
+    const content = fs.readFileSync(buildPath, "utf8");
+    if (!content.includes('Do **not** run additional `set-node-status ... "built"` transitions')) {
+      pushError(errors, "skills/build/SKILL.md: completion flow must forbid redundant set-node-status built transitions after complete-build");
+    }
+  }
+
+  if (fs.existsSync(builderAgentPath)) {
+    const content = fs.readFileSync(builderAgentPath, "utf8");
+    if (!content.includes("Do not edit project-root aggregators or bootstrap files")) {
+      pushError(errors, "agents/builder.md: builder must explicitly forbid root aggregator edits such as main.py during node builds");
+    }
+  }
 
   if (fs.existsSync(deepBuildPath)) {
     const content = fs.readFileSync(deepBuildPath, "utf8");
@@ -303,6 +327,12 @@ function assertTopLevelOrchestrationStateRules(errors) {
     }
     if (!content.includes("Do **not** pre-mutate `active_node` or node `status`")) {
       pushError(errors, "skills/deep-build/SKILL.md: build-all loop must forbid pre-mutating node state before /forgeplan:build or /forgeplan:review");
+    }
+    if (!content.includes('Do **not** add a follow-up `set-node-status "[node-id]" "built"` after it succeeds')) {
+      pushError(errors, "skills/deep-build/SKILL.md: build-all loop must forbid redundant set-node-status built transitions after complete-build");
+    }
+    if (!content.includes("Do **not** attempt root-scope integration edits during the node build loop")) {
+      pushError(errors, "skills/deep-build/SKILL.md: build-all loop must forbid root-scope integration edits such as main.py during node builds");
     }
   }
 
