@@ -628,7 +628,9 @@ function evaluateBash(toolInput, cwd) {
   const allSegmentsSafe = segments.every((seg) => {
     const trimmed = seg.trim();
     if (!trimmed) return true;
-    const matchesSafe = safePatterns.some((p) => p.test(trimmed));
+    const matchesSafe =
+      safePatterns.some((p) => p.test(trimmed)) ||
+      isReadOnlyInlinePython(trimmed);
     // Strip safe redirections (2>&1, 2>/dev/null, >/dev/null) before checking for file redirections
     const stripped = trimmed.replace(/\d+>&\d+/g, "").replace(/\d+>\s*\/dev\/null/g, "").replace(/>\s*\/dev\/null/g, "");
     const hasUnsafeRedirection = />\s*[^\s]/.test(stripped) || /\|\s*Out-File/i.test(stripped);
@@ -658,6 +660,38 @@ function evaluateBash(toolInput, cwd) {
       `shared model guards, and file registration work correctly. ` +
       `Read-only commands (ls, cat, grep, git status, npm test, etc.) are allowed.`,
   };
+}
+
+function isReadOnlyInlinePython(segment) {
+  const match = segment.match(/^\s*python(?:3)?\s+-c\s+(['"])([\s\S]*)\1\s*$/i);
+  if (!match) {
+    return false;
+  }
+
+  const code = match[2];
+
+  // Only allow inline Python that is clearly inspection-oriented.
+  if (!/\bprint\s*\(/.test(code)) {
+    return false;
+  }
+
+  const blockedPatterns = [
+    /\bopen\s*\([^)]*,\s*['"][^'"]*[wax+]/i,
+    /\b(open|exec|eval|compile|input)\s*\(/,
+    /\bsubprocess\./,
+    /\bos\.(system|popen|remove|unlink|rename|replace|mkdir|makedirs|rmdir)\b/,
+    /\bshutil\./,
+    /\bpathlib\./,
+    /\brequests\./,
+    /\bhttpx\./,
+    /\bsocket\./,
+    /\bglob\./,
+    /\btempfile\./,
+    /\.(write_text|write_bytes|touch|unlink|rename|replace|mkdir|rmdir)\b/,
+    /\bjson\.dump\s*\(/,
+  ];
+
+  return !blockedPatterns.some((pattern) => pattern.test(code));
 }
 
 /**

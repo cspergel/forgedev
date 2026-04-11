@@ -132,6 +132,20 @@ function assertNoNestedDeepBuildSkill(errors) {
   }
 }
 
+function assertNoNestedBuilderSkill(errors) {
+  const deepBuildPath = path.join(skillsRoot, "deep-build", "SKILL.md");
+  if (!fs.existsSync(deepBuildPath)) {
+    return;
+  }
+  const content = fs.readFileSync(deepBuildPath, "utf8");
+  if (!content.includes("Skill(forgeplan:builder)")) {
+    pushError(errors, "skills/deep-build/SKILL.md: must explicitly forbid nested Skill(forgeplan:builder) invocation");
+  }
+  if (!content.includes("/forgeplan:build [node-id]")) {
+    pushError(errors, "skills/deep-build/SKILL.md: must direct orchestration to the public /forgeplan:build [node-id] entry point");
+  }
+}
+
 function assertDeepBuildSnapshotContract(errors) {
   const deepBuildPath = path.join(skillsRoot, "deep-build", "SKILL.md");
   if (!fs.existsSync(deepBuildPath)) {
@@ -353,6 +367,7 @@ for (const surfacePath of publicCommandSurfacePaths) {
 assertDiscoverCompletion(errors);
 assertNoNestedSpecSkill(errors);
 assertNoNestedDeepBuildSkill(errors);
+assertNoNestedBuilderSkill(errors);
 assertDeepBuildSnapshotContract(errors);
 assertPlannerArtifactContract(errors);
 assertStateTransitionUsage(errors);
