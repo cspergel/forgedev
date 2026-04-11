@@ -166,7 +166,12 @@ If spec generation fails for a node, halt with error and preserve state. The use
 **3.5a: Generate Implementation Plan**
 Dispatch the Architect in Planner mode:
 - Prompt context: "You are in Planner mode. Read the reviewed design (manifest + specs). Produce an implementation plan at `.forgeplan/plans/implementation-plan.md`."
-- The Architect reads the manifest, specs, and research findings, then outputs the plan.
+- The Architect reads the manifest, specs, and research findings, writes the plan file directly, and returns only a compact receipt (`PLAN_STATUS`, `PLAN_PATH`, counts/sections).
+- The parent orchestrator must treat the step as complete **only if**:
+  - `.forgeplan/plans/implementation-plan.md` exists
+  - the file is non-trivial (not empty, not just a heading stub)
+  - the receipt reports `PLAN_STATUS: WRITTEN`
+- If the planner returns oversized prose, no artifact, or an extraction-too-large error, treat plan generation as **failed**. Do not try to reconstruct the plan from session context. Re-dispatch once with the same contract; if it still fails, halt with a clear error and preserve state.
 
 **3.5b: Review the Plan**
 Dispatch the review panel with plan lens:
@@ -190,11 +195,28 @@ Dispatch the review panel with plan lens:
 
 ### Step 4: Deep-build (full pipeline)
 
-Run the full autonomous build pipeline:
+Do **not** invoke `/forgeplan:deep-build` via the Skill tool here. `deep-build`
+is a command skill with `disable-model-invocation: true`, so nested
+`Skill(forgeplan:deep-build)` calls are invalid.
 
+Instead, execute the deep-build workflow **inline** by reading:
+```bash
+${CLAUDE_PLUGIN_ROOT}/skills/deep-build/SKILL.md
 ```
-/forgeplan:deep-build
-```
+and following its phases directly.
+
+The inline deep-build pass must:
+- initialize deep-build state in `.forgeplan/state.json`
+- build nodes in dependency order
+- follow the deep-build verification/review/sweep pipeline
+- preserve recovery state on failure
+- avoid nested `Skill(forgeplan:deep-build)` invocation
+
+When the inline deep-build workflow enters its build-all loop, any pre-build
+file snapshot must use the **Glob tool** against the active node's `file_scope`
+as defined in `skills/build/SKILL.md`. Do **not** use Bash/Node ad hoc file
+enumeration for snapshots during active build-all, because Bash mutation guards
+apply during deep-build operations.
 
 Deep-build handles everything from here:
 - Build all nodes (per tier: SMALL = single-pass, MEDIUM = sequential, LARGE = full pipeline)

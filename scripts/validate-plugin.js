@@ -118,6 +118,59 @@ function assertNoNestedSpecSkill(errors) {
   }
 }
 
+function assertNoNestedDeepBuildSkill(errors) {
+  const greenfieldPath = path.join(skillsRoot, "greenfield", "SKILL.md");
+  if (!fs.existsSync(greenfieldPath)) {
+    return;
+  }
+  const content = fs.readFileSync(greenfieldPath, "utf8");
+  if (!content.includes("Skill(forgeplan:deep-build)")) {
+    pushError(errors, "skills/greenfield/SKILL.md: must explicitly forbid nested Skill(forgeplan:deep-build) invocation");
+  }
+  if (!content.includes("skills/deep-build/SKILL.md")) {
+    pushError(errors, "skills/greenfield/SKILL.md: must direct the orchestrator to inline the deep-build workflow from skills/deep-build/SKILL.md");
+  }
+}
+
+function assertDeepBuildSnapshotContract(errors) {
+  const deepBuildPath = path.join(skillsRoot, "deep-build", "SKILL.md");
+  if (!fs.existsSync(deepBuildPath)) {
+    return;
+  }
+  const content = fs.readFileSync(deepBuildPath, "utf8");
+  if (!content.includes("Glob tool")) {
+    pushError(errors, "skills/deep-build/SKILL.md: build-all loop must require Glob tool snapshots");
+  }
+  if (!content.includes("Do **not** use Bash/Node ad hoc file enumeration")) {
+    pushError(errors, "skills/deep-build/SKILL.md: build-all loop must forbid Bash/Node ad hoc snapshot enumeration");
+  }
+}
+
+function assertPlannerArtifactContract(errors) {
+  const architectPath = path.join(repoRoot, "agents", "architect.md");
+  const greenfieldPath = path.join(skillsRoot, "greenfield", "SKILL.md");
+
+  if (fs.existsSync(architectPath)) {
+    const content = fs.readFileSync(architectPath, "utf8");
+    if (!content.includes("PLAN_STATUS: WRITTEN")) {
+      pushError(errors, "agents/architect.md: Planner Mode must define a compact PLAN_STATUS receipt");
+    }
+    if (!content.includes("Do not inline the full plan content")) {
+      pushError(errors, "agents/architect.md: Planner Mode must forbid returning the full plan body in the agent response");
+    }
+  }
+
+  if (fs.existsSync(greenfieldPath)) {
+    const content = fs.readFileSync(greenfieldPath, "utf8");
+    if (!content.includes("Do not try to reconstruct the plan from session context")) {
+      pushError(errors, "skills/greenfield/SKILL.md: plan generation must forbid reconstructing the plan from session context");
+    }
+    if (!content.includes("PLAN_STATUS: WRITTEN")) {
+      pushError(errors, "skills/greenfield/SKILL.md: plan generation must require a compact planner receipt");
+    }
+  }
+}
+
 const errors = [];
 
 let pluginManifest;
@@ -248,6 +301,9 @@ for (const surfacePath of publicCommandSurfacePaths) {
 
 assertDiscoverCompletion(errors);
 assertNoNestedSpecSkill(errors);
+assertNoNestedDeepBuildSkill(errors);
+assertDeepBuildSnapshotContract(errors);
+assertPlannerArtifactContract(errors);
 
 if (errors.length > 0) {
   console.error("Plugin validation failed:");

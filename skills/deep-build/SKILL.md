@@ -51,6 +51,7 @@ This is a sequential loop using existing commands:
 1. Run `node "${CLAUDE_PLUGIN_ROOT}/scripts/next-node.js"` to get the recommended node
 2. Handle result by type:
    - `"recommendation"`:
+     - Before any build starts, snapshot existing files for the node using the **Glob tool** with the node's `file_scope`, exactly as `/forgeplan:build` requires. Persist that list to `nodes.[node-id].pre_build_files` in state. Do **not** use Bash/Node ad hoc file enumeration here; active deep-build enforcement blocks non-whitelisted shell commands during build-all.
      - If status is `"pending"`: execute the single-node **autonomous spec workflow inline** (read `${CLAUDE_PLUGIN_ROOT}/skills/spec/SKILL.md` and follow its Autonomous Mode for the specific node). Do **not** use `Skill(forgeplan:spec)` — `spec` has `disable-model-invocation: true`. Generate a complete spec with filled-in acceptance criteria and test fields, verify the spec file exists and has non-empty `test` fields for each AC, then `/forgeplan:build [node-id]`.
      - If status is `"specced"`: verify the spec has non-empty acceptance criteria test fields (skeleton specs from discover have empty fields). If test fields are empty, re-run the single-node autonomous spec workflow inline to complete them. Then `/forgeplan:build [node-id]`.
      - If status is `"built"`: node was built but not yet reviewed. Run `/forgeplan:review [node-id]` only.

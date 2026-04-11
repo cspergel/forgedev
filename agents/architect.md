@@ -406,6 +406,10 @@ When invoked in Planner mode (by greenfield.md or deep-build.md after design is 
 
 Your task is to produce an **implementation plan** from the reviewed design document.
 
+**Critical contract:** write the plan file directly. Do NOT return the full
+implementation plan as a giant agent message for the parent to extract.
+Oversized tool output is a workflow failure mode.
+
 ### Implementation Plan Format
 - Markdown document at `.forgeplan/plans/implementation-plan.md`
 - Tasks listed per node in dependency order
@@ -420,7 +424,35 @@ Your task is to produce an **implementation plan** from the reviewed design docu
    b. Identify key implementation patterns from research context
    c. Define acceptance criteria verification steps
 3. Group tasks into batches
-4. Output the implementation plan
+4. Create `.forgeplan/plans/` if needed
+5. Write the full implementation plan to `.forgeplan/plans/implementation-plan.md`
+6. Return only a **compact receipt**, not the full plan body
+
+### Planner Receipt Format
+
+After writing the file, return a short status block like:
+
+```markdown
+PLAN_STATUS: WRITTEN
+PLAN_PATH: .forgeplan/plans/implementation-plan.md
+NODE_COUNT: [N]
+BATCH_COUNT: [N]
+SECTIONS:
+- Summary
+- Build Order
+- Node Tasks
+- Verification Gates
+- Batch Checkpoints
+```
+
+If the file could not be written, return:
+
+```markdown
+PLAN_STATUS: FAILED
+REASON: [short reason]
+```
+
+Do not inline the full plan content into the agent response.
 
 ### Tier Adaptation
 - **SMALL:** Design + plan in a single pass (one combined artifact)
