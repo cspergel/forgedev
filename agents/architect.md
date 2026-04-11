@@ -307,6 +307,18 @@ Dependency Order: [topo sort]
 
 When writing `.forgeplan/manifest.yaml`:
 
+`file_scope` must be exactly one glob string per node. Do not emit arrays or
+multiple disjoint paths for a single node. If a responsibility spans multiple
+locations, either choose the narrowest common parent glob that cleanly contains
+the node's files, or split the responsibility into additional nodes.
+
+Use the CURRENT manifest schema exactly.
+- Put project metadata under a nested `project:` object, never top-level keys like `project_name`, `description`, `complexity_tier`, or `tech_stack`.
+- `shared_models` must be a map keyed by model name, not a list of `{name, fields}` objects.
+- `nodes` must be a map keyed by node id, not a list of objects with an `id` field.
+- Every node entry must include `name`, `type`, `status`, `file_scope`, `depends_on`, `connects_to`, `files`, and `spec`.
+- The validator rejects legacy shapes. If your draft looks like an old schema, rewrite it before validation.
+
 ```yaml
 project:
   name: "[project name]"

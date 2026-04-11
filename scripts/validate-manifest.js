@@ -32,7 +32,7 @@ function validateManifest(manifest, manifestPath) {
   const warnings = [];
 
   // --- 0. Required top-level sections ---
-  if (!manifest.project || typeof manifest.project !== "object") {
+  if (!manifest.project || typeof manifest.project !== "object" || Array.isArray(manifest.project)) {
     errors.push("Manifest missing required 'project' section.");
   } else {
     if (!manifest.project.name) errors.push("project.name is required.");
@@ -45,17 +45,23 @@ function validateManifest(manifest, manifestPath) {
     }
   }
 
-  if (manifest.shared_models !== undefined && typeof manifest.shared_models !== "object") {
-    errors.push("shared_models must be an object/map if present.");
+  if (manifest.shared_models !== undefined && (typeof manifest.shared_models !== "object" || Array.isArray(manifest.shared_models))) {
+    errors.push("shared_models must be an object/map keyed by model name, not a list.");
   }
 
   if (manifest.validation !== undefined && typeof manifest.validation !== "object") {
     errors.push("validation must be an object if present.");
   }
 
-  if (!manifest.nodes || typeof manifest.nodes !== "object") {
-    errors.push("Manifest has no 'nodes' section.");
+  if (!manifest.nodes || typeof manifest.nodes !== "object" || Array.isArray(manifest.nodes)) {
+    errors.push(Array.isArray(manifest.nodes) ? "Manifest 'nodes' must be an object/map keyed by node id, not a list." : "Manifest has no 'nodes' section.");
     return { errors, warnings };
+  }
+
+  if (!manifest.project && (manifest.project_name || manifest.description || manifest.complexity_tier || manifest.tech_stack)) {
+    errors.push(
+      "Manifest appears to use a legacy top-level shape (project_name/description/complexity_tier). Use a nested 'project:' object per the current schema."
+    );
   }
 
   const nodeIds = Object.keys(manifest.nodes);
@@ -97,6 +103,11 @@ function validateManifest(manifest, manifestPath) {
         errors.push(`Node "${nodeId}": "files" must be an array.`);
       }
     }
+    if (node.file_scope !== undefined && typeof node.file_scope !== "string") {
+      errors.push(
+        `Node "${nodeId}": "file_scope" must be a single string glob (for example "src/auth/**"), not ${Array.isArray(node.file_scope) ? "an array" : `a ${typeof node.file_scope}`}.`
+      );
+    }
 
     // Sprint 9: Node ID format validation (defense-in-depth for wiki file paths)
     if (!NODE_ID_REGEX.test(nodeId)) {
@@ -137,7 +148,7 @@ function validateManifest(manifest, manifestPath) {
     for (let i = 0; i < siblings.length; i++) {
       for (let j = i + 1; j < siblings.length; j++) {
         // Use existing scopesOverlap() function for real glob overlap detection
-        if (scopesOverlap(siblings[i].file_scope, siblings[j].file_scope)) {
+      if (scopesOverlap(siblings[i].file_scope, siblings[j].file_scope)) {
           errors.push(
             `Nodes "${siblings[i].id}" and "${siblings[j].id}" (both split from "${parent}") have overlapping file_scopes: "${siblings[i].file_scope}" and "${siblings[j].file_scope}".`
           );
@@ -231,9 +242,9 @@ function validateManifest(manifest, manifestPath) {
   const scopes = [];
   for (const nodeId of nodeIds) {
     const node = manifest.nodes[nodeId];
-    if (node.file_scope) {
+    if (typeof node.file_scope === "string" && node.file_scope.trim().length > 0) {
       scopes.push({ nodeId, scope: node.file_scope });
-    } else {
+    } else if (node.file_scope === undefined || node.file_scope === null || node.file_scope === "") {
       errors.push(`Node "${nodeId}" has no file_scope defined. Every node must have a file_scope for build enforcement to work.`);
     }
   }
@@ -338,6 +349,9 @@ function traceCycle(nodes, cycleNodes) {
  * single-glob expansion misses (e.g., wildcard directory patterns).
  */
 function scopesOverlap(scopeA, scopeB) {
+  if (typeof scopeA !== "string" || typeof scopeB !== "string") {
+    return false;
+  }
   const norm = (s) => s.replace(/\\/g, "/");
   const a = norm(scopeA);
   const b = norm(scopeB);

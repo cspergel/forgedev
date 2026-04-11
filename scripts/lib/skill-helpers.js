@@ -14,6 +14,25 @@ const crypto = require("crypto");
 /** Default skill sources (must match skill-registry.js). */
 const DEFAULT_SOURCES = [".forgeplan/skills", "skill-library"];
 
+function resolveSkillSourceDir(sourceDir, projectRoot) {
+  if (path.isAbsolute(sourceDir)) {
+    return sourceDir;
+  }
+
+  const projectRelative = path.join(projectRoot, sourceDir);
+  if (fs.existsSync(projectRelative)) {
+    return projectRelative;
+  }
+
+  const pluginRoot = path.join(__dirname, "..", "..");
+  const pluginRelative = path.join(pluginRoot, sourceDir);
+  if (fs.existsSync(pluginRelative)) {
+    return pluginRelative;
+  }
+
+  return projectRelative;
+}
+
 function getEffectiveTier(manifest, config) {
   const override =
     config &&
@@ -88,9 +107,7 @@ function computeManifestHash(manifest, config, projectRoot) {
     const fileHasher = crypto.createHash("sha256");
     let fileCount = 0;
     for (const sourceDir of sources) {
-      const absDir = path.isAbsolute(sourceDir)
-        ? sourceDir
-        : path.join(projectRoot, sourceDir);
+      const absDir = resolveSkillSourceDir(sourceDir, projectRoot);
       try {
         const mdFiles = findMdFiles(absDir);
         // Sort for deterministic ordering across platforms

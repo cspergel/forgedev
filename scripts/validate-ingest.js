@@ -63,6 +63,9 @@ const isWithinProject = (candidate) => {
 //   "src/**/*.ts"            → "src"
 //   "**/*.ts"                → "."
 const resolveScopeDir = (fileScope) => {
+  if (typeof fileScope !== "string") {
+    return { scopeDir: ".", absDir: path.resolve(cwd, ".") };
+  }
   const normalized = fileScope.replace(/\\/g, "/");
   const segments = normalized.split("/");
   const baseSegments = [];
@@ -107,6 +110,9 @@ function generateTestPaths(glob) {
 }
 
 function scopesOverlap(scopeA, scopeB) {
+  if (typeof scopeA !== "string" || typeof scopeB !== "string") {
+    return false;
+  }
   const a = scopeA.replace(/\\/g, "/");
   const b = scopeB.replace(/\\/g, "/");
   const allPaths = [...generateTestPaths(a), ...generateTestPaths(b), ...generateCrossPaths(a, b)];
@@ -115,6 +121,15 @@ function scopesOverlap(scopeA, scopeB) {
 
 // Check 0 (C2 fix): Validate all scopes are within project root FIRST
 for (const node of (mapping.proposed_nodes || [])) {
+  if (typeof node.file_scope !== "string") {
+    checks.push({
+      name: "file_scope_type",
+      node: node.id,
+      status: "FAIL",
+      details: `"file_scope" must be a single string glob, got ${Array.isArray(node.file_scope) ? "array" : typeof node.file_scope}`,
+    });
+    continue;
+  }
   const { scopeDir, absDir } = resolveScopeDir(node.file_scope);
   if (!isWithinProject(absDir)) {
     checks.push({
@@ -135,13 +150,16 @@ for (const node of (mapping.proposed_nodes || [])) {
 
 // Early exit if any scope escapes project root
 const escapeFailures = checks.filter(c => c.name === "scope_within_project" && c.status === "FAIL");
-if (escapeFailures.length > 0) {
+const scopeTypeFailures = checks.filter(c => c.name === "file_scope_type" && c.status === "FAIL");
+if (escapeFailures.length > 0 || scopeTypeFailures.length > 0) {
   console.log(JSON.stringify({
     status: "FAIL",
-    message: "Scope escapes project root — aborting remaining checks",
+    message: scopeTypeFailures.length > 0
+      ? "Invalid file_scope type — aborting remaining checks"
+      : "Scope escapes project root — aborting remaining checks",
     total_checks: checks.length,
     passed: checks.filter(c => c.status === "PASS").length,
-    failed: escapeFailures.length,
+    failed: checks.filter(c => c.status === "FAIL").length,
     checks,
   }, null, 2));
   process.exit(1);

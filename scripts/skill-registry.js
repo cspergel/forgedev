@@ -68,6 +68,25 @@ const DEFAULT_MAX_ACTIVE = 5;
 /** Default skill sources (searched in order). */
 const DEFAULT_SOURCES = [".forgeplan/skills", "skill-library"];
 
+function resolveSkillSourceDir(sourceDir, projectRoot) {
+  if (path.isAbsolute(sourceDir)) {
+    return sourceDir;
+  }
+
+  const projectRelative = path.join(projectRoot, sourceDir);
+  if (fs.existsSync(projectRelative)) {
+    return projectRelative;
+  }
+
+  const pluginRoot = path.join(__dirname, "..");
+  const pluginRelative = path.join(pluginRoot, sourceDir);
+  if (fs.existsSync(pluginRelative)) {
+    return pluginRelative;
+  }
+
+  return projectRelative;
+}
+
 function getEffectiveTier(manifest, config) {
   const override =
     config &&
@@ -288,9 +307,7 @@ function scanSkillSources(config, projectRoot) {
   const seen = new Set(); // dedupe by name
 
   for (const sourceDir of sources) {
-    const absDir = path.isAbsolute(sourceDir)
-      ? sourceDir
-      : path.join(projectRoot, sourceDir);
+    const absDir = resolveSkillSourceDir(sourceDir, projectRoot);
 
     debug(`Scanning source: ${sourceDir} (${absDir})`);
     const mdFiles = findMdFiles(absDir);
