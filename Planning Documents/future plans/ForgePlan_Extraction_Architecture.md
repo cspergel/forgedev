@@ -22,6 +22,14 @@ No feature is cut. No capability is lost. The methodology, enforcement, and auto
 
 **Guiding principle:** Every architectural decision below optimizes for one thing — minimizing the distance between "working plugin" and "working standalone workstation." If a technology choice means rewriting existing code, it's the wrong choice. If a technology choice means the existing code runs as-is, it's the right choice.
 
+**Additional extraction principle from dogfooding:** the standalone harness should not keep rereading large `skills/`, registry, and agent-definition markdown files just to remember stable ForgePlan operating rules. Those files are useful during plugin dogfooding because they are easy to patch and inspect, but the workstation should progressively internalize:
+- phase advancement rules
+- sweep and recovery policy
+- role dispatch contracts
+- ownership and parallelism constraints
+
+External files should remain for project policy, extensibility, and model/provider configuration. Control-plane law should migrate into intrinsic runtime modules so long-run builds stop paying repeated token cost to relearn the harness itself.
+
 ---
 
 # 2. The Stack Decision: Why TypeScript Core + Rust Shell
@@ -70,6 +78,8 @@ The existing plugin is 100% TypeScript/JavaScript. Every script, every schema pa
 - Tauri's sidecar feature is designed for exactly this — running a Node.js process alongside the Rust backend
 - The React frontend is a greenfield build but uses off-the-shelf components (React Flow, Monaco, shadcn/ui)
 - No language boundary for the core logic — it stays in the language it was written in
+
+**What should not transfer unchanged forever:** prompt-heavy control-plane knowledge. The plugin currently keeps significant orchestration truth in skill files and agent markdown because that made dogfooding fast and patchable. The workstation should preserve compatibility at first, then steadily compile that stable orchestration law into runtime code and compact prompt templates. Otherwise the standalone app inherits the same token and latency penalty from rereading its own operating manual.
 
 ---
 

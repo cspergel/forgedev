@@ -68,10 +68,15 @@ function main() {
   const latestSweepReport = latestFile(path.join(forgePlanDir, "sweeps"), /^sweep-.*\.md$/);
   const wikiDir = path.join(forgePlanDir, "wiki");
   const wikiNodeDir = path.join(wikiDir, "nodes");
+  const wikiDataNodeDir = path.join(wikiDir, "data", "nodes");
   const wikiNodePages = fs.existsSync(wikiNodeDir)
     ? fs.readdirSync(wikiNodeDir).map((name) => path.join(wikiNodeDir, name)).sort()
     : [];
+  const wikiNodeSummaries = fs.existsSync(wikiDataNodeDir)
+    ? fs.readdirSync(wikiDataNodeDir).map((name) => path.join(wikiDataNodeDir, name)).sort()
+    : [];
   const wikiIndex = fs.existsSync(path.join(wikiDir, "index.md")) ? path.join(wikiDir, "index.md") : null;
+  const wikiIndexJson = fs.existsSync(path.join(wikiDir, "index.json")) ? path.join(wikiDir, "index.json") : null;
   const wikiLastCompiled = state.wiki_last_compiled || null;
   const wikiIsStale = Boolean(wikiLastCompiled && state.last_updated && wikiLastCompiled < state.last_updated);
 
@@ -82,9 +87,11 @@ function main() {
     tier,
     latest_sweep_report: latestSweepReport,
     wiki_index: wikiIndex,
+    wiki_index_json: wikiIndexJson,
     wiki_decisions: fs.existsSync(path.join(wikiDir, "decisions.md")) ? path.join(wikiDir, "decisions.md") : null,
     wiki_rules: fs.existsSync(path.join(wikiDir, "rules.md")) ? path.join(wikiDir, "rules.md") : null,
     wiki_node_pages: wikiNodePages,
+    wiki_node_summaries: wikiNodeSummaries,
     wiki_last_compiled: wikiLastCompiled,
     wiki_is_stale: wikiIsStale,
     agent_prompts: agentPrompts,

@@ -7,6 +7,12 @@ This note tracks wiki improvements that should wait until the current dogfooding
 - richer node pages with operational summaries
 - index page freshness + hotspot summaries
 - sweep context metadata for wiki freshness
+- machine-friendly wiki summary artifacts
+  - `wiki/index.json`
+  - per-node summaries under `wiki/data/nodes/`
+- sweep bootstrap exposure for machine-friendly wiki artifacts
+  - `wiki_index_json`
+  - `wiki_node_summaries`
 
 ## Next Improvements After Dogfooding
 
@@ -20,9 +26,6 @@ This note tracks wiki improvements that should wait until the current dogfooding
   - recurring findings by category
   - recently fixed hotspots
   - "watch areas" per node
-- add machine-friendly compact summary artifacts
-  - short JSON summaries alongside markdown pages
-  - exact fields for sweep/research/bootstrap
 - improve entrypoint detection
   - backend routes
   - job runners

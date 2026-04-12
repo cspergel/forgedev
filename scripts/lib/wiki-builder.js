@@ -227,6 +227,36 @@ function buildNodePage(nodeId, spec, decisions, pastFindings, crossRefs, operati
   return lines.join("\n");
 }
 
+function buildNodeSummaryData(nodeId, spec, decisions, pastFindings, crossRefs, operationalSummary = {}) {
+  const sharedModels = []
+    .concat(Array.isArray(spec.shared_models) ? spec.shared_models : [])
+    .concat(Array.isArray(spec.shared_types) ? spec.shared_types : [])
+    .filter(Boolean);
+
+  return {
+    node_id: nodeId,
+    status: operationalSummary.status || "unknown",
+    node_type: operationalSummary.nodeType || "unknown",
+    file_count: typeof operationalSummary.fileCount === "number" ? operationalSummary.fileCount : 0,
+    test_file_count: typeof operationalSummary.testFileCount === "number" ? operationalSummary.testFileCount : 0,
+    dependency_count: typeof operationalSummary.dependencyCount === "number" ? operationalSummary.dependencyCount : 0,
+    connection_count: typeof operationalSummary.connectionCount === "number" ? operationalSummary.connectionCount : 0,
+    entrypoints: Array.isArray(operationalSummary.entrypoints) ? operationalSummary.entrypoints : [],
+    hotspot_files: Array.isArray(operationalSummary.hotspotFiles) ? operationalSummary.hotspotFiles : [],
+    recent_findings: pastFindings.slice(0, 5).map((finding) => ({
+      pass: finding.pass || "-",
+      agent: finding.agent || "-",
+      finding: finding.finding || "-",
+      resolution: finding.resolution || "-",
+      file: finding.file || null,
+    })),
+    decision_ids: decisions.map((decision) => decision.id),
+    constraints: Array.isArray(spec.constraints) ? spec.constraints : [],
+    shared_models: [...new Set(sharedModels)],
+    cross_refs: crossRefs,
+  };
+}
+
 function buildDecisionsPage(allDecisions) {
   const lines = ["# Architectural Decisions", ""];
   if (allDecisions.length === 0) {
@@ -332,13 +362,40 @@ function buildIndexPage(manifest, forgePlanDir, options = {}) {
   return lines.join("\n");
 }
 
+function buildIndexData(manifest, options = {}) {
+  const project = manifest.project || {};
+  const nodeIds = Object.keys(manifest.nodes || {});
+
+  return {
+    project: {
+      name: project.name || "Project",
+      tier: project.complexity_tier || "unknown",
+      tech_stack: project.tech_stack || {},
+      node_ids: nodeIds,
+    },
+    wiki_last_compiled: options.wikiLastCompiled || null,
+    wiki_is_stale: Boolean(options.wikiIsStale),
+    hotspots: Array.isArray(options.topHotspots) ? options.topHotspots : [],
+    node_health: Array.isArray(options.nodeSummaries)
+      ? options.nodeSummaries.map((summary) => ({
+          node_id: summary.nodeId,
+          status: summary.status || "unknown",
+          finding_count: summary.findingCount || 0,
+          hot_files: Array.isArray(summary.hotspotFiles) ? summary.hotspotFiles : [],
+        }))
+      : [],
+  };
+}
+
 module.exports = {
   extractDecisionMarkers,
   inferPatterns,
   buildNodePage,
+  buildNodeSummaryData,
   buildDecisionsPage,
   buildRulesPage,
   buildIndexPage,
+  buildIndexData,
   DECISION_REGEX,
   sanitizeForMarkdown,
   isTestFile,

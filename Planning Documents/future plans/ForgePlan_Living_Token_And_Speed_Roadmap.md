@@ -304,6 +304,38 @@ Later:
 Important:
 - transport upgrades are not a substitute for good control-plane architecture
 
+## J. Intrinsic Harness Knowledge
+
+Goal:
+- stop spending tokens rereading ForgePlan's own operating instructions
+
+Priority actions:
+- move stable orchestration law out of skill/agent markdown and into intrinsic runtime logic:
+  - sweep role definitions
+  - phase advancement rules
+  - recovery option policy
+  - parallelism constraints
+  - ownership/state mutation rules
+- keep external files for:
+  - project policy
+  - model adapter settings
+  - extensible heuristics
+  - user-tunable thresholds
+- shrink runtime prompt surfaces so models receive:
+  - compact role identifiers
+  - deterministic context artifacts
+  - only the dynamic task payload for the current step
+
+Why this matters:
+- current dogfooding shows repeated reads of `skills/` and agent prompt files during sweep/recovery
+- that is useful for discovery now, but it is long-term orchestration waste
+- a real harness should know its own control-plane rules without retelling them every pass
+
+Expected impact:
+- lower token burn in sweep/build/recovery loops
+- lower latency from fewer prompt-file rereads
+- less behavioral drift from markdown interpretation
+
 ## I. Model-Agnostic Core Extraction
 
 Goal:
@@ -367,6 +399,14 @@ Gate:
 
 Gate:
 - transport optimization sits on top of a stable core, not in place of one
+
+### Phase 6: Internalize Harness Rules
+- move stable sweep/build/recovery orchestration into intrinsic runtime code
+- reduce dependence on rereading `skills/` and agent definition markdown at runtime
+- keep only project policy and extensibility surfaces external
+
+Gate:
+- runtime knows its own operating law and prompt packets stop re-teaching stable ForgePlan behavior
 
 ## Immediate Concrete Tasks
 

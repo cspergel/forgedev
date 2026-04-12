@@ -72,6 +72,7 @@ async function main() {
   const cwd = process.cwd();
   const fpDir = path.join(cwd, ".forgeplan");
   const wikiDir = path.join(fpDir, "wiki");
+  const wikiDataDir = path.join(wikiDir, "data");
   const manifestPath = path.join(fpDir, "manifest.yaml");
   const statePath = path.join(fpDir, "state.json");
 
@@ -129,6 +130,7 @@ async function main() {
   const nodeSummaries = [];
   const projectFindingRefs = [];
   const pages = {}; // filename -> content
+  const dataArtifacts = {}; // filename -> object
   let nodeCount = 0, ruleCount = 0, patternCount = 0, decisionCount = 0;
 
   // Step 1-2: Process each node
@@ -282,6 +284,14 @@ async function main() {
 
     // 2f: Generate node page
     pages[`nodes/${nodeId}.md`] = wb.buildNodePage(nodeId, spec, decisions, pastFindings, crossRefs, operationalSummary);
+    dataArtifacts[`data/nodes/${nodeId}.json`] = wb.buildNodeSummaryData(
+      nodeId,
+      spec,
+      decisions,
+      pastFindings,
+      crossRefs,
+      operationalSummary
+    );
     nodeCount++;
     decisionCount += decisions.length;
     nodeSummaries.push({
@@ -335,6 +345,12 @@ async function main() {
     topHotspots,
     nodeSummaries: nodeSummaries.sort((a, b) => b.findingCount - a.findingCount || a.nodeId.localeCompare(b.nodeId)),
   });
+  dataArtifacts["index.json"] = wb.buildIndexData(manifest, {
+    wikiLastCompiled: state.wiki_last_compiled || null,
+    wikiIsStale: Boolean(state.wiki_last_compiled && state.last_updated && state.wiki_last_compiled < state.last_updated),
+    topHotspots,
+    nodeSummaries: nodeSummaries.sort((a, b) => b.findingCount - a.findingCount || a.nodeId.localeCompare(b.nodeId)),
+  });
 
   // Step 4: Reconcile vs manifest
   const nodesDir = path.join(wikiDir, "nodes");
@@ -347,6 +363,16 @@ async function main() {
         fs.mkdirSync(archiveDir, { recursive: true });
         fs.renameSync(path.join(nodesDir, file), path.join(archiveDir, file));
         debug(`Archived: ${id}`);
+      }
+    }
+  }
+  const dataNodesDir = path.join(wikiDataDir, "nodes");
+  if (fs.existsSync(dataNodesDir)) {
+    for (const file of fs.readdirSync(dataNodesDir)) {
+      const id = file.replace(/\.json$/, "");
+      if (!nodeIds.includes(id)) {
+        fs.unlinkSync(path.join(dataNodesDir, file));
+        debug(`Removed stale node data: ${id}`);
       }
     }
   }
@@ -379,6 +405,7 @@ async function main() {
       fs.rmSync(stagingDir, { recursive: true, force: true });
     }
     fs.mkdirSync(path.join(stagingDir, "nodes"), { recursive: true });
+    fs.mkdirSync(path.join(stagingDir, "data", "nodes"), { recursive: true });
 
     // 5c: Write all pages to staging
     for (const [relPath, content] of Object.entries(pages)) {
@@ -386,9 +413,20 @@ async function main() {
       fs.mkdirSync(path.dirname(stagingPath), { recursive: true });
       fs.writeFileSync(stagingPath, content, "utf-8");
     }
+    for (const [relPath, content] of Object.entries(dataArtifacts)) {
+      const stagingPath = path.join(stagingDir, relPath);
+      fs.mkdirSync(path.dirname(stagingPath), { recursive: true });
+      fs.writeFileSync(stagingPath, JSON.stringify(content, null, 2), "utf-8");
+    }
 
     // 5d: Rename from staging to final
     for (const [relPath] of Object.entries(pages)) {
+      const src = path.join(stagingDir, relPath);
+      const dest = path.join(wikiDir, relPath);
+      fs.mkdirSync(path.dirname(dest), { recursive: true });
+      fs.renameSync(src, dest);
+    }
+    for (const [relPath] of Object.entries(dataArtifacts)) {
       const src = path.join(stagingDir, relPath);
       const dest = path.join(wikiDir, relPath);
       fs.mkdirSync(path.dirname(dest), { recursive: true });

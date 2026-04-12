@@ -239,6 +239,11 @@ Use the helper's recommendation directly:
   ```
   then run `restart-sweep-pass`.
 - Do **not** hand-edit `.forgeplan/state.json` to null out `fixing_node` or change `current_phase`.
+- After restart or resume cleanup, if you want to verify the new state, use:
+  ```bash
+  node "${CLAUDE_PLUGIN_ROOT}/scripts/status-report.js"
+  ```
+  Do **not** use ad hoc `node -e`, `python -c`, or `cat ... | python3 -c ...` snippets to inspect recovery state.
 
 **Abort behavior (steps MUST execute in this order):**
 

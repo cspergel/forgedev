@@ -461,6 +461,12 @@ function assertTopLevelOrchestrationStateRules(errors) {
     if (!content.includes("Do **not** fall back to heuristic prompt searches")) {
       pushError(errors, "skills/recover/SKILL.md: claude-sweep recovery must forbid heuristic sweep bootstrap reads by default");
     }
+    if (!content.includes('node "${CLAUDE_PLUGIN_ROOT}/scripts/status-report.js"')) {
+      pushError(errors, "skills/recover/SKILL.md: recovery state verification should use status-report.js");
+    }
+    if (!content.includes("Do **not** use ad hoc `node -e`, `python -c`, or `cat ... | python3 -c ...` snippets")) {
+      pushError(errors, "skills/recover/SKILL.md: recovery flow must forbid ad hoc shell snippets for state inspection");
+    }
   }
 
   const sessionStartPath = path.join(repoRoot, "scripts", "session-start.js");
@@ -611,6 +617,12 @@ function assertWikiKnowledgeContract(errors) {
     if (!content.includes("## Node Health")) {
       pushError(errors, "scripts/lib/wiki-builder.js: wiki index should summarize node health");
     }
+    if (!content.includes("buildNodeSummaryData")) {
+      pushError(errors, "scripts/lib/wiki-builder.js: wiki builder should emit machine-readable node summary data");
+    }
+    if (!content.includes("buildIndexData")) {
+      pushError(errors, "scripts/lib/wiki-builder.js: wiki builder should emit machine-readable index data");
+    }
   }
 
   if (fs.existsSync(compileWikiPath)) {
@@ -620,6 +632,12 @@ function assertWikiKnowledgeContract(errors) {
     }
     if (!content.includes("topHotspots")) {
       pushError(errors, "scripts/compile-wiki.js: wiki compiler should derive project-level hotspots");
+    }
+    if (!content.includes('dataArtifacts["index.json"]')) {
+      pushError(errors, "scripts/compile-wiki.js: wiki compiler should emit a machine-readable wiki index");
+    }
+    if (!content.includes("data/nodes/")) {
+      pushError(errors, "scripts/compile-wiki.js: wiki compiler should emit machine-readable per-node summaries");
     }
   }
 
@@ -633,6 +651,12 @@ function assertWikiKnowledgeContract(errors) {
     }
     if (!content.includes("wiki_is_stale")) {
       pushError(errors, "scripts/prepare-sweep-context.js: sweep context should expose wiki_is_stale");
+    }
+    if (!content.includes("wiki_index_json")) {
+      pushError(errors, "scripts/prepare-sweep-context.js: sweep context should expose wiki_index_json");
+    }
+    if (!content.includes("wiki_node_summaries")) {
+      pushError(errors, "scripts/prepare-sweep-context.js: sweep context should expose wiki_node_summaries");
     }
   }
 }
