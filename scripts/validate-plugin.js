@@ -642,6 +642,32 @@ function assertDesignLibraryContract(errors) {
     if (!content.includes("compose-design-context.js")) {
       pushError(errors, "skills/deep-build/SKILL.md: design pass must use compose-design-context.js");
     }
+    if (!content.includes(".forgeplan/skills-registry.yaml")) {
+      pushError(errors, "skills/deep-build/SKILL.md: design pass must consult .forgeplan/skills-registry.yaml for design-pass skills");
+    }
+    if (!content.includes("design-pass` registry assignments")) {
+      pushError(errors, "skills/deep-build/SKILL.md: design pass must include design-pass registry assignments, not just frontend-design");
+    }
+    if (!content.includes("Do **not** try to edit files before activating the owning node")) {
+      pushError(errors, "skills/deep-build/SKILL.md: design pass fixes must activate the owning node before any Write/Edit");
+    }
+    if (!content.includes('state-transition.js" start-sweep-fix')) {
+      pushError(errors, "skills/deep-build/SKILL.md: design pass fixes must use state-transition.js start-sweep-fix");
+    }
+    if (!content.includes("Do **not** dispatch one fix agent per design finding on the same node")) {
+      pushError(errors, "skills/deep-build/SKILL.md: design pass fixes should batch same-node findings instead of per-finding fanout");
+    }
+  }
+
+  const designPassAgentPath = path.join(repoRoot, "agents", "design-pass.md");
+  if (fs.existsSync(designPassAgentPath)) {
+    const content = fs.readFileSync(designPassAgentPath, "utf8");
+    if (!content.includes(".forgeplan/skills-registry.yaml")) {
+      pushError(errors, "agents/design-pass.md: design-pass agent should read .forgeplan/skills-registry.yaml");
+    }
+    if (!content.includes("specific design docs, profiles, or skill references")) {
+      pushError(errors, "agents/design-pass.md: design-pass agent should read the exact docs/profiles/skills surfaced by compose-design-context.js");
+    }
   }
 
   const sweepPath = path.join(skillsRoot, "sweep", "SKILL.md");
@@ -692,6 +718,22 @@ function assertDesignLibraryContract(errors) {
     }
     if (!content.includes("list-design-profiles.js")) {
       pushError(errors, "scripts/pre-tool-use.js: Bash allowlist must include list-design-profiles.js");
+    }
+  }
+
+  if (fs.existsSync(designContextPath)) {
+    const content = fs.readFileSync(designContextPath, "utf8");
+    if (!content.includes("skills-registry.yaml")) {
+      pushError(errors, "scripts/lib/design-context.js: should consult .forgeplan/skills-registry.yaml for design skill references");
+    }
+    if (!content.includes("inferProjectDesignProfiles")) {
+      pushError(errors, "scripts/lib/design-context.js: should infer fallback design profiles when no explicit design config exists");
+    }
+    if (!content.includes("Auto-Selected Inspiration Profiles")) {
+      pushError(errors, "scripts/lib/design-context.js: composed design context should surface auto-selected inspiration profiles");
+    }
+    if (!content.includes("Design Skill References")) {
+      pushError(errors, "scripts/lib/design-context.js: composed design context should surface registry-assigned design skills");
     }
   }
 }

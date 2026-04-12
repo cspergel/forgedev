@@ -138,27 +138,41 @@ node "${CLAUDE_PLUGIN_ROOT}/scripts/state-transition.js" set-sweep-phase "verify
 and proceed directly to Phase 3.
 
 1. `sweep_state.current_phase` should already be `"design-pass"` from the Phase 2 transition. Do not hand-edit `state.json` here.
-2. Load the `frontend-design` skill directly — the design-pass agent is not in the registry (it's a specialized single-use agent, not a standard sweep/build agent). Do **not** search heuristically for this file. Read the exact path `${CLAUDE_PLUGIN_ROOT}/skill-library/core/frontend-design.md` for inclusion in the agent prompt. If a direct read of that exact path fails, skip the design pass with a warning.
-3. Build the design-direction brief with:
+2. Read `.forgeplan/skills-registry.yaml`. If missing or stale, run `node "${CLAUDE_PLUGIN_ROOT}/scripts/skill-registry.js" refresh` first.
+3. Load the `design-pass` registry assignments. `frontend-design` is mandatory, but do **not** stop there — if the registry assigns additional design/frontend skills to `design-pass`, include them as `READ NOW` / `REFERENCE` inputs in the agent prompt instead of hardcoding only one skill.
+4. Build the design-direction brief with:
    ```bash
    node "${CLAUDE_PLUGIN_ROOT}/scripts/compose-design-context.js"
    ```
-   Include that composed brief in the design-pass prompt. If it reports no explicit design context, note that explicitly and continue.
-4. Identify all frontend nodes (nodes with `type: "frontend"` or nodes whose `file_scope` contains frontend files such as `.tsx`, `.jsx`, `.vue`, `.svelte`)
-5. Dispatch the design-pass agent using the Agent tool:
+   Include that composed brief in the design-pass prompt. If it surfaces project design docs, registry-assigned design skills, or auto-selected inspiration profiles, treat those as required context and read the exact references it names. If it reports no explicit design context, note that explicitly and continue.
+5. Identify all frontend nodes (nodes with `type: "frontend"` or nodes whose `file_scope` contains frontend files such as `.tsx`, `.jsx`, `.vue`, `.svelte`)
+6. Dispatch the design-pass agent using the Agent tool:
    - Read `agents/design-pass.md` for the system prompt
-   - Include the `frontend-design` skill content from `skill-library/core/frontend-design.md`
+   - Include the `design-pass` registry skill metadata from `.forgeplan/skills-registry.yaml`
    - Include the composed design brief from `compose-design-context.js`
    - Include all frontend node files (read from each frontend node's `file_scope`)
    - Include the manifest for context
    - **Tier-aware depth:** Pass the complexity tier so the agent knows which levels to check:
-     - SMALL (if explicitly enabled): Level 1 only (anti-slop rules)
-     - MEDIUM: Levels 1-2 (anti-slop rules + visual consistency)
-     - LARGE: Levels 1-3 (anti-slop rules + visual consistency + component quality)
-6. Parse the agent's response for FINDING blocks (D-prefix) or CLEAN
-7. If CLEAN: log "Design pass clean." Proceed to user steering (step 9).
-8. If findings: dispatch a fresh fix agent per finding (same pattern as sweep Phase 4 — fresh agent, node-scoped, save/restore node status). After fixes, re-run the design pass agent once to verify. If still has findings after 2 passes, move remaining to `sweep_state.needs_manual_attention` with reason "design quality — user review recommended."
-9. **User steering (one round):** Present a summary of the frontend build:
+      - SMALL (if explicitly enabled): Level 1 only (anti-slop rules)
+      - MEDIUM: Levels 1-2 (anti-slop rules + visual consistency)
+      - LARGE: Levels 1-3 (anti-slop rules + visual consistency + component quality)
+7. Parse the agent's response for FINDING blocks (D-prefix) or CLEAN
+8. If CLEAN: log "Design pass clean." Proceed to user steering (step 10).
+9. If findings:
+   - Group the findings by owning frontend node first. Do **not** try to edit files before activating the owning node.
+   - For each affected frontend node, run:
+     ```bash
+     node "${CLAUDE_PLUGIN_ROOT}/scripts/state-transition.js" start-sweep-fix "[node-id]" "[previous-status]"
+     ```
+     before any Write/Edit to source files.
+   - Do **not** dispatch one fix agent per design finding on the same node. Batch same-node design findings into a single node-scoped fix pass so the agent can make coherent typography/state/error-message changes together.
+   - If there are multiple affected frontend nodes, you may process analysis in parallel, but execute the write phase serially because ForgePlan still supports only one active node at a time during remediation.
+   - After the node-scoped design fixes finish, run:
+     ```bash
+     node "${CLAUDE_PLUGIN_ROOT}/scripts/state-transition.js" restore-previous-status "[node-id]"
+     ```
+   - Then re-run the design pass agent once to verify. If still has findings after 2 passes, move remaining to `sweep_state.needs_manual_attention` with reason "design quality — user review recommended."
+10. **User steering (one round):** Present a summary of the frontend build:
    ```
    Frontend design pass complete. Here's what was built:
      - [N] pages: [list page names from frontend nodes]
