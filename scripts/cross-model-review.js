@@ -157,6 +157,10 @@ function assembleReviewPrompt(nodeId, spec, manifest, nodeFiles) {
   prompt += "For EACH interface: verify the contract is implemented.\n";
   prompt += "For EACH non_goal: verify it was NOT implemented.\n";
   prompt += "For EACH failure_mode: verify defensive code exists.\n\n";
+  prompt += "Conflict policy:\n";
+  prompt += "- REQUEST CHANGES only for explicit spec/constraint/interface/non-goal/failure-mode violations, or concrete runtime/test risks.\n";
+  prompt += "- If you merely prefer a different refactor or modularization, report it as ADVISORY REFACTOR and do NOT use it to justify REQUEST CHANGES.\n";
+  prompt += "- If your suggested change would require changing the spec or architectural constraints themselves, report SPEC CONFLICT instead of treating the implementation as wrong.\n\n";
   prompt += "End with: Recommendation: APPROVE or REQUEST CHANGES (N failures)\n";
 
   return prompt;

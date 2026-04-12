@@ -333,6 +333,10 @@ This phase follows the **exact same logic as sweep Phase 6** (Task 9). All statu
 
    **If `status: "findings"`:**
    - Re-number IDs with `X` prefix. Set `pass_found` on each.
+   - Apply the same conflict policy as `/forgeplan:sweep` Phase 6:
+     - deterministic/runtime truth > explicit spec/contract truth > review/certifier findings > advisory refactor suggestions
+     - `kind: "advisory-refactor"` must not override explicit constraints or passing deterministic checks
+     - `kind: "spec-conflict"` goes to `needs_manual_attention`, not the automatic fix loop
    - Route by node type (same as sweep Phase 3): real node IDs → `pending`, `"project"` → `needs_manual_attention`
    - Set `consecutive_clean_passes` to 0
    - Increment `sweep_state.pass_number`

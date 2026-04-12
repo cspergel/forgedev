@@ -256,6 +256,7 @@ function assembleCrossCheckPrompt(manifest, allFiles, sharedTypes, sweepReport, 
   prompt += "```\n";
   prompt += "FINDING: F[N]\n";
   prompt += "Node: [node-id or \"project\" for cross-cutting issues]\n";
+  prompt += "Kind: contract-violation | runtime-risk | test-gap | spec-conflict | advisory-refactor\n";
   prompt += "Category: [auth-security|type-consistency|error-handling|database|api-contracts|imports|code-quality|test-quality|config-environment|frontend-ux|documentation|cross-node-integration|runtime-verification]\n";
   prompt += "Severity: HIGH | MEDIUM | LOW\n";
   prompt += "Confidence: [0-100]\n";
@@ -265,6 +266,10 @@ function assembleCrossCheckPrompt(manifest, allFiles, sharedTypes, sweepReport, 
   prompt += "Fix: [specific remediation - single line]\n";
   prompt += "```\n\n";
   prompt += "IMPORTANT: Each field MUST be exactly one line. The parser uses line-by-line extraction.\n\n";
+  prompt += "Conflict policy:\n";
+  prompt += "- If you identify a real spec, interface, or runtime violation, use Kind: contract-violation, runtime-risk, or test-gap.\n";
+  prompt += "- If you think the code should be refactored but it still satisfies the explicit contracts, use Kind: advisory-refactor.\n";
+  prompt += "- If your recommendation requires changing the spec, manifest contract, or accepted architectural constraint, use Kind: spec-conflict rather than presenting it as a normal bug.\n\n";
   prompt += "If everything is clean, report: CLEAN: No findings. All fixes verified.\n";
 
   return prompt;
@@ -331,14 +336,32 @@ function normalizeSeverity(raw) {
   return "MEDIUM";
 }
 
+const VALID_KINDS = [
+  "contract-violation",
+  "runtime-risk",
+  "test-gap",
+  "spec-conflict",
+  "advisory-refactor",
+];
+
+function normalizeKind(raw) {
+  const lower = raw.trim().toLowerCase();
+  if (VALID_KINDS.includes(lower)) return lower;
+  if (lower.includes("runtime")) return "runtime-risk";
+  if (lower.includes("test")) return "test-gap";
+  if (lower.includes("spec")) return "spec-conflict";
+  if (lower.includes("refactor") || lower.includes("advisory")) return "advisory-refactor";
+  return "contract-violation";
+}
+
 function extractFindings(report, sourceModel) {
   const findings = [];
 
   const findingRegex =
-    /FINDING:\s*F(\d+)\s*\n\s*Node:\s*(.+)\s*\n\s*Category:\s*(.+)\s*\n\s*Severity:\s*(.+)\s*\n\s*Confidence:\s*(\d+)\s*\n\s*Description:\s*(.+)\s*\n\s*File:\s*(.+)\s*\n\s*(?:Counter-File:\s*.+\s*\n\s*)?Line:\s*(.+)\s*\n\s*Fix:\s*(.+)/gi;
+    /FINDING:\s*F(\d+)\s*\n\s*Node:\s*(.+)\s*\n\s*Kind:\s*(.+)\s*\n\s*Category:\s*(.+)\s*\n\s*Severity:\s*(.+)\s*\n\s*Confidence:\s*(\d+)\s*\n\s*Description:\s*(.+)\s*\n\s*File:\s*(.+)\s*\n\s*(?:Counter-File:\s*.+\s*\n\s*)?Line:\s*(.+)\s*\n\s*Fix:\s*(.+)/gi;
 
   const fallbackRegex =
-    /FINDING:\s*F(\d+)\s*\n\s*Node:\s*(.+)\s*\n\s*Category:\s*(.+)\s*\n\s*Severity:\s*(.+)\s*\n\s*Description:\s*(.+)\s*\n\s*File:\s*(.+)\s*\n\s*(?:Counter-File:\s*.+\s*\n\s*)?Line:\s*(.+)\s*\n\s*Fix:\s*(.+)/gi;
+    /FINDING:\s*F(\d+)\s*\n\s*Node:\s*(.+)\s*\n\s*(?:Kind:\s*(.+)\s*\n\s*)?Category:\s*(.+)\s*\n\s*Severity:\s*(.+)\s*\n\s*Description:\s*(.+)\s*\n\s*File:\s*(.+)\s*\n\s*(?:Counter-File:\s*.+\s*\n\s*)?Line:\s*(.+)\s*\n\s*Fix:\s*(.+)/gi;
 
   let match;
   while ((match = findingRegex.exec(report)) !== null) {
@@ -348,13 +371,14 @@ function extractFindings(report, sourceModel) {
       id: `F${match[1]}`,
       source_model: sourceModel,
       node,
-      category: normalizeCategory(match[3]),
-      severity: normalizeSeverity(match[4]),
-      confidence: parseInt(match[5], 10),
-      description: match[6].trim(),
-      file: match[7].trim(),
-      line: match[8].trim(),
-      fix: match[9].trim(),
+      kind: normalizeKind(match[3]),
+      category: normalizeCategory(match[4]),
+      severity: normalizeSeverity(match[5]),
+      confidence: parseInt(match[6], 10),
+      description: match[7].trim(),
+      file: match[8].trim(),
+      line: match[9].trim(),
+      fix: match[10].trim(),
     });
   }
 
@@ -366,13 +390,14 @@ function extractFindings(report, sourceModel) {
         id: `F${match[1]}`,
         source_model: sourceModel,
         node,
-        category: normalizeCategory(match[3]),
-        severity: normalizeSeverity(match[4]),
+        kind: normalizeKind(match[3] || ""),
+        category: normalizeCategory(match[4]),
+        severity: normalizeSeverity(match[5]),
         confidence: 80,
-        description: match[5].trim(),
-        file: match[6].trim(),
-        line: match[7].trim(),
-        fix: match[8].trim(),
+        description: match[6].trim(),
+        file: match[7].trim(),
+        line: match[8].trim(),
+        fix: match[9].trim(),
       });
     }
   }

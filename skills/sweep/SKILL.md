@@ -486,7 +486,13 @@ node "${CLAUDE_PLUGIN_ROOT}/scripts/cross-model-bridge.js" ".forgeplan/sweeps/sw
    **If `status: "findings"`:**
    - **Re-score confidence:** The external model's self-assigned confidence scores are unreliable (it has no context about ForgePlan's calibration system). For each cross-model finding, Claude must re-evaluate the confidence score by reading the cited file and line, assessing the evidence strength, and assigning a new confidence value using the same 0-100 calibration guide the sweep agents use. Replace the external model's confidence with Claude's re-scored value. Then apply the same `< 75` filter — discard re-scored findings below 75. Log: "Re-scored [N] cross-model findings. Kept [M] (confidence >= 75), filtered [K]."
    - Re-number finding IDs to avoid collision with Claude findings. Use prefix `X` for cross-model: X1, X2, X3... (Claude findings use F1, F2, F3...)
-   - Route findings by node type (same as Phase 3 step 8): real node IDs → `pending`, `"project"` → `needs_manual_attention`. Set `pass_found` on each.
+   - Apply the finding precedence policy before routing:
+     - Deterministic/runtime truth and explicit spec/contract truth outrank cross-model preference.
+     - `kind: "contract-violation"`, `"runtime-risk"`, or `"test-gap"` may enter the normal fix cycle if confidence remains >= 75.
+     - `kind: "advisory-refactor"` must NOT override an explicit accepted structural constraint, manifest contract, or passing deterministic verification. Route these to `needs_manual_attention` as advisory notes only; do not block convergence.
+     - `kind: "spec-conflict"` means the alternate model is effectively arguing that the spec or architectural contract should change. Do NOT auto-fix this as if the code were wrong. Route it to `needs_manual_attention` with reason "cross-model spec conflict".
+     - If a cross-model finding conflicts with an already-accepted Claude finding or fix because the Claude path is backed by explicit contract/runtime evidence, keep the contract-backed finding and downgrade the cross-model suggestion to advisory/manual attention.
+   - After applying the policy, route findings by node type (same as Phase 3 step 8): real node IDs → `pending`, `"project"` → `needs_manual_attention`. Set `pass_found` on each.
    - Set `sweep_state.consecutive_clean_passes` to 0
    - Increment `sweep_state.pass_number`
    - Update `sweep_state.current_phase` to `"cross-fix"`

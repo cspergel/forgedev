@@ -168,6 +168,31 @@ This sends the node's spec and implementation files to the alternate model for i
 
 Parse the JSON output and present the cross-model findings to the user alongside the native review.
 
+## Conflict Resolution Policy
+
+ForgePlan must not resolve reviewer vs. certifier disagreements by "who sounds smarter."
+Use this precedence order:
+
+1. Deterministic/runtime truth
+   - passing/failing tests
+   - verify-runnable
+   - integrate-check
+   - file-scope/state-transition enforcement
+2. Explicit spec/contract truth
+   - acceptance criteria
+   - constraints
+   - interfaces
+   - non-goals
+   - failure-mode requirements
+3. Native and cross-model review findings
+4. Advisory refactor preferences
+
+Apply the policy as follows:
+- If the cross-model reviewer suggests a refactor that breaks an explicit accepted structural constraint or manifest/spec contract, the contract wins. Treat the suggestion as rejected advisory input, not as a blocking failure.
+- If the cross-model reviewer identifies a genuine contract/runtime/spec violation, that may block or downgrade the node per `enforcement.mode`.
+- If the cross-model reviewer is effectively arguing that the spec/constraint itself should change, classify that as a spec conflict and surface it for revision/manual attention rather than treating the current implementation as wrong.
+- Advisory refactors alone must not force `REQUEST CHANGES`.
+
 ## Step 3: Enforcement Gate
 
 The `enforcement.mode` from config.yaml determines whether cross-model review blocks the status transition:

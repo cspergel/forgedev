@@ -384,6 +384,9 @@ function assertTopLevelOrchestrationStateRules(errors) {
     if (!content.includes("summarize-verify-runnable.js")) {
       pushError(errors, "skills/deep-build/SKILL.md: Phase 3 remediation must use summarize-verify-runnable.js for truncated verify-runnable output");
     }
+    if (!content.includes("deterministic/runtime truth > explicit spec/contract truth > review/certifier findings > advisory refactor suggestions")) {
+      pushError(errors, "skills/deep-build/SKILL.md: cross-model phase must document the finding precedence ladder");
+    }
   }
 
   if (fs.existsSync(reviewPath)) {
@@ -393,6 +396,12 @@ function assertTopLevelOrchestrationStateRules(errors) {
     }
     if (!content.includes("skip this pre-transition")) {
       pushError(errors, "skills/review/SKILL.md: parallel review batches must skip per-node start-review pre-transitions");
+    }
+    if (!content.includes("Conflict Resolution Policy")) {
+      pushError(errors, "skills/review/SKILL.md: review flow must define a reviewer vs certifier conflict policy");
+    }
+    if (!content.includes("Advisory refactors alone must not force `REQUEST CHANGES`")) {
+      pushError(errors, "skills/review/SKILL.md: review flow must forbid advisory refactors from forcing REQUEST CHANGES");
     }
   }
 
@@ -456,6 +465,31 @@ function assertDesignLibraryContract(errors) {
     }
     if (!content.includes("list-design-profiles.js")) {
       pushError(errors, "scripts/pre-tool-use.js: Bash allowlist must include list-design-profiles.js");
+    }
+  }
+}
+
+function assertCrossModelConflictPolicy(errors) {
+  const bridgePath = path.join(repoRoot, "scripts", "cross-model-bridge.js");
+  const reviewPath = path.join(repoRoot, "scripts", "cross-model-review.js");
+
+  if (fs.existsSync(bridgePath)) {
+    const content = fs.readFileSync(bridgePath, "utf8");
+    if (!content.includes("Kind: contract-violation | runtime-risk | test-gap | spec-conflict | advisory-refactor")) {
+      pushError(errors, "scripts/cross-model-bridge.js: prompt must require cross-model finding kind classification");
+    }
+    if (!content.includes("normalizeKind")) {
+      pushError(errors, "scripts/cross-model-bridge.js: parser must normalize cross-model finding kinds");
+    }
+  }
+
+  if (fs.existsSync(reviewPath)) {
+    const content = fs.readFileSync(reviewPath, "utf8");
+    if (!content.includes("ADVISORY REFACTOR")) {
+      pushError(errors, "scripts/cross-model-review.js: review prompt must distinguish advisory refactors from blocking failures");
+    }
+    if (!content.includes("SPEC CONFLICT")) {
+      pushError(errors, "scripts/cross-model-review.js: review prompt must distinguish spec conflicts from implementation failures");
     }
   }
 }
@@ -599,6 +633,7 @@ assertStateTransitionUsage(errors);
 assertStateTransitionBashAllowlist(errors);
 assertTopLevelOrchestrationStateRules(errors);
 assertDesignLibraryContract(errors);
+assertCrossModelConflictPolicy(errors);
 
 if (errors.length > 0) {
   console.error("Plugin validation failed:");
