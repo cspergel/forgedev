@@ -626,6 +626,7 @@ function evaluateBash(toolInput, cwd) {
     nodeScriptPattern("regenerate-shared-types.js"), // our own type generator
     nodeScriptPattern("cross-model-bridge.js"),   // Sprint 6: cross-model sweep bridge
     nodeScriptPattern("verify-runnable.js"),       // our own verification script (Phase A)
+    nodeScriptPattern("summarize-verify-runnable.js", String.raw`(?:\s+(?:--stdin|".*?"|'.*?'|\S+))?(?:\s|$)`), // verify-runnable result summarizer
     nodeScriptPattern("validate-ingest.js"),      // Sprint 10B: repo ingestion validation
     nodeScriptPattern("runtime-verify.js"),        // Phase B runtime verification
     nodeScriptPattern("worktree-manager.js"),     // our own worktree manager
@@ -700,14 +701,68 @@ function evaluateBash(toolInput, cwd) {
 function splitReadOnlyShellSegments(command) {
   const simpleForLoop = command.match(/^\s*for\s+\w+\s+in\s+[\s\S]+?;\s*do\s+([\s\S]+?)\s*;?\s*done\s*$/);
   if (simpleForLoop) {
-    return simpleForLoop[1]
-      .split(/\s*(?:\r?\n|\r|;|&&|\|\||(?<!\|)\|(?!\|))\s*/)
-      .filter(Boolean);
+    return splitShellLikeSegments(simpleForLoop[1]);
   }
 
-  return command
-    .split(/\s*(?:\r?\n|\r|;|&&|\|\||(?<!\|)\|(?!\|))\s*/)
-    .filter(Boolean);
+  return splitShellLikeSegments(command);
+}
+
+function splitShellLikeSegments(command) {
+  const segments = [];
+  let current = "";
+  let quote = null;
+
+  for (let i = 0; i < command.length; i += 1) {
+    const ch = command[i];
+    const next = command[i + 1];
+
+    if (quote) {
+      current += ch;
+      if (ch === quote && command[i - 1] !== "\\") {
+        quote = null;
+      }
+      continue;
+    }
+
+    if (ch === "'" || ch === "\"") {
+      quote = ch;
+      current += ch;
+      continue;
+    }
+
+    if ((ch === "\n" || ch === "\r" || ch === ";")) {
+      if (current.trim()) {
+        segments.push(current.trim());
+      }
+      current = "";
+      continue;
+    }
+
+    if ((ch === "&" && next === "&") || (ch === "|" && next === "|")) {
+      if (current.trim()) {
+        segments.push(current.trim());
+      }
+      current = "";
+      i += 1;
+      continue;
+    }
+
+    if (ch === "|") {
+      if (current.trim()) {
+        segments.push(current.trim());
+      }
+      current = "";
+      continue;
+    }
+
+    current += ch;
+  }
+
+  if (current.trim()) {
+    segments.push(current.trim());
+  }
+
+  return segments;
 }
 
 function normalizeReadOnlySegment(segment) {

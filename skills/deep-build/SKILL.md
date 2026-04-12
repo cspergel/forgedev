@@ -201,6 +201,12 @@ If it returns **`status: "environment_error"`**: attempt environment-focused rem
 If it returns **`status: "fail"`**: do **not** try to edit files directly from sweep-analysis mode. Route the failures into node-scoped fixes first:
 
 1. Parse the failing `steps` from the `verify-runnable.js` JSON.
+   - The step field is `name`, not `step`.
+   - If the raw JSON is truncated or hard to inspect, use:
+     ```bash
+     node "${CLAUDE_PLUGIN_ROOT}/scripts/summarize-verify-runnable.js" --stdin
+     ```
+     and pipe the JSON into it, or save the JSON to a temp file and pass the file path.
 2. Map each failure to an owning node using file paths, workspace labels, and manifest scopes:
    - `frontend/**`, `typecheck:node*`, `test:node*`, `server:node*` -> `frontend-app-shell`
    - `placementops/modules/<name>/**` -> `<name>-module`

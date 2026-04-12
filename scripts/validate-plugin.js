@@ -293,6 +293,9 @@ function assertStateTransitionBashAllowlist(errors) {
   if (!content.includes("state-transition.js")) {
     pushError(errors, "scripts/pre-tool-use.js: Bash allowlist must include state-transition.js helper commands");
   }
+  if (!content.includes("summarize-verify-runnable.js")) {
+    pushError(errors, "scripts/pre-tool-use.js: Bash allowlist must include summarize-verify-runnable.js");
+  }
   if (!content.includes("start-sweep-fix")) {
     pushError(errors, "scripts/pre-tool-use.js: Bash allowlist must include state-transition.js start-sweep-fix");
   }
@@ -304,6 +307,9 @@ function assertStateTransitionBashAllowlist(errors) {
   }
   if (!content.includes("splitReadOnlyShellSegments")) {
     pushError(errors, "scripts/pre-tool-use.js: Bash guard must support splitting safe read-only shell wrappers");
+  }
+  if (!content.includes("splitShellLikeSegments")) {
+    pushError(errors, "scripts/pre-tool-use.js: Bash guard must use a quote-aware shell segment splitter for read-only pipelines");
   }
   if (!content.includes("normalizeReadOnlySegment")) {
     pushError(errors, "scripts/pre-tool-use.js: Bash guard must normalize benign shell redirections before safe-command matching");
@@ -371,6 +377,12 @@ function assertTopLevelOrchestrationStateRules(errors) {
     }
     if (!content.includes("Do **not** apply fixes for multiple node groups in parallel")) {
       pushError(errors, "skills/deep-build/SKILL.md: Phase 3 remediation must forbid parallel cross-node write execution");
+    }
+    if (!content.includes("The step field is `name`, not `step`")) {
+      pushError(errors, "skills/deep-build/SKILL.md: Phase 3 remediation must document the verify-runnable step field name");
+    }
+    if (!content.includes("summarize-verify-runnable.js")) {
+      pushError(errors, "skills/deep-build/SKILL.md: Phase 3 remediation must use summarize-verify-runnable.js for truncated verify-runnable output");
     }
   }
 
