@@ -308,6 +308,9 @@ function assertStateTransitionBashAllowlist(errors) {
   if (!content.includes("prepare-sweep-context.js")) {
     pushError(errors, "scripts/pre-tool-use.js: Bash allowlist must include prepare-sweep-context.js");
   }
+  if (!content.includes("load-sweep-findings.js")) {
+    pushError(errors, "scripts/pre-tool-use.js: Bash allowlist must include load-sweep-findings.js");
+  }
   if (!content.includes("deep-build-finalize-context.js")) {
     pushError(errors, "scripts/pre-tool-use.js: Bash allowlist must include deep-build-finalize-context.js");
   }
@@ -425,6 +428,9 @@ function assertTopLevelOrchestrationStateRules(errors) {
     }
     if (!content.includes("prepare-sweep-context.js")) {
       pushError(errors, "skills/deep-build/SKILL.md: Phase 5 must use prepare-sweep-context.js for deterministic sweep setup");
+    }
+    if (!content.includes("load-sweep-findings.js")) {
+      pushError(errors, "skills/deep-build/SKILL.md: Phase 5 should load sweep findings with load-sweep-findings.js");
     }
     if (!content.includes('state-transition.js" set-sweep-phase "claude-sweep"')) {
       pushError(errors, "skills/deep-build/SKILL.md: Phase 5 must explicitly transition into claude-sweep before sweep bootstrap");
@@ -653,6 +659,12 @@ function assertDesignLibraryContract(errors) {
     if (!content.includes("Agents must NOT write to `.forgeplan/state.json`")) {
       pushError(errors, "skills/sweep/SKILL.md: parallel fix agents must be forbidden from mutating state.json directly");
     }
+    if (!content.includes('node "${CLAUDE_PLUGIN_ROOT}/scripts/load-sweep-findings.js" --stdin')) {
+      pushError(errors, "skills/sweep/SKILL.md: Phase 3 should use load-sweep-findings.js for deterministic findings ingestion");
+    }
+    if (!content.includes("Do **not** hand-edit `.forgeplan/state.json` or use ad hoc `python -c` / `node -e` snippets for findings ingestion")) {
+      pushError(errors, "skills/sweep/SKILL.md: Phase 3 should forbid manual findings ingestion via shell snippets");
+    }
     if (!content.includes('Do **not** call `start-sweep-fix` while `sweep_state.current_phase` is still `"claude-sweep"`')) {
       pushError(errors, "skills/sweep/SKILL.md: Phase 3/4 boundary must forbid start-sweep-fix during claude-sweep");
     }
@@ -751,6 +763,22 @@ function assertWikiKnowledgeContract(errors) {
     if (!content.includes("wiki_node_summaries")) {
       pushError(errors, "scripts/prepare-sweep-context.js: sweep context should expose wiki_node_summaries");
     }
+  }
+
+  const loadSweepFindingsPath = path.join(repoRoot, "scripts", "load-sweep-findings.js");
+  if (fs.existsSync(loadSweepFindingsPath)) {
+    const content = fs.readFileSync(loadSweepFindingsPath, "utf8");
+    if (!content.includes("next_phase")) {
+      pushError(errors, "scripts/load-sweep-findings.js: helper should report the next phase after findings ingestion");
+    }
+    if (!content.includes('state.sweep_state.findings.pending = pending')) {
+      pushError(errors, "scripts/load-sweep-findings.js: helper should write node-scoped findings into sweep_state.findings.pending");
+    }
+    if (!content.includes('state.sweep_state.current_phase = pending.length > 0 ? "claude-fix" : "integrate"')) {
+      pushError(errors, "scripts/load-sweep-findings.js: helper should set current_phase deterministically from pending findings");
+    }
+  } else {
+    pushError(errors, "scripts/load-sweep-findings.js: missing deterministic sweep findings ingestion helper");
   }
 }
 

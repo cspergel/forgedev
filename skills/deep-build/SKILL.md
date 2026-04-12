@@ -288,6 +288,7 @@ Do **not** invoke `Skill(forgeplan:sweep)` or try to delegate this phase through
 Read `${CLAUDE_PLUGIN_ROOT}/skills/sweep/SKILL.md` and execute the sweep workflow inline:
 - dispatch the sweep agents in parallel
 - merge and deduplicate findings
+- load findings into `sweep_state` with `load-sweep-findings.js`
 - run node-scoped fix cycles
 - re-integrate and converge progressively
 
