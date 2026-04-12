@@ -143,6 +143,16 @@ The Builder agent receives:
 
 After the Stop hook allows completion, suggest running `/forgeplan:review [node-id]` next.
 
+Also compute the autonomy handoff explicitly with:
+```bash
+node "${CLAUDE_PLUGIN_ROOT}/scripts/autonomy-handoff.js"
+```
+If it reports `autonomous_available: true`, tell the user they can either:
+- continue manually with the node-scoped next step
+- or return to autonomous orchestration with `/forgeplan:deep-build`
+
+Do not make the user infer that autonomy can resume from the current state.
+
 Manually marking as `"built"` would bypass acceptance criteria verification — the entire point of the Stop hook.
 
 ## Re-Build After Review (Fresh Agent Pattern)

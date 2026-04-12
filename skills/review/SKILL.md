@@ -240,9 +240,26 @@ This atomically sets the final review-complete status, persists review report pa
 
 **After updating state, suggest next steps based on the review outcome:**
 
+Before presenting next steps, compute them deterministically with:
+```bash
+node "${CLAUDE_PLUGIN_ROOT}/scripts/review-next-action.js" "[node-id]"
+```
+Use that helper output as the source of truth for the closeout wording and primary next step.
+
+Also compute the autonomy handoff explicitly with:
+```bash
+node "${CLAUDE_PLUGIN_ROOT}/scripts/autonomy-handoff.js"
+```
+If it reports `autonomous_available: true`, explicitly tell the user they can steer back into autonomy with `/forgeplan:deep-build` from the current state.
+
 - **If APPROVE:** Suggest:
   - `/forgeplan:next` to see the next recommended action
   - `/forgeplan:integrate` if all nodes are now review-complete (to verify cross-node interfaces)
 - **If REQUEST CHANGES:** Suggest:
   - `/forgeplan:build [node-id]` to rebuild this node and address the findings
   - `/forgeplan:sweep` if findings are being intentionally deferred to the later autonomous fix pass
+
+Advisory-mode presentation rule:
+- If the terminal status is `"reviewed-with-findings"`, do **not** present the final banner as if the node is blocked in-place. Use wording like `Advisory findings recorded` or `Review complete with deferred findings`.
+- In that advisory case, the primary next step should be the helper's rebuild recommendation, with sweep as the defer option.
+- In both clean and advisory cases, surface the autonomy handoff if available so the user can choose manual steering or immediate return to autonomous execution.

@@ -619,6 +619,8 @@ function evaluateBash(toolInput, cwd) {
     nodeScriptPattern("session-start.js"),     // our own session-start script
     nodeScriptPattern("topo-sort.js"),         // our own topo-sort script
     nodeScriptPattern("status-report.js"),     // our own status report script
+    nodeScriptPattern("review-next-action.js"), // deterministic review closeout next-step helper
+    nodeScriptPattern("autonomy-handoff.js"),  // deterministic autonomous-resume handoff helper
     nodeScriptPattern("integrate-check.js"),   // our own integration checker
     nodeScriptPattern("cross-model-review.js"), // our own cross-model review script
     nodeScriptPattern("measure-quality.js"),   // our own quality measurement script

@@ -293,6 +293,12 @@ function assertStateTransitionBashAllowlist(errors) {
   if (!content.includes("state-transition.js")) {
     pushError(errors, "scripts/pre-tool-use.js: Bash allowlist must include state-transition.js helper commands");
   }
+  if (!content.includes("review-next-action.js")) {
+    pushError(errors, "scripts/pre-tool-use.js: Bash allowlist must include review-next-action.js");
+  }
+  if (!content.includes("autonomy-handoff.js")) {
+    pushError(errors, "scripts/pre-tool-use.js: Bash allowlist must include autonomy-handoff.js");
+  }
   if (!content.includes("summarize-verify-runnable.js")) {
     pushError(errors, "scripts/pre-tool-use.js: Bash allowlist must include summarize-verify-runnable.js");
   }
@@ -348,6 +354,9 @@ function assertTopLevelOrchestrationStateRules(errors) {
     const content = fs.readFileSync(buildPath, "utf8");
     if (!content.includes('Do **not** run additional `set-node-status ... "built"` transitions')) {
       pushError(errors, "skills/build/SKILL.md: completion flow must forbid redundant set-node-status built transitions after complete-build");
+    }
+    if (!content.includes('node "${CLAUDE_PLUGIN_ROOT}/scripts/autonomy-handoff.js"')) {
+      pushError(errors, "skills/build/SKILL.md: build completion should surface autonomous handoff guidance with autonomy-handoff.js");
     }
   }
 
@@ -472,6 +481,15 @@ function assertTopLevelOrchestrationStateRules(errors) {
     if (!content.includes("Advisory refactors alone must not force `REQUEST CHANGES`")) {
       pushError(errors, "skills/review/SKILL.md: review flow must forbid advisory refactors from forcing REQUEST CHANGES");
     }
+    if (!content.includes('node "${CLAUDE_PLUGIN_ROOT}/scripts/review-next-action.js"')) {
+      pushError(errors, "skills/review/SKILL.md: review completion should use review-next-action.js for deterministic closeout guidance");
+    }
+    if (!content.includes('node "${CLAUDE_PLUGIN_ROOT}/scripts/autonomy-handoff.js"')) {
+      pushError(errors, "skills/review/SKILL.md: review completion should surface autonomous handoff guidance with autonomy-handoff.js");
+    }
+    if (!content.includes("If the terminal status is `\"reviewed-with-findings\"`")) {
+      pushError(errors, "skills/review/SKILL.md: advisory review closeout must distinguish reviewed-with-findings from a blocking in-place REQUEST CHANGES banner");
+    }
   }
 
   if (fs.existsSync(recoverPath)) {
@@ -522,6 +540,9 @@ function assertTopLevelOrchestrationStateRules(errors) {
     const content = fs.readFileSync(sessionStartPath, "utf8");
     if (!content.includes("Recommended recovery:")) {
       pushError(errors, "scripts/session-start.js: interrupted operations should surface a recommended recovery action");
+    }
+    if (!content.includes("Autonomy:")) {
+      pushError(errors, "scripts/session-start.js: ambient display should surface autonomous resume guidance when available");
     }
   }
 

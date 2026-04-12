@@ -298,6 +298,7 @@ function buildAmbientStatus(forgePlanDir, manifestPath, statePath, state) {
 
   // Determine suggested next command based on project state
   const suggestion = determineSuggestion(counts, state, nodeIds, nodeStates, manifest);
+  const autonomousResume = determineAutonomousResume(counts, state, nodeIds);
 
   // Build the output lines
   const lines = [];
@@ -453,6 +454,9 @@ function buildAmbientStatus(forgePlanDir, manifestPath, statePath, state) {
   // Next command suggestion
   if (suggestion) {
     lines.push(`Next: ${suggestion}`);
+  }
+  if (autonomousResume) {
+    lines.push(`Autonomy: ${autonomousResume}`);
   }
 
   lines.push("-----------------");
@@ -655,6 +659,31 @@ function determineSuggestion(counts, state, nodeIds, nodeStates, manifest) {
 
   // Fallback
   return "/forgeplan:next";
+}
+
+function determineAutonomousResume(counts, state, nodeIds) {
+  if (!nodeIds || nodeIds.length === 0) return null;
+  if (state && (state.active_node || (state.sweep_state && state.sweep_state.operation))) {
+    return null;
+  }
+
+  const activeWorkRemaining =
+    counts.pending > 0 ||
+    counts.specced > 0 ||
+    counts.built > 0 ||
+    counts.revised > 0 ||
+    counts.reviewedWithFindings > 0 ||
+    counts.reviewed === counts.total;
+
+  if (!activeWorkRemaining) return null;
+
+  if (counts.built > 0) {
+    return "/forgeplan:deep-build (resume autonomous build-review-verify flow from the current built node state)";
+  }
+  if (counts.revised > 0 || counts.specced > 0 || counts.pending > 0) {
+    return "/forgeplan:deep-build (resume autonomous node build/review flow from the current state)";
+  }
+  return "/forgeplan:deep-build (resume autonomous verification, sweep, and certification)";
 }
 
 /**
