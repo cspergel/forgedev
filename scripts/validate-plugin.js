@@ -477,6 +477,15 @@ function assertTopLevelOrchestrationStateRules(errors) {
     if (!content.includes("The `Build Models` table must match the actual `selected_builder_model`")) {
       pushError(errors, "skills/deep-build/SKILL.md: Phase 8 report generation must require actual builder-model data from state");
     }
+    if (!content.includes("deep-build-finalize-context.js.integration.warnings")) {
+      pushError(errors, "skills/deep-build/SKILL.md: Phase 8 report generation must source integration warning classification from deep-build-finalize-context.js.integration.warnings");
+    }
+    if (!content.includes("Mirror the raw artifact `status` and `error_type` first")) {
+      pushError(errors, "skills/deep-build/SKILL.md: Phase 8 report generation must mirror runtime artifact status/error_type before interpretation");
+    }
+    if (!content.includes("must_avoid_sweep_clean_language")) {
+      pushError(errors, "skills/deep-build/SKILL.md: Phase 8 report generation must use sweep.reporting_guidance to avoid overclaiming closure");
+    }
     if (!content.includes("manual-testing-ready")) {
       pushError(errors, "skills/deep-build/SKILL.md: Phase 8 finalization must distinguish manual-testing-ready from certified completion");
     }
@@ -842,6 +851,32 @@ function assertRuntimeVerifyWorkspaceContract(errors) {
   }
 }
 
+function assertDeepBuildFinalizeContextContract(errors) {
+  const finalizeContextPath = path.join(repoRoot, "scripts", "deep-build-finalize-context.js");
+
+  if (!fs.existsSync(finalizeContextPath)) {
+    pushError(errors, "scripts/deep-build-finalize-context.js: missing");
+    return;
+  }
+
+  const content = fs.readFileSync(finalizeContextPath, "utf8");
+  if (!content.includes("actionable_count")) {
+    pushError(errors, "scripts/deep-build-finalize-context.js: should expose actionable integration warning counts");
+  }
+  if (!content.includes("all_informational")) {
+    pushError(errors, "scripts/deep-build-finalize-context.js: should expose whether integration warnings are all informational");
+  }
+  if (!content.includes("error_type")) {
+    pushError(errors, "scripts/deep-build-finalize-context.js: should expose runtime error_type from runtime-verify.json");
+  }
+  if (!content.includes("must_mirror_runtime_artifact_first")) {
+    pushError(errors, "scripts/deep-build-finalize-context.js: should expose runtime-reporting guardrails");
+  }
+  if (!content.includes("must_avoid_sweep_clean_language")) {
+    pushError(errors, "scripts/deep-build-finalize-context.js: should expose sweep-reporting guardrails to prevent overclaiming closure");
+  }
+}
+
 const errors = [];
 
 let pluginManifest;
@@ -985,6 +1020,7 @@ assertCrossModelConflictPolicy(errors);
 assertWikiKnowledgeContract(errors);
 assertRuntimeVerifyWorkspaceContract(errors);
 assertStatusContract(errors);
+assertDeepBuildFinalizeContextContract(errors);
 
 if (errors.length > 0) {
   console.error("Plugin validation failed:");

@@ -462,9 +462,12 @@ Report accuracy requirements:
 - The `Build Models` table must match the actual `selected_builder_model` and `selected_builder_model_reason` values from state.
 - The summary node counts must match the actual terminal node statuses from state.
 - If any node remains `built` (not reviewed), the report must say so explicitly instead of claiming all nodes are reviewed.
+- Use `deep-build-finalize-context.js.integration.warnings` as the source of truth for warning classification. If `actionable_count > 0`, do **not** describe final integration warnings as "all informational".
 - If LARGE-tier cross-model verification was not configured, the report must label the result as a degraded/non-certified completion or halted run — not as normal cross-model-certified success.
 - If LARGE-tier cross-model was intentionally skipped via `review.allow_large_tier_skip: true`, the report must say that explicitly and present the run as degraded certification, not full certification.
 - The report must state what deterministic verification actually ran: verify-runnable, integrate-check, runtime verification, and cross-model verification.
+- Use `deep-build-finalize-context.js.runtime` as the source of truth for runtime verification status. Mirror the raw artifact `status` and `error_type` first. If you add a harness/workspace explanation, label it as an interpretation or likely cause rather than a deterministic fact.
+- Use `deep-build-finalize-context.js.sweep.reporting_guidance` as the source of truth for closure wording. If `must_avoid_sweep_clean_language` is true, do **not** say "sweep-clean", "all resolved", or equivalent. Say the node-scoped findings were addressed and then enumerate deferred/manual items separately.
 - Do **not** claim "full test suite clean", "ready to ship", or "fully certified" unless `deep-build-verification-contract.js` says full certification is allowed.
 - If `deep-build-verification-contract.js` reports `manual-testing-ready`, the report must explicitly say the project is ready only for targeted manual testing and is **not** fully certified.
 
@@ -474,7 +477,7 @@ Report accuracy requirements:
 ## Summary
 - Project: [project name]
 - Tier: [complexity tier]
-- Nodes: [N] built, reviewed, and verified
+- Nodes: [N] built and reviewed
 - Total passes: [N]
 - Wall-clock time: [duration]
 - Final integration: [PASS/FAIL]
@@ -537,7 +540,7 @@ Report accuracy requirements:
 
 ```
 === Phase [N] Certified ===
-All phase [N] nodes are built, reviewed, and sweep-clean.
+All phase [N] nodes are built and reviewed with no pending node-scoped findings.
 Starting phase advancement to phase [N+1]...
 ```
 
@@ -546,9 +549,10 @@ If no advancement is pending, present:
 ```
 === Deep Build Complete ===
 [If full certification] All [N] nodes built, reviewed, and cross-model certified.
-[If degraded LARGE-tier skip] All [N] nodes built and sweep-clean, but cross-model verification was intentionally skipped (degraded certification).
+[If degraded LARGE-tier skip] All [N] nodes built and reviewed, but cross-model verification was intentionally skipped (degraded certification).
 [If manual-testing-ready only] Deterministic runnable/integration gates passed, so the project is ready for targeted manual testing, but this run is not fully certified.
-[total] findings found and resolved across [passes] passes.
+[If no deferred/manual node-scoped items] [total] findings found and fixed across [passes] passes.
+[If deferred/manual items remain] [total] findings identified across [passes] passes; see report for deferred/manual items.
 [If full certification] Cross-model certified clean on [N] consecutive passes.
 [If degraded LARGE-tier skip] Cross-model certification was not performed.
 [If manual-testing-ready only] Report: this run proved runnable/manual-testing readiness only.
