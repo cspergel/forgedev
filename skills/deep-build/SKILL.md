@@ -226,6 +226,7 @@ If it returns **`status: "fail"`**: do **not** try to edit files directly from s
      - the affected source files
      - the corresponding test/config files it may need to update
    - The fix agent may modify source and tests within the node's scope plus permitted root infra files; it must not perform cross-node edits.
+   - Do **not** create ad hoc helper scripts just to rename, move, or delete source files during remediation. Prefer in-place `Write`/`Edit` changes. If a rename/delete is genuinely unavoidable, treat it as a managed code change within the active node's scope and keep the sweep state active throughout; do not fall out to unmanaged shell mutation.
    - After the fix agent finishes, run:
      ```bash
      node "${CLAUDE_PLUGIN_ROOT}/scripts/state-transition.js" restore-previous-status "[node-id]"
@@ -234,6 +235,7 @@ If it returns **`status: "fail"`**: do **not** try to edit files directly from s
    ```bash
    node "${CLAUDE_PLUGIN_ROOT}/scripts/verify-runnable.js"
    ```
+   - Do **not** call `set-sweep-phase "verify-runnable"` between node-scoped fixes or before this rerun. The Phase 3 remediation loop is already in the verify-runnable stage; just rerun the gate.
 7. Repeat the verify-runnable remediation loop up to 3 times. If failures remain after 3 remediation cycles, halt deep-build with an error and preserve `sweep_state` for recovery.
 
 The verify-runnable gate **must pass** before proceeding to Phase 4. This catches fundamental project health issues (missing packages, syntax errors, broken configs) before investing time in integration checks and sweeps.

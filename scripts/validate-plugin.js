@@ -387,6 +387,12 @@ function assertTopLevelOrchestrationStateRules(errors) {
     if (!content.includes("deterministic/runtime truth > explicit spec/contract truth > review/certifier findings > advisory refactor suggestions")) {
       pushError(errors, "skills/deep-build/SKILL.md: cross-model phase must document the finding precedence ladder");
     }
+    if (!content.includes("Do **not** create ad hoc helper scripts just to rename, move, or delete source files during remediation")) {
+      pushError(errors, "skills/deep-build/SKILL.md: Phase 3 remediation must forbid ad hoc helper-script file renames/deletes");
+    }
+    if (!content.includes('Do **not** call `set-sweep-phase "verify-runnable"` between node-scoped fixes')) {
+      pushError(errors, "skills/deep-build/SKILL.md: Phase 3 remediation must forbid unnecessary set-sweep-phase verify-runnable calls");
+    }
   }
 
   if (fs.existsSync(reviewPath)) {
