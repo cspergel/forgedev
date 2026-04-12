@@ -665,6 +665,9 @@ function assertDesignLibraryContract(errors) {
     if (!content.includes("Do **not** hand-edit `.forgeplan/state.json` or use ad hoc `python -c` / `node -e` snippets for findings ingestion")) {
       pushError(errors, "skills/sweep/SKILL.md: Phase 3 should forbid manual findings ingestion via shell snippets");
     }
+    if (!content.includes("Do **not** probe `.forgeplan/state.json` with ad hoc shell snippets after findings ingestion")) {
+      pushError(errors, "skills/sweep/SKILL.md: Phase 3/4 handoff should forbid ad hoc state probing after load-sweep-findings");
+    }
     if (!content.includes('Do **not** call `start-sweep-fix` while `sweep_state.current_phase` is still `"claude-sweep"`')) {
       pushError(errors, "skills/sweep/SKILL.md: Phase 3/4 boundary must forbid start-sweep-fix during claude-sweep");
     }

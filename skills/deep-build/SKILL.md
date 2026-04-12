@@ -289,6 +289,7 @@ Read `${CLAUDE_PLUGIN_ROOT}/skills/sweep/SKILL.md` and execute the sweep workflo
 - dispatch the sweep agents in parallel
 - merge and deduplicate findings
 - load findings into `sweep_state` with `load-sweep-findings.js`
+- if you need post-ingestion counts/phase, re-run `prepare-sweep-context.js` instead of inspecting state with `node -e` / `python -c`
 - run node-scoped fix cycles
 - re-integrate and converge progressively
 
