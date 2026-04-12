@@ -777,6 +777,9 @@ function assertWikiKnowledgeContract(errors) {
     if (!content.includes('state.sweep_state.current_phase = pending.length > 0 ? "claude-fix" : "integrate"')) {
       pushError(errors, "scripts/load-sweep-findings.js: helper should set current_phase deterministically from pending findings");
     }
+    if (!content.includes('trimmed.startsWith("# Sweep Report")')) {
+      pushError(errors, "scripts/load-sweep-findings.js: helper should accept sweep markdown reports as input");
+    }
   } else {
     pushError(errors, "scripts/load-sweep-findings.js: missing deterministic sweep findings ingestion helper");
   }

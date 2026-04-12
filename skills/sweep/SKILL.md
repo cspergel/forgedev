@@ -245,7 +245,7 @@ Each agent returns findings in the structured FINDING format or CLEAN.
      "agent_convergence": {/* optional updated convergence state */}
    }
    ```
-   This helper writes `sweep_state.findings.pending`, appends project-level findings to `needs_manual_attention`, and sets the next phase to `"claude-fix"` or `"integrate"` deterministically. Do **not** hand-edit `.forgeplan/state.json` or use ad hoc `python -c` / `node -e` snippets for findings ingestion.
+   This helper writes `sweep_state.findings.pending`, appends project-level findings to `needs_manual_attention`, and sets the next phase to `"claude-fix"` or `"integrate"` deterministically. It also accepts a `sweep-*.md` report path directly if the findings were already written to disk. Do **not** hand-edit `.forgeplan/state.json` or use ad hoc `python -c` / `node -e` snippets for findings ingestion.
 10. If the helper reports `next_phase: "claude-fix"`: proceed to Phase 4.
 11. **If the helper reports `next_phase: "integrate"` and agents returned findings (all project-level/manual):** Skip Phase 4 and proceed to Phase 5. Log: "All findings are project-level (manual attention). Skipping automated fix cycle."
 12. **If zero findings AND zero failed agents** (all agents returned CLEAN successfully): the helper should still leave `pending` empty and `next_phase: "integrate"`. Proceed directly to Phase 5.

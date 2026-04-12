@@ -30,6 +30,118 @@ function readInput(mode) {
   return Promise.resolve(fs.readFileSync(filePath, "utf8"));
 }
 
+function parseCountLabel(headerLine) {
+  const match = String(headerLine || "").match(/\((\d+)\s+findings?\)/i);
+  return match ? Number(match[1]) : null;
+}
+
+function normalizeSeverity(value) {
+  const severity = String(value || "").trim().toUpperCase();
+  return ["HIGH", "MEDIUM", "LOW"].includes(severity) ? severity : "MEDIUM";
+}
+
+function parseFindingLine(line, nodeId) {
+  const trimmed = String(line || "").trim();
+  const match = trimmed.match(/^-?\s*(F\d+|NM\d+)\s+\[([^\]]+)\]\s+(HIGH|MEDIUM|LOW)\s+\((\d+)\):\s+(.+)$/i);
+  if (!match) {
+    return null;
+  }
+
+  const [, id, category, severity, confidenceRaw, remainderRaw] = match;
+  const confidence = Number(confidenceRaw);
+  const remainder = remainderRaw.trim();
+
+  let description = remainder;
+  let file = null;
+  let lineNumber = null;
+
+  const fileMatch = remainder.match(/^(.*)\s+[—-]\s+`([^`]+):(\d+)`\s*$/);
+  if (fileMatch) {
+    description = fileMatch[1].trim();
+    file = fileMatch[2].trim();
+    lineNumber = Number(fileMatch[3]);
+  }
+
+  return {
+    id,
+    node: nodeId,
+    category: category.trim(),
+    severity: normalizeSeverity(severity),
+    confidence: Number.isFinite(confidence) ? confidence : 80,
+    description,
+    file,
+    line: Number.isFinite(lineNumber) ? lineNumber : null,
+  };
+}
+
+function parseSweepReportMarkdown(raw) {
+  const lines = String(raw || "").split(/\r?\n/);
+  const pending = [];
+  const projectLevel = [];
+  let currentNode = null;
+  let inProjectLevel = false;
+
+  for (const line of lines) {
+    const sectionMatch = line.match(/^###\s+([^(]+?)(?:\s+\(\d+\s+findings?\))?\s*$/i);
+    if (sectionMatch) {
+      currentNode = sectionMatch[1].trim();
+      inProjectLevel = false;
+      continue;
+    }
+
+    if (/^##\s+Project-Level Findings/i.test(line)) {
+      currentNode = "project";
+      inProjectLevel = true;
+      continue;
+    }
+
+    if (/^\s*-\s+(F\d+|NM\d+)/i.test(line)) {
+      const parsed = parseFindingLine(line, currentNode || "project");
+      if (!parsed) {
+        continue;
+      }
+      if (inProjectLevel || parsed.node === "project" || /^NM\d+$/i.test(parsed.id)) {
+        projectLevel.push({
+          ...parsed,
+          node: "project",
+          reason: "project-level finding - no single node to fix",
+        });
+      } else {
+        pending.push(parsed);
+      }
+    }
+  }
+
+  const headerProjectMatch = String(raw || "").match(/Project-level \(manual\):\s*(\d+)/i);
+  const expectedProjectCount = headerProjectMatch ? Number(headerProjectMatch[1]) : null;
+
+  if (pending.length === 0 && projectLevel.length === 0) {
+    throw new Error("Could not parse any findings from sweep markdown report.");
+  }
+
+  return {
+    pending,
+    project_level: projectLevel,
+    metadata: {
+      expected_project_level_count: Number.isFinite(expectedProjectCount) ? expectedProjectCount : null,
+    },
+  };
+}
+
+function parsePayload(raw) {
+  const trimmed = String(raw || "").trim();
+  if (!trimmed) {
+    throw new Error("Input was empty.");
+  }
+  if (trimmed.startsWith("{")) {
+    return JSON.parse(trimmed);
+  }
+  if (trimmed.startsWith("# Sweep Report")) {
+    return parseSweepReportMarkdown(trimmed);
+  }
+  throw new Error("Input must be either JSON or a sweep markdown report.");
+}
+
 function writeJsonAtomic(filePath, data) {
   const dir = path.dirname(filePath);
   const tmpPath = path.join(dir, `.tmp-${path.basename(filePath)}-${process.pid}`);
@@ -75,7 +187,7 @@ async function main() {
   }
 
   const raw = await readInput(mode);
-  const payload = JSON.parse(raw);
+  const payload = parsePayload(raw);
   const state = JSON.parse(fs.readFileSync(statePath, "utf8"));
 
   if (!state.sweep_state || typeof state.sweep_state !== "object") {
