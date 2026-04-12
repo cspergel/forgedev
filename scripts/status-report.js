@@ -123,6 +123,38 @@ function main() {
     build_phase_started_at: state.build_phase_started_at || null,
   } : null;
 
+  const suggestedNextSteps = determineSuggestedNextSteps({
+    manifest,
+    state,
+    nodeIds,
+    nodeStates,
+    summary: {
+      total: nodeIds.length,
+      completed,
+      completedWithFindings,
+      builtAwaitingReview,
+      revisedNeedsRebuild,
+      specced,
+      inProgress,
+      pending: nodeIds.length - completed - builtAwaitingReview - revisedNeedsRebuild - specced - inProgress,
+    },
+  });
+
+  const autonomyHandoff = determineAutonomyHandoff({
+    nodeIds,
+    state,
+    summary: {
+      total: nodeIds.length,
+      completed,
+      completedWithFindings,
+      builtAwaitingReview,
+      revisedNeedsRebuild,
+      specced,
+      inProgress,
+      pending: nodeIds.length - completed - builtAwaitingReview - revisedNeedsRebuild - specced - inProgress,
+    },
+  });
+
   console.log(JSON.stringify({
     type: "status_report",
     project: manifest.project || {},
@@ -149,6 +181,8 @@ function main() {
     } : null,
     discoveryComplete: state.discovery_complete || false,
     phase: phaseInfo,
+    nextSteps: suggestedNextSteps,
+    autonomyHandoff,
   }, null, 2));
 }
 
@@ -194,6 +228,101 @@ function buildDependencyGraph(nodes, nodeIds) {
   }
 
   return lines;
+}
+
+function determineSuggestedNextSteps({ manifest, state, nodeIds, nodeStates, summary }) {
+  const steps = [];
+  const addStep = (command, description) => {
+    if (!steps.some((step) => step.command === command)) {
+      steps.push({ command, description });
+    }
+  };
+
+  const builtNode = firstNodeWithStatus(nodeIds, nodeStates, ["built"]);
+  const revisedNode = firstNodeWithStatus(nodeIds, nodeStates, ["revised"]);
+  const speccedNode = firstNodeWithStatus(nodeIds, nodeStates, ["specced"]);
+  const pendingNode = firstNodeWithStatus(nodeIds, nodeStates, ["pending"]);
+  const buildPhase = (manifest.project && manifest.project.build_phase) || 1;
+  const maxPhase = Math.max(1, ...nodeIds.map((id) => (manifest.nodes[id].phase || 1)));
+
+  if (revisedNode) {
+    addStep(`/forgeplan:build ${revisedNode}`, `Rebuild ${revisedNode} after a spec revision.`);
+  } else if (builtNode) {
+    addStep(`/forgeplan:review ${builtNode}`, `Review the built node ${builtNode}.`);
+  } else if (speccedNode) {
+    addStep(`/forgeplan:build ${speccedNode}`, `Build the specced node ${speccedNode}.`);
+  } else if (pendingNode) {
+    addStep(`/forgeplan:spec ${pendingNode}`, `Finish the spec for ${pendingNode}.`);
+  } else if (summary.completed === summary.total) {
+    if (maxPhase > buildPhase) {
+      addStep("/forgeplan:deep-build", `Advance to phase ${buildPhase + 1} and continue autonomously.`);
+    } else {
+      addStep("/forgeplan:sweep --cross-check", "Run final cross-cutting quality sweeps across all nodes.");
+      addStep("/forgeplan:integrate", "Review integration guidance and verify cross-node interfaces.");
+    }
+  } else {
+    addStep("/forgeplan:next", "See the next recommended governed action.");
+  }
+
+  addStep("/forgeplan:measure", "Check quality metrics such as broken refs, duplicates, and stubs.");
+  addStep("/forgeplan:status", "Re-read full project state after the next operation.");
+
+  return steps;
+}
+
+function determineAutonomyHandoff({ nodeIds, state, summary }) {
+  if (!nodeIds.length) {
+    return {
+      available: false,
+      command: null,
+      description: "No governed nodes detected.",
+    };
+  }
+
+  if (state.active_node || (state.sweep_state && state.sweep_state.operation)) {
+    return {
+      available: false,
+      command: null,
+      description: "An autonomous operation is already active.",
+    };
+  }
+
+  const hasRemainingAutonomousWork =
+    summary.pending > 0 ||
+    summary.specced > 0 ||
+    summary.builtAwaitingReview > 0 ||
+    summary.revisedNeedsRebuild > 0 ||
+    summary.completedWithFindings > 0 ||
+    summary.completed === summary.total;
+
+  if (!hasRemainingAutonomousWork) {
+    return {
+      available: false,
+      command: null,
+      description: "No autonomous handoff is available from the current state.",
+    };
+  }
+
+  let description = "Resume autonomous verification, sweep, and certification.";
+  if (summary.builtAwaitingReview > 0) {
+    description = "Resume autonomous build-review-verify flow from the current built-node state.";
+  } else if (summary.revisedNeedsRebuild > 0 || summary.specced > 0 || summary.pending > 0) {
+    description = "Resume autonomous node build/review flow from the current state.";
+  }
+
+  return {
+    available: true,
+    command: "/forgeplan:deep-build",
+    description,
+  };
+}
+
+function firstNodeWithStatus(nodeIds, nodeStates, statuses) {
+  for (const id of nodeIds) {
+    const status = nodeStates[id] && nodeStates[id].status ? nodeStates[id].status : "pending";
+    if (statuses.includes(status)) return id;
+  }
+  return null;
 }
 
 if (require.main === module) {

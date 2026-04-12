@@ -730,6 +730,37 @@ function assertWikiKnowledgeContract(errors) {
   }
 }
 
+function assertStatusContract(errors) {
+  const statusSkillPath = path.join(skillsRoot, "status", "SKILL.md");
+  const statusReportPath = path.join(repoRoot, "scripts", "status-report.js");
+
+  if (fs.existsSync(statusSkillPath)) {
+    const content = fs.readFileSync(statusSkillPath, "utf8");
+    if (!content.includes("nextSteps")) {
+      pushError(errors, "skills/status/SKILL.md: status output should use the nextSteps array from status-report.js");
+    }
+    if (!content.includes("autonomyHandoff")) {
+      pushError(errors, "skills/status/SKILL.md: status output should surface the autonomyHandoff section when available");
+    }
+  }
+
+  if (fs.existsSync(statusReportPath)) {
+    const content = fs.readFileSync(statusReportPath, "utf8");
+    if (!content.includes("nextSteps")) {
+      pushError(errors, "scripts/status-report.js: status report should emit nextSteps");
+    }
+    if (!content.includes("autonomyHandoff")) {
+      pushError(errors, "scripts/status-report.js: status report should emit autonomyHandoff");
+    }
+    if (!content.includes("determineSuggestedNextSteps")) {
+      pushError(errors, "scripts/status-report.js: status report should compute deterministic suggested next steps");
+    }
+    if (!content.includes("determineAutonomyHandoff")) {
+      pushError(errors, "scripts/status-report.js: status report should compute deterministic autonomous handoff guidance");
+    }
+  }
+}
+
 const errors = [];
 
 let pluginManifest;
@@ -871,6 +902,7 @@ assertTopLevelOrchestrationStateRules(errors);
 assertDesignLibraryContract(errors);
 assertCrossModelConflictPolicy(errors);
 assertWikiKnowledgeContract(errors);
+assertStatusContract(errors);
 
 if (errors.length > 0) {
   console.error("Plugin validation failed:");

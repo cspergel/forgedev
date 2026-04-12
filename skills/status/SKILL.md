@@ -16,55 +16,55 @@ node "${CLAUDE_PLUGIN_ROOT}/scripts/status-report.js"
 
 Parse the JSON output and present to the user in this format:
 
-```
+```text
 === ForgePlan Status: [Project Name] ===
 Tier: [SMALL|MEDIUM|LARGE] | Reviewed: [completed]/[total] | Built Awaiting Review: [builtAwaitingReview] | Revised (needs rebuild): [revisedNeedsRebuild] | Shared Models: [count] | Phase: [build_phase]/[max_phase]
 
-[*] database          — Database Layer              [reviewed]
-[~] auth              — Authentication Service      [revised — needs rebuild]
-[>] api               — API Layer                   [built]
-[.] file-storage      — File Storage Service        [building]
-[-] frontend-login    — Login & Registration Page   [specced]
-[ ] frontend-dashboard — Client Dashboard           [pending]
-[ ] frontend-accountant-view — Accountant View      [pending]
+[*] database           - Database Layer             [reviewed]
+[~] auth               - Authentication Service     [revised - needs rebuild]
+[>] api                - API Layer                  [built]
+[.] file-storage       - File Storage Service       [building]
+[-] frontend-login     - Login & Registration Page  [specced]
+[ ] frontend-dashboard - Client Dashboard           [pending]
 
-Legend: [*] reviewed  [~] revised (spec changed, needs rebuild)  [>] built awaiting review  [.] in progress  [-] specced  [ ] not started
+Legend: [*] reviewed  [~] revised (spec changed, needs rebuild)  [>] built awaiting review  [.] in progress  [-] specced  [ ] pending
 
 === Dependency Graph ===
-database ──→ auth, file-storage
-auth ──→ api, frontend-login
-file-storage ──→ api
-api ──→ frontend-dashboard, frontend-accountant-view
+database --> auth, file-storage
+auth --> api, frontend-login
 frontend-login (leaf)
-frontend-dashboard (leaf)
-frontend-accountant-view (leaf)
 
 === Shared Models ===
-User: [fields] — used by [nodes]
-Document: [fields] — used by [nodes]
+User: [fields] - used by [nodes]
+Document: [fields] - used by [nodes]
 ```
 
 If any nodes are stuck or have issues, flag them prominently at the top.
-If there's an active node operation, show it.
+If there is an active node operation, show it.
 
 Also read `.forgeplan/state.json` directly and check for `sweep_state.blocked_decisions`. If `sweep_state` exists and `blocked_decisions` has items, show prominently before the node list:
-```
+
+```text
 === Pending Decisions: [N] architectural choice(s) needed ===
 Run /forgeplan:sweep to review and resolve them.
 ```
 
-## Next Steps Suggestions
+## Next Steps
 
-Based on project state, suggest relevant next actions:
+Use the `nextSteps` array from `status-report.js` as the source of truth for manual next steps. Present them as:
 
-- **All nodes pending:** `/forgeplan:spec --all` then `/forgeplan:build --all` for the current phase
-- **Any nodes revised:** `/forgeplan:build [node-id]` — spec changed, code is stale, rebuild first
-- **Some nodes built, some pending:** `/forgeplan:next` to see what to build next
-- **All nodes built but not reviewed:** `/forgeplan:review --all`
-- **All nodes reviewed:** `/forgeplan:sweep --cross-check or /forgeplan:integrate`
-- **Current phase complete:** `/forgeplan:deep-build` to advance to the next phase
-- **Project complete:** Suggest common changes:
-  - `/forgeplan:revise --model [ModelName]` to add/change a shared model field (cascades to all affected nodes)
-  - `/forgeplan:revise [node-id]` to change a single node
-  - `/forgeplan:measure` to check quality metrics
-  - `/forgeplan:help` for all available commands
+```text
+Suggested next steps:
+- [command] - [description]
+```
+
+Also surface the autonomous handoff from the `autonomyHandoff` object:
+
+```text
+Autonomous option:
+- [command] - [description]
+```
+
+If `autonomyHandoff.available` is false, omit the autonomous section.
+
+Do **not** improvise or infer a different next-step list when `status-report.js` already returned one.
