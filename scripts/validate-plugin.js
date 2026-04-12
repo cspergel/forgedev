@@ -432,6 +432,9 @@ function assertTopLevelOrchestrationStateRules(errors) {
     if (!content.includes('Read `${CLAUDE_PLUGIN_ROOT}/skills/sweep/SKILL.md` and execute the sweep workflow inline')) {
       pushError(errors, "skills/deep-build/SKILL.md: Phase 5 must inline the sweep workflow from skills/sweep/SKILL.md");
     }
+    if (!content.includes("Do **not** start node-scoped fixes directly from `claude-sweep`")) {
+      pushError(errors, "skills/deep-build/SKILL.md: Phase 5 must forbid starting node fixes before claude-fix");
+    }
     if (!content.includes("deep-build-cross-model-gate.js")) {
       pushError(errors, "skills/deep-build/SKILL.md: Phase 7 must enforce cross-model requirements with deep-build-cross-model-gate.js");
     }
@@ -569,6 +572,12 @@ function assertTopLevelOrchestrationStateRules(errors) {
     if (!content.includes('case "restart-sweep-pass":')) {
       pushError(errors, "scripts/state-transition.js: restart-sweep-pass op must exist for deterministic recovery resets");
     }
+    if (!content.includes('Cannot start sweep fix for "') || !content.includes('while current_phase is "claude-sweep"')) {
+      pushError(errors, "scripts/state-transition.js: start-sweep-fix must reject direct fixes from claude-sweep");
+    }
+    if (!content.includes('during "claude-fix" because no pending findings are assigned')) {
+      pushError(errors, "scripts/state-transition.js: start-sweep-fix should reject claude-fix nodes with no pending findings");
+    }
   }
 }
 
@@ -637,6 +646,9 @@ function assertDesignLibraryContract(errors) {
     }
     if (!content.includes("Agents must NOT write to `.forgeplan/state.json`")) {
       pushError(errors, "skills/sweep/SKILL.md: parallel fix agents must be forbidden from mutating state.json directly");
+    }
+    if (!content.includes('Do **not** call `start-sweep-fix` while `sweep_state.current_phase` is still `"claude-sweep"`')) {
+      pushError(errors, "skills/sweep/SKILL.md: Phase 3/4 boundary must forbid start-sweep-fix during claude-sweep");
     }
   }
 

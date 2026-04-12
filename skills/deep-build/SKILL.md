@@ -286,6 +286,7 @@ Read `${CLAUDE_PLUGIN_ROOT}/skills/sweep/SKILL.md` and execute the sweep workflo
 - re-integrate and converge progressively
 
 This phase should follow the sweep skill logic directly, not attempt `Skill(forgeplan:sweep)` first.
+Do **not** start node-scoped fixes directly from `claude-sweep`. Phase 5 must finish the sweep-agent pass, write the sweep report, load findings into `sweep_state.findings.pending`, and transition to `claude-fix` before any `start-sweep-fix` call is valid.
 
 After Claude sweep fixes, re-integrate (Phase 4 logic).
 

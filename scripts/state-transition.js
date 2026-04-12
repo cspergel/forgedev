@@ -62,6 +62,17 @@ function parseJsonArg(value, label) {
   }
 }
 
+function getPendingFindingsForNode(state, nodeId) {
+  if (!state.sweep_state || typeof state.sweep_state !== "object") {
+    return [];
+  }
+  const findings = state.sweep_state.findings;
+  if (!findings || typeof findings !== "object" || !Array.isArray(findings.pending)) {
+    return [];
+  }
+  return findings.pending.filter((finding) => finding && finding.node === nodeId);
+}
+
 function main() {
   const cwd = process.cwd();
   const statePath = path.join(cwd, ".forgeplan", "state.json");
@@ -221,6 +232,23 @@ function main() {
       const previousStatus = process.argv[4];
       if (!nodeId || !previousStatus) {
         usage();
+      }
+      if (state.sweep_state && typeof state.sweep_state === "object") {
+        const currentPhase = String(state.sweep_state.current_phase || "");
+        if (currentPhase === "claude-sweep") {
+          throw new Error(
+            `Cannot start sweep fix for "${nodeId}" while current_phase is "claude-sweep". ` +
+            "Finish Phase 3 first: merge findings, write the sweep report, load pending findings, and transition to \"claude-fix\"."
+          );
+        }
+        if (currentPhase === "claude-fix") {
+          const pendingForNode = getPendingFindingsForNode(state, nodeId);
+          if (pendingForNode.length === 0) {
+            throw new Error(
+              `Cannot start sweep fix for "${nodeId}" during "claude-fix" because no pending findings are assigned to that node.`
+            );
+          }
+        }
       }
       const node = ensureNode(state, nodeId);
       node.previous_status = previousStatus;

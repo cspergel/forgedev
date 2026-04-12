@@ -237,6 +237,8 @@ Each agent returns findings in the structured FINDING format or CLEAN.
 11. **If zero findings AND zero failed agents** (all agents returned CLEAN successfully): skip Phase 4, set `sweep_state.current_phase` to `"integrate"`, and proceed directly to Phase 5.
 12. **If zero findings BUT some agents failed:** Do NOT treat as clean. Failed agents are re-dispatched on the next pass (their `agent_convergence` status stays `"active"` or `"failed"`). Increment pass_number and loop back to Phase 2. A pass with only failed responses is not a clean pass for convergence purposes.
 
+Do **not** call `start-sweep-fix` while `sweep_state.current_phase` is still `"claude-sweep"`. Fixing is only valid after Phase 3 has written the sweep report, loaded node-scoped findings into `sweep_state.findings.pending`, and transitioned the operation to `"claude-fix"`.
+
 ### Phase 4: Fix findings (node-scoped)
 
 **THIS PHASE IS FULLY AUTONOMOUS. Fix ALL findings — do NOT ask the user which findings to fix, do NOT ask for confirmation, do NOT prioritize by severity. Fix everything in dependency order. The sweep is designed to loop: fix → re-sweep → fix → converge. If a fix introduces a new issue, the next sweep pass will catch it. Asking the user breaks the autonomous loop.**
