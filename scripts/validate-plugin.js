@@ -437,6 +437,48 @@ function assertTopLevelOrchestrationStateRules(errors) {
     if (!content.includes("skills/build/SKILL.md") || !content.includes("skills/review/SKILL.md")) {
       pushError(errors, "skills/recover/SKILL.md: resume flows must inline the build and review workflows from their skill files");
     }
+    if (!content.includes("recommend-recovery.js")) {
+      pushError(errors, "skills/recover/SKILL.md: recovery flow must call recommend-recovery.js before presenting options");
+    }
+    if (!content.includes("Recommended: [option number]. [label]")) {
+      pushError(errors, "skills/recover/SKILL.md: recovery prompts must surface the deterministic recommendation to the user");
+    }
+    if (!content.includes('state-transition.js" restart-sweep-pass')) {
+      pushError(errors, "skills/recover/SKILL.md: restart-pass recovery must use state-transition.js restart-sweep-pass");
+    }
+    if (!content.includes("Do **not** hand-edit `.forgeplan/state.json` to null out `fixing_node`")) {
+      pushError(errors, "skills/recover/SKILL.md: restart-pass recovery must forbid hand-editing state.json to clear fixing_node");
+    }
+    if (!content.includes("run `→ /forgeplan:recover` and choose `RESUME`")) {
+      pushError(errors, "skills/recover/SKILL.md: restart-pass next-step guidance must point to recover/resume, not a fresh deep-build");
+    }
+  }
+
+  const sessionStartPath = path.join(repoRoot, "scripts", "session-start.js");
+  if (fs.existsSync(sessionStartPath)) {
+    const content = fs.readFileSync(sessionStartPath, "utf8");
+    if (!content.includes("Recommended recovery:")) {
+      pushError(errors, "scripts/session-start.js: interrupted operations should surface a recommended recovery action");
+    }
+  }
+
+  const preToolUsePath = path.join(repoRoot, "scripts", "pre-tool-use.js");
+  if (fs.existsSync(preToolUsePath)) {
+    const content = fs.readFileSync(preToolUsePath, "utf8");
+    if (!content.includes('nodeScriptPattern("recommend-recovery.js"')) {
+      pushError(errors, "scripts/pre-tool-use.js: recommend-recovery.js must be allowed during active operations");
+    }
+    if (!content.includes("restart-sweep-pass")) {
+      pushError(errors, "scripts/pre-tool-use.js: restart-sweep-pass must be allowed as a deterministic state-transition op");
+    }
+  }
+
+  const stateTransitionPath = path.join(repoRoot, "scripts", "state-transition.js");
+  if (fs.existsSync(stateTransitionPath)) {
+    const content = fs.readFileSync(stateTransitionPath, "utf8");
+    if (!content.includes('case "restart-sweep-pass":')) {
+      pushError(errors, "scripts/state-transition.js: restart-sweep-pass op must exist for deterministic recovery resets");
+    }
   }
 }
 

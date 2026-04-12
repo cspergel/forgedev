@@ -614,7 +614,7 @@ function evaluateBash(toolInput, cwd) {
     nodeScriptPattern("next-node.js"),         // our own next-node script
     nodeScriptPattern(
       "state-transition.js",
-      String.raw`\s+(start-build|increment-bounce|complete-build|start-review|start-review-fixing|start-revising|set-spec-status|complete-review|restore-previous-status|start-sweep-fix|set-node-status|clear-active-node|set-sweep-phase|set-sweep-state|clear-sweep-state)\b`
+      String.raw`\s+(start-build|increment-bounce|complete-build|start-review|start-review-fixing|start-revising|set-spec-status|complete-review|restore-previous-status|start-sweep-fix|set-node-status|clear-active-node|set-sweep-phase|restart-sweep-pass|set-sweep-state|clear-sweep-state)\b`
     ), // deterministic state transitions
     nodeScriptPattern("session-start.js"),     // our own session-start script
     nodeScriptPattern("topo-sort.js"),         // our own topo-sort script
@@ -628,6 +628,7 @@ function evaluateBash(toolInput, cwd) {
     nodeScriptPattern("verify-runnable.js"),       // our own verification script (Phase A)
     nodeScriptPattern("summarize-verify-runnable.js", String.raw`(?:\s+(?:--stdin|".*?"|'.*?'|\S+))?(?:\s|$)`), // verify-runnable result summarizer
     nodeScriptPattern("summarize-integrate-check.js", String.raw`(?:\s+(?:--stdin|--json|".*?"|'.*?'|\S+))*(?:\s|$)`), // integrate-check result summarizer
+    nodeScriptPattern("recommend-recovery.js", String.raw`(?:\s+--json)?(?:\s|$)`), // deterministic recovery recommendation helper
     nodeScriptPattern("validate-ingest.js"),      // Sprint 10B: repo ingestion validation
     nodeScriptPattern("runtime-verify.js"),        // Phase B runtime verification
     nodeScriptPattern("worktree-manager.js"),     // our own worktree manager

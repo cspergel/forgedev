@@ -22,6 +22,7 @@ const fs = require("fs");
 const path = require("path");
 
 const { atomicWriteJson } = require("./lib/atomic-write");
+const { getRecoveryRecommendation } = require("./lib/recovery-recommendation");
 
 function main() {
   const cwd = process.cwd();
@@ -106,6 +107,7 @@ function main() {
       if (state.sweep_state && state.sweep_state.operation) {
         const ss = state.sweep_state;
         const op = ss.operation === "deep-building" ? "deep-build" : "sweep";
+        const recommendation = getRecoveryRecommendation(state);
 
         // If both active_node AND sweep_state exist, this is a single crash event
         // (e.g., deep-build was mid-build, or sweep was mid-fix). Show ONE combined warning.
@@ -125,6 +127,11 @@ function main() {
           warnings.push(
             `WARNING: An interrupted ${op} was detected (phase: ${ss.current_phase}, pass: ${ss.pass_number}). ` +
             `Run /forgeplan:recover to resume, restart the current pass, or abort.`
+          );
+        }
+        if (recommendation) {
+          warnings.push(
+            `Recommended recovery: ${recommendation.optionLabel} — ${recommendation.reason}`
           );
         }
       }

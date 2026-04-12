@@ -59,7 +59,13 @@ Read `.forgeplan/state.json`. If `wiki_compile_attempts >= 3`:
    - Check for orphan PIDs: if `.forgeplan/.verify-pids` exists, **delete the file** (do NOT attempt to kill PIDs — they may have been reused by unrelated processes after a hard crash). If a stale server is holding a port, verify-runnable or runtime-verify will detect EADDRINUSE and report it with actionable guidance. Report: "Cleaned up stale .verify-pids file."
    - Check for stale compact context: if `.forgeplan/.compact-context.md` exists, delete it. (Stale context from a previous session could cause confusion after compaction.)
 2. Read `.forgeplan/state.json`
-3. Identify inconsistent states:
+3. Run the deterministic recommendation helper:
+   ```bash
+   node "${CLAUDE_PLUGIN_ROOT}/scripts/recommend-recovery.js"
+   ```
+   - Use its recommendation and reason when presenting recovery options.
+   - If recovery is being executed autonomously by the system rather than interactively, follow this recommendation by default unless the state clearly contradicts it.
+4. Identify inconsistent states:
    - Status "building" with no active session
    - Status "reviewing" with no active session
    - Status "review-fixing" with no active session (fixer agent was mid-fix during multi-agent review)
@@ -68,9 +74,9 @@ Read `.forgeplan/state.json`. If `wiki_compile_attempts >= 3`:
    - `sweep_state` is non-null (interrupted sweep or deep-build)
    - Active node set but session appears stale
 
-4. **If both `active_node` (stuck in "building"/"sweeping") AND `sweep_state` are present:** This indicates a crash during deep-build's build-all phase or during a sweep fix. Present ONLY the sweep/deep-build recovery options below — do NOT also show the per-node building recovery prompt, as that would create conflicting options. Note: "Node '[id]' was being [built/fixed] as part of the [deep-build/sweep]. Recovering the operation will handle this node."
+5. **If both `active_node` (stuck in "building"/"sweeping") AND `sweep_state` are present:** This indicates a crash during deep-build's build-all phase or during a sweep fix. Present ONLY the sweep/deep-build recovery options below — do NOT also show the per-node building recovery prompt, as that would create conflicting options. Note: "Node '[id]' was being [built/fixed] as part of the [deep-build/sweep]. Recovering the operation will handle this node."
 
-5. For each stuck node (when no sweep_state), present **context-appropriate** options based on the crashed operation:
+6. For each stuck node (when no sweep_state), present **context-appropriate** options based on the crashed operation:
 
 ### If crashed during `building`:
 
@@ -168,6 +174,15 @@ Options:
 Choose [1/2/3]:
 ```
 
+Before `Choose [1/2/3]:`, print:
+```
+Recommended: [option number]. [label] — [reason from recommend-recovery.js]
+```
+Use the helper's recommendation directly:
+- `RESTART PASS` when the crash was mid-fix / node-scoped remediation (`fixing_node` set, `active_node.status === "sweeping"`, or phase is `claude-fix` / `cross-fix`)
+- `RESUME` when the crash was between phases or during non-fix phases like `verify-runnable`, `integrate`, `claude-sweep`, `cross-check`, `runtime-verify`, `design-pass`, or `finalizing`
+- `RESUME` for `build-all` crashes unless there is explicit evidence the entire pass must be replayed
+
 **Resume behavior:**
 - Read `sweep_state` from state.json
 - Re-read any sweep/crosscheck reports already on disk in `.forgeplan/sweeps/`
@@ -191,14 +206,28 @@ Choose [1/2/3]:
 
 **Restart pass behavior:**
 - Keep `sweep_state.findings.resolved` from prior passes
-- Reset `sweep_state.findings.pending` to only findings from this pass that weren't resolved
+- Reset the current pass deterministically with:
+  ```bash
+  node "${CLAUDE_PLUGIN_ROOT}/scripts/state-transition.js" restart-sweep-pass "[phase]"
+  ```
+  This must handle:
+  - `sweep_state.current_phase = [phase]`
+  - `sweep_state.fixing_node = null`
+  - clearing current-pass pending findings so the pass can rediscover them cleanly
+  - clearing current-pass modified-file tracking / failed-agent convergence state
+  - `active_node = null`
 - Set `sweep_state.current_phase` based on the operation and interrupted phase:
   - If `operation === "deep-building"` and interrupted phase was `"build-all"`: restart from `"build-all"`
   - If interrupted phase was `"verify-runnable"`: restart from `"verify-runnable"` (don't skip the Phase A gate)
   - If interrupted phase was `"runtime-verify"`: restart from `"runtime-verify"` (don't skip the Phase B gate)
   - If interrupted phase was `"integrate"`: restart from `"integrate"` (don't skip the integration / phase-advancement gate). If `sweep_state.phase_advancement.checkpoint` is `"post_increment"` or `"promoting_specs"`, restart from spec promotion without incrementing `build_phase` a second time. If `checkpoint` is `"promotion_complete"`, skip straight to the Phase 2 build loop.
   - Otherwise: restart from `"claude-sweep"`
-- If `active_node` was set (mid-fix), clear it and set `nodes.[node].status` back to the pre-sweep status
+- If `active_node` was set (mid-fix), first restore the node to its pre-sweep status with:
+  ```bash
+  node "${CLAUDE_PLUGIN_ROOT}/scripts/state-transition.js" restore-previous-status "[node-id]"
+  ```
+  then run `restart-sweep-pass`.
+- Do **not** hand-edit `.forgeplan/state.json` to null out `fixing_node` or change `current_phase`.
 
 **Abort behavior (steps MUST execute in this order):**
 
@@ -235,6 +264,9 @@ Choose [1/2/3]:
 ```
 Recovery complete. Next:
   After RESUME:  The operation will continue automatically.
+  After RESTART PASS:
+                 If recovery continues inline, continue the interrupted sweep/deep-build automatically.
+                 If you stop at the clean reset boundary, run `→ /forgeplan:recover` and choose `RESUME`.
   After RESET:   → /forgeplan:build [node-id]   Restart the build
   After SKIP:    → /forgeplan:next               See what to do next
   After REVIEW:  → /forgeplan:review [node-id]   Check what was built

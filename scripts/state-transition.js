@@ -19,6 +19,7 @@ function usage() {
     "  node scripts/state-transition.js set-node-status <node-id> <status> [previous-status|-]\n" +
     "  node scripts/state-transition.js clear-active-node\n" +
     "  node scripts/state-transition.js set-sweep-phase <phase>\n" +
+    "  node scripts/state-transition.js restart-sweep-pass <phase>\n" +
     "  node scripts/state-transition.js set-sweep-state <json>\n" +
     "  node scripts/state-transition.js clear-sweep-state"
   );
@@ -267,6 +268,40 @@ function main() {
         throw new Error("Cannot set sweep phase because sweep_state is not active");
       }
       state.sweep_state.current_phase = phase;
+      state.last_updated = ts;
+      break;
+    }
+    case "restart-sweep-pass": {
+      const phase = process.argv[3];
+      if (!phase) {
+        usage();
+      }
+      if (!state.sweep_state || typeof state.sweep_state !== "object") {
+        throw new Error("Cannot restart sweep pass because sweep_state is not active");
+      }
+      const currentPass = Number(state.sweep_state.pass_number || 1);
+      state.sweep_state.current_phase = phase;
+      state.sweep_state.fixing_node = null;
+      state.sweep_state.failed_agents = [];
+      state.sweep_state.agent_convergence = {};
+      if (!state.sweep_state.findings || typeof state.sweep_state.findings !== "object") {
+        state.sweep_state.findings = { pending: [], resolved: [] };
+      }
+      if (!Array.isArray(state.sweep_state.findings.pending)) {
+        state.sweep_state.findings.pending = [];
+      }
+      state.sweep_state.findings.pending = state.sweep_state.findings.pending.filter((finding) => {
+        const passFound = Number(finding && finding.pass_found);
+        return Number.isFinite(passFound) && passFound < currentPass;
+      });
+      if (
+        state.sweep_state.modified_files_by_pass &&
+        typeof state.sweep_state.modified_files_by_pass === "object"
+      ) {
+        delete state.sweep_state.modified_files_by_pass[String(currentPass)];
+      }
+      state.active_node = null;
+      state.stop_hook_active = false;
       state.last_updated = ts;
       break;
     }
