@@ -272,6 +272,12 @@ If integration returns **`PASS_WITH_WARNINGS`**:
 
 **Re-anchor:** Re-read `.forgeplan/manifest.yaml` and `.forgeplan/state.json` from disk. Also re-read all node specs from `.forgeplan/specs/` — the review phase may have triggered revisions.
 
+Before any sweep bootstrap reads, transition the operation into the sweep phase:
+```bash
+node "${CLAUDE_PLUGIN_ROOT}/scripts/state-transition.js" set-sweep-phase "claude-sweep"
+```
+Treat that transition as the source of truth. Do **not** inspect `.forgeplan/state.json` with ad hoc `python -c`, `node -e`, or shell snippets just to confirm the phase.
+
 Before dispatching sweep agents, assemble deterministic sweep context with:
 ```bash
 node "${CLAUDE_PLUGIN_ROOT}/scripts/prepare-sweep-context.js"
