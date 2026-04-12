@@ -190,7 +190,18 @@ Use the helper's recommendation directly:
   - If `build-all`: resume the build-all loop — run `next-node.js`, continue building/reviewing remaining nodes. If `active_node` is stuck, recover it first (run per-node building recovery inline), then continue the loop.
   - If `design-pass`: re-run the design pass (deep-build.md Phase 2b). Read `agents/design-pass.md` and `skill-library/core/frontend-design.md`, dispatch the design-pass agent on frontend nodes. If no frontend nodes exist, skip to `verify-runnable`.
   - If `verify-runnable`: re-run `node "${CLAUDE_PLUGIN_ROOT}/scripts/verify-runnable.js"` (Phase A gate was interrupted)
-  - If `claude-sweep`: re-run the sweep agents
+  - If `claude-sweep`:
+    1. Rebuild the dependency graph if needed:
+       ```bash
+       node "${CLAUDE_PLUGIN_ROOT}/scripts/blast-radius.js" index
+       ```
+    2. Prepare the sweep bootstrap context deterministically:
+       ```bash
+       node "${CLAUDE_PLUGIN_ROOT}/scripts/prepare-sweep-context.js"
+       ```
+    3. Use the helper output to read the exact agent prompt files, wiki artifacts, and latest sweep report path needed for dispatch.
+    4. Do **not** fall back to heuristic prompt searches, ad hoc directory listing, or broad exploratory file reads unless the helper output is missing something essential.
+    5. Then re-run the sweep agents.
   - If `claude-fix`: re-fix all pending findings (restart the fix loop for this pass)
   - If `runtime-verify`: re-run `node "${CLAUDE_PLUGIN_ROOT}/scripts/runtime-verify.js" --tier [TIER]` (Phase B gate was interrupted)
   - If `cross-check`: re-run cross-model verification

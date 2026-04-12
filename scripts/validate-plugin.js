@@ -452,6 +452,15 @@ function assertTopLevelOrchestrationStateRules(errors) {
     if (!content.includes("run `→ /forgeplan:recover` and choose `RESUME`")) {
       pushError(errors, "skills/recover/SKILL.md: restart-pass next-step guidance must point to recover/resume, not a fresh deep-build");
     }
+    if (!content.includes('If `claude-sweep`:')) {
+      pushError(errors, "skills/recover/SKILL.md: recover resume flow must explicitly handle claude-sweep");
+    }
+    if (!content.includes("prepare-sweep-context.js")) {
+      pushError(errors, "skills/recover/SKILL.md: claude-sweep recovery must use prepare-sweep-context.js for deterministic sweep bootstrap");
+    }
+    if (!content.includes("Do **not** fall back to heuristic prompt searches")) {
+      pushError(errors, "skills/recover/SKILL.md: claude-sweep recovery must forbid heuristic sweep bootstrap reads by default");
+    }
   }
 
   const sessionStartPath = path.join(repoRoot, "scripts", "session-start.js");
@@ -526,6 +535,12 @@ function assertDesignLibraryContract(errors) {
     const content = fs.readFileSync(sweepPath, "utf8");
     if (!content.includes("prepare-sweep-context.js")) {
       pushError(errors, "skills/sweep/SKILL.md: sweep setup must use prepare-sweep-context.js");
+    }
+    if (!content.includes("do **not** use mutating Bash like `mkdir -p`")) {
+      pushError(errors, "skills/sweep/SKILL.md: sweep setup must forbid mutating Bash mkdir during active sweep");
+    }
+    if (!content.includes(".forgeplan/sweeps/.gitkeep")) {
+      pushError(errors, "skills/sweep/SKILL.md: sweep setup should direct missing sweeps/ creation through Write");
     }
   }
 

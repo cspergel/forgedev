@@ -60,7 +60,10 @@ Run tier-selected sweep agents (3-5) in parallel across the entire codebase: 5 c
    - **Rebuild affected nodes BEFORE re-sweeping:** For each node set to "revised", run `/forgeplan:build [node-id]` with a fresh agent. The re-sweep must audit current code, not stale pre-decision code.
    - After all rebuilds complete, set `sweep_state.current_phase` to "claude-sweep" and proceed to Phase 2 (re-sweep only agents whose categories are in the snapshotted `affectedCategories` list)
 
-4. Create `.forgeplan/sweeps/` directory if it doesn't exist
+4. Ensure `.forgeplan/sweeps/` exists.
+   - During an active sweep or deep-build recovery, do **not** use mutating Bash like `mkdir -p` for this.
+   - If the directory is missing, create it via the `Write` tool by writing a placeholder file such as `.forgeplan/sweeps/.gitkeep`, or by writing the first report file directly.
+   - Prefer `Write`/`Edit` for sweep artifact creation so file registration and active-operation guards stay consistent.
 5. Set `sweep_state` in state.json (only when NOT called from deep-build):
    ```json
    {
