@@ -381,6 +381,9 @@ function assertTopLevelOrchestrationStateRules(errors) {
     if (!content.includes("The step field is `name`, not `step`")) {
       pushError(errors, "skills/deep-build/SKILL.md: Phase 3 remediation must document the verify-runnable step field name");
     }
+    if (!content.includes("Do **not** reinitialize or recreate `sweep_state` here")) {
+      pushError(errors, "skills/deep-build/SKILL.md: verify-runnable pass handling must forbid reinitializing sweep_state before integrate");
+    }
     if (!content.includes("summarize-verify-runnable.js")) {
       pushError(errors, "skills/deep-build/SKILL.md: Phase 3 remediation must use summarize-verify-runnable.js for truncated verify-runnable output");
     }

@@ -193,6 +193,7 @@ If it returns **`status: "pass"`**: run
 node "${CLAUDE_PLUGIN_ROOT}/scripts/state-transition.js" set-sweep-phase "integrate"
 ```
 and proceed to Phase 4 (integration check).
+Do **not** reinitialize or recreate `sweep_state` here. Phase 3 is already inside the active deep-build operation; this is a phase transition only.
 
 If it returns **`status: "warnings"`**: treat this as pass-with-warnings. Record the warnings in the deep-build report and proceed to Phase 4.
 
