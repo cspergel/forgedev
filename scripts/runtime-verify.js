@@ -115,6 +115,49 @@ function resolveNodeFile(nodeId) {
   return "";
 }
 
+function loadManifest() {
+  try {
+    const yaml = require("js-yaml");
+    return yaml.load(fs.readFileSync(path.join(forgePlanDir, "manifest.yaml"), "utf-8")) || {};
+  } catch {
+    return {};
+  }
+}
+
+function candidateDirsFromManifest(manifest, nodeType) {
+  const candidates = new Set();
+  const nodes = manifest && manifest.nodes ? Object.values(manifest.nodes) : [];
+  for (const node of nodes) {
+    if (!node || typeof node !== "object") continue;
+    if (nodeType && node.type !== nodeType) continue;
+    const scope = String(node.file_scope || "");
+    const match = scope.match(/^([^/{]+)\//);
+    if (match) candidates.add(match[1]);
+  }
+  return Array.from(candidates);
+}
+
+function findNodeWorkspaceDir(manifest) {
+  const candidates = [
+    ".",
+    ...candidateDirsFromManifest(manifest, "frontend"),
+    "frontend",
+    "web",
+    "client",
+    "ui",
+    "app",
+  ];
+
+  for (const candidate of Array.from(new Set(candidates))) {
+    const absolute = candidate === "." ? cwd : path.join(cwd, candidate);
+    if (fs.existsSync(path.join(absolute, "package.json"))) {
+      return { relative: candidate, absolute };
+    }
+  }
+
+  return null;
+}
+
 /**
  * Parse a contract string like "GET /api/documents -> { documents: Document[] }"
  * Returns { method, path, expectedFields } or null if unparseable
@@ -161,24 +204,36 @@ async function fetchWithRetry(url, opts = {}) {
 }
 
 // Detect the base URL from server output or tech stack
-function detectBaseUrl(serverOutput, techStack) {
+function detectBaseUrl(serverOutput, techStack, baseDir = cwd) {
   const urlMatch = serverOutput.match(/https?:\/\/(?:localhost|127\.0\.0\.1|0\.0\.0\.0):(\d+)/i);
   if (urlMatch) return `http://localhost:${urlMatch[1]}`;
 
   if (techStack && techStack.dev_port) return `http://localhost:${techStack.dev_port}`;
 
   try {
-    const envContent = fs.readFileSync(path.join(cwd, ".env"), "utf-8");
+    const envContent = fs.readFileSync(path.join(baseDir, ".env"), "utf-8");
     const portMatch = envContent.match(/^PORT\s*=\s*(\d+)/m);
     if (portMatch) return `http://localhost:${portMatch[1]}`;
   } catch {}
+
+  if (baseDir !== cwd) {
+    try {
+      const envContent = fs.readFileSync(path.join(cwd, ".env"), "utf-8");
+      const portMatch = envContent.match(/^PORT\s*=\s*(\d+)/m);
+      if (portMatch) return `http://localhost:${portMatch[1]}`;
+    } catch {}
+  }
 
   return "http://localhost:3000";
 }
 
 // Start the dev server and wait for ready
-async function startServer(techStack) {
+async function startServer(techStack, manifest) {
   const runtime = (techStack && techStack.runtime) || "node";
+  const nodeWorkspace = (runtime === "node" || !runtime)
+    ? (findNodeWorkspaceDir(manifest) || { relative: ".", absolute: cwd })
+    : { relative: ".", absolute: cwd };
+  const serverCwd = nodeWorkspace.absolute;
   let devCmd;
   switch (runtime) {
     case "deno": devCmd = "deno task dev"; break;
@@ -188,22 +243,29 @@ async function startServer(techStack) {
 
   if (runtime === "node" || !runtime) {
     try {
-      const pkg = JSON.parse(fs.readFileSync(path.join(cwd, "package.json"), "utf-8"));
+      const pkg = JSON.parse(fs.readFileSync(path.join(serverCwd, "package.json"), "utf-8"));
       if (!pkg.scripts || !pkg.scripts.dev) {
-        return { error: "No 'dev' script in package.json", errorType: "environment" };
+        return {
+          error: `No 'dev' script in package.json (${nodeWorkspace.relative === "." ? "repo root" : nodeWorkspace.relative})`,
+          errorType: "environment",
+        };
       }
     } catch {
-      return { error: "Could not read package.json", errorType: "environment" };
+      return {
+        error: `Could not read package.json (${nodeWorkspace.relative === "." ? "repo root" : nodeWorkspace.relative})`,
+        errorType: "environment",
+      };
     }
   }
 
   const env = { ...process.env };
   let createdTempEnv = false;
-  const tempEnvPath = path.join(cwd, ".env.verify-tmp");
-  if (!fs.existsSync(path.join(cwd, ".env")) && fs.existsSync(path.join(cwd, ".env.example"))) {
+  const tempEnvPath = path.join(serverCwd, ".env.verify-tmp");
+  const envTargetDir = fs.existsSync(path.join(serverCwd, ".env.example")) ? serverCwd : cwd;
+  if (!fs.existsSync(path.join(envTargetDir, ".env")) && fs.existsSync(path.join(envTargetDir, ".env.example"))) {
     try {
       // Use a temp file instead of creating .env permanently (side-effect free verification)
-      fs.copyFileSync(path.join(cwd, ".env.example"), tempEnvPath);
+      fs.copyFileSync(path.join(envTargetDir, ".env.example"), tempEnvPath);
       createdTempEnv = true;
       env.MOCK_MODE = "true";
       // Load temp env vars into the env object so the spawned process gets them
@@ -224,7 +286,7 @@ async function startServer(techStack) {
   const isWindows = process.platform === "win32";
   const parts = devCmd.split(" ");
   const child = spawn(parts[0], parts.slice(1), {
-    cwd,
+    cwd: serverCwd,
     stdio: ["pipe", "pipe", "pipe"],
     detached: !isWindows,
     shell: true,
@@ -326,7 +388,14 @@ async function startServer(techStack) {
     return { error: `Server failed to start: ${serverOutput.substring(0, 300)}`, errorType };
   }
 
-  return { child, serverOutput, isWindows, _cleanupTempEnv: createdTempEnv ? tempEnvPath : null };
+  return {
+    child,
+    serverOutput,
+    isWindows,
+    workspaceDir: serverCwd,
+    workspaceRelative: nodeWorkspace.relative,
+    _cleanupTempEnv: createdTempEnv ? tempEnvPath : null,
+  };
 }
 
 function killProcess(pid, isWindows) {
@@ -567,15 +636,11 @@ async function main() {
     }, 0);
   }
 
-  let techStack = {};
-  try {
-    const yaml = require("js-yaml");
-    const manifest = yaml.load(fs.readFileSync(path.join(forgePlanDir, "manifest.yaml"), "utf-8"));
-    techStack = (manifest.project && manifest.project.tech_stack) || {};
-  } catch {}
+  const manifest = loadManifest();
+  const techStack = (manifest.project && manifest.project.tech_stack) || {};
 
   const endpoints = loadEndpoints();
-  const server = await startServer(techStack);
+  const server = await startServer(techStack, manifest);
 
   if (server.error) {
     // Use the classified error type: "environment" for port/config issues, "code" for boot regressions
@@ -602,7 +667,7 @@ async function main() {
     }, exitCode);
   }
 
-  const baseUrl = detectBaseUrl(server.serverOutput, techStack);
+  const baseUrl = detectBaseUrl(server.serverOutput, techStack, server.workspaceDir || cwd);
   const findings = [];
   let levelReached = 0;
   let endpointsTested = 0;

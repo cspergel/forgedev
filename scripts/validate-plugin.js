@@ -344,6 +344,9 @@ function assertStateTransitionBashAllowlist(errors) {
   if (!content.includes("relPath.startsWith(\".forgeplan/reviews/\")")) {
     pushError(errors, "scripts/pre-tool-use.js: sweep/deep-build analysis mode must allow .forgeplan/reviews/ writes for parallel review batches");
   }
+  if (!content.includes('relPath === ".forgeplan/config.yaml"')) {
+    pushError(errors, "scripts/pre-tool-use.js: active sweep/deep-build operations must allow sanctioned .forgeplan/config.yaml writes");
+  }
 }
 
 function assertTopLevelOrchestrationStateRules(errors) {
@@ -819,6 +822,26 @@ function assertStatusContract(errors) {
   }
 }
 
+function assertRuntimeVerifyWorkspaceContract(errors) {
+  const runtimeVerifyPath = path.join(repoRoot, "scripts", "runtime-verify.js");
+
+  if (!fs.existsSync(runtimeVerifyPath)) {
+    pushError(errors, "scripts/runtime-verify.js: missing");
+    return;
+  }
+
+  const content = fs.readFileSync(runtimeVerifyPath, "utf8");
+  if (!content.includes("findNodeWorkspaceDir")) {
+    pushError(errors, "scripts/runtime-verify.js: should detect the active Node/frontend workspace before starting the dev server");
+  }
+  if (!content.includes("cwd: serverCwd")) {
+    pushError(errors, "scripts/runtime-verify.js: should spawn the dev server from the resolved workspace directory");
+  }
+  if (!content.includes('package.json (${nodeWorkspace.relative === "." ? "repo root" : nodeWorkspace.relative})')) {
+    pushError(errors, "scripts/runtime-verify.js: environment errors should identify which package.json location was checked");
+  }
+}
+
 const errors = [];
 
 let pluginManifest;
@@ -960,6 +983,7 @@ assertTopLevelOrchestrationStateRules(errors);
 assertDesignLibraryContract(errors);
 assertCrossModelConflictPolicy(errors);
 assertWikiKnowledgeContract(errors);
+assertRuntimeVerifyWorkspaceContract(errors);
 assertStatusContract(errors);
 
 if (errors.length > 0) {

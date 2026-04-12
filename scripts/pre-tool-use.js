@@ -231,6 +231,7 @@ function evaluate(input) {
         ((sweepPhase === "build-all" || sweepPhase === "integrate") && relPath.startsWith(".forgeplan/reviews/")) ||
         relPath.startsWith(".forgeplan/wiki/") ||    // Sprint 9: wiki updates during sweep analysis
         relPath.startsWith(".forgeplan/specs/") ||
+        relPath === ".forgeplan/config.yaml" ||
         relPath === ".forgeplan/manifest.yaml" ||
         relPath === ".forgeplan/deep-build-report.md" ||
         relPath === ".forgeplan/state.json"
@@ -304,7 +305,7 @@ function evaluate(input) {
       relPath === `.forgeplan/conversations/nodes/${activeNodeId_}.md` ||
       relPath === ".forgeplan/state.json" ||
       // Sweep-only paths: only allow during sweeping, not during normal builds
-      (activeStatus === "sweeping" && (relPath.startsWith(".forgeplan/sweeps/") || relPath.startsWith(".forgeplan/specs/") || relPath === ".forgeplan/manifest.yaml" || relPath === ".forgeplan/deep-build-report.md"))
+      (activeStatus === "sweeping" && (relPath.startsWith(".forgeplan/sweeps/") || relPath.startsWith(".forgeplan/specs/") || relPath === ".forgeplan/config.yaml" || relPath === ".forgeplan/manifest.yaml" || relPath === ".forgeplan/deep-build-report.md"))
     ) {
       return { block: false };
     }
