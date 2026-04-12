@@ -278,7 +278,14 @@ node "${CLAUDE_PLUGIN_ROOT}/scripts/prepare-sweep-context.js"
 ```
 Use that helper output to read the exact sweep-agent prompt files and existing wiki/report artifacts. Do **not** search heuristically for sweep setup context or enumerate `.forgeplan/wiki/nodes/` ad hoc when the helper already provides the exact paths.
 
-Run `/forgeplan:sweep` (dispatch all sweep agents in parallel, merge findings, fix with node-scoped enforcement, progressive convergence).
+Do **not** invoke `Skill(forgeplan:sweep)` or try to delegate this phase through the command skill. `sweep` has `disable-model-invocation: true`.
+Read `${CLAUDE_PLUGIN_ROOT}/skills/sweep/SKILL.md` and execute the sweep workflow inline:
+- dispatch the sweep agents in parallel
+- merge and deduplicate findings
+- run node-scoped fix cycles
+- re-integrate and converge progressively
+
+This phase should follow the sweep skill logic directly, not attempt `Skill(forgeplan:sweep)` first.
 
 After Claude sweep fixes, re-integrate (Phase 4 logic).
 

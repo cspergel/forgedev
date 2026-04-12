@@ -426,6 +426,12 @@ function assertTopLevelOrchestrationStateRules(errors) {
     if (!content.includes("prepare-sweep-context.js")) {
       pushError(errors, "skills/deep-build/SKILL.md: Phase 5 must use prepare-sweep-context.js for deterministic sweep setup");
     }
+    if (!content.includes("Do **not** invoke `Skill(forgeplan:sweep)`")) {
+      pushError(errors, "skills/deep-build/SKILL.md: Phase 5 must forbid invoking Skill(forgeplan:sweep)");
+    }
+    if (!content.includes('Read `${CLAUDE_PLUGIN_ROOT}/skills/sweep/SKILL.md` and execute the sweep workflow inline')) {
+      pushError(errors, "skills/deep-build/SKILL.md: Phase 5 must inline the sweep workflow from skills/sweep/SKILL.md");
+    }
     if (!content.includes("deep-build-cross-model-gate.js")) {
       pushError(errors, "skills/deep-build/SKILL.md: Phase 7 must enforce cross-model requirements with deep-build-cross-model-gate.js");
     }
