@@ -260,9 +260,23 @@ If `verdict === "INCOMPLETE"`: log warning, treat as pass with warning (same as 
 
 If integration fails and `failures.length > 0`, add each failure as a finding in `sweep_state.findings.pending` and proceed to fix cycle.
 
+If integration returns **`PASS_WITH_WARNINGS`**:
+- summarize the result with:
+  ```bash
+  node "${CLAUDE_PLUGIN_ROOT}/scripts/summarize-integrate-check.js" --stdin
+  ```
+- if the warnings are entirely `informational-one-way-dependency`, treat them as non-blocking informational context and continue
+- if any warnings are classified as actionable, continue to Phase 5 but include that warning summary in the sweep setup so the sweep agents pressure those boundaries instead of silently normalizing them
+
 ### Phase 5: Claude sweep (was Phase 4)
 
 **Re-anchor:** Re-read `.forgeplan/manifest.yaml` and `.forgeplan/state.json` from disk. Also re-read all node specs from `.forgeplan/specs/` — the review phase may have triggered revisions.
+
+Before dispatching sweep agents, assemble deterministic sweep context with:
+```bash
+node "${CLAUDE_PLUGIN_ROOT}/scripts/prepare-sweep-context.js"
+```
+Use that helper output to read the exact sweep-agent prompt files and existing wiki/report artifacts. Do **not** search heuristically for sweep setup context or enumerate `.forgeplan/wiki/nodes/` ad hoc when the helper already provides the exact paths.
 
 Run `/forgeplan:sweep` (dispatch all sweep agents in parallel, merge findings, fix with node-scoped enforcement, progressive convergence).
 

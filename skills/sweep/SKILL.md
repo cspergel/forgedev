@@ -93,6 +93,13 @@ node "${CLAUDE_PLUGIN_ROOT}/scripts/blast-radius.js" index
 ```
 This builds `.forgeplan/dependency-graph.json` — maps every import/export relationship in the codebase. Used by Phase 4 fix agents to understand blast radius before making changes. Skip for SMALL tier (few files, low interconnection).
 
+**Deterministic sweep context assembly:**
+Before exploratory reads, run:
+```bash
+node "${CLAUDE_PLUGIN_ROOT}/scripts/prepare-sweep-context.js"
+```
+This returns the exact current phase, tier, latest sweep report path, wiki artifact paths, agent prompt paths, and status counts. Use it to read the exact relevant files. Do **not** fall back to heuristic searching or ad hoc directory listing unless the helper output is missing something essential.
+
 **Understanding extraction (pass 1 only):**
 Before dispatching agents on pass 1, generate a lightweight codebase summary to help agents focus:
 - Read the manifest (node descriptions, shared models, tech stack)

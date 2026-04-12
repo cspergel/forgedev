@@ -627,11 +627,13 @@ function evaluateBash(toolInput, cwd) {
     nodeScriptPattern("cross-model-bridge.js"),   // Sprint 6: cross-model sweep bridge
     nodeScriptPattern("verify-runnable.js"),       // our own verification script (Phase A)
     nodeScriptPattern("summarize-verify-runnable.js", String.raw`(?:\s+(?:--stdin|".*?"|'.*?'|\S+))?(?:\s|$)`), // verify-runnable result summarizer
+    nodeScriptPattern("summarize-integrate-check.js", String.raw`(?:\s+(?:--stdin|--json|".*?"|'.*?'|\S+))*(?:\s|$)`), // integrate-check result summarizer
     nodeScriptPattern("validate-ingest.js"),      // Sprint 10B: repo ingestion validation
     nodeScriptPattern("runtime-verify.js"),        // Phase B runtime verification
     nodeScriptPattern("worktree-manager.js"),     // our own worktree manager
     nodeScriptPattern("compact-context.js"),      // our own compaction context script
     nodeScriptPattern("compile-wiki.js"),         // Sprint 9: wiki knowledge compilation
+    nodeScriptPattern("prepare-sweep-context.js"), // deterministic sweep context assembly
     nodeScriptPattern("compose-design-context.js"), // design context composition for frontend builds/design pass
     nodeScriptPattern("list-design-profiles.js"), // design profile catalog inspection
     nodeScriptPattern("verify-cross-phase.js"),   // Sprint 10B: cross-phase implementation verification

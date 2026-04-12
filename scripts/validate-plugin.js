@@ -296,6 +296,12 @@ function assertStateTransitionBashAllowlist(errors) {
   if (!content.includes("summarize-verify-runnable.js")) {
     pushError(errors, "scripts/pre-tool-use.js: Bash allowlist must include summarize-verify-runnable.js");
   }
+  if (!content.includes("summarize-integrate-check.js")) {
+    pushError(errors, "scripts/pre-tool-use.js: Bash allowlist must include summarize-integrate-check.js");
+  }
+  if (!content.includes("prepare-sweep-context.js")) {
+    pushError(errors, "scripts/pre-tool-use.js: Bash allowlist must include prepare-sweep-context.js");
+  }
   if (!content.includes("start-sweep-fix")) {
     pushError(errors, "scripts/pre-tool-use.js: Bash allowlist must include state-transition.js start-sweep-fix");
   }
@@ -396,6 +402,12 @@ function assertTopLevelOrchestrationStateRules(errors) {
     if (!content.includes('Do **not** call `set-sweep-phase "verify-runnable"` between node-scoped fixes')) {
       pushError(errors, "skills/deep-build/SKILL.md: Phase 3 remediation must forbid unnecessary set-sweep-phase verify-runnable calls");
     }
+    if (!content.includes("summarize-integrate-check.js")) {
+      pushError(errors, "skills/deep-build/SKILL.md: Phase 4 must summarize integrate-check warnings deterministically");
+    }
+    if (!content.includes("prepare-sweep-context.js")) {
+      pushError(errors, "skills/deep-build/SKILL.md: Phase 5 must use prepare-sweep-context.js for deterministic sweep setup");
+    }
   }
 
   if (fs.existsSync(reviewPath)) {
@@ -464,6 +476,14 @@ function assertDesignLibraryContract(errors) {
     const content = fs.readFileSync(deepBuildPath, "utf8");
     if (!content.includes("compose-design-context.js")) {
       pushError(errors, "skills/deep-build/SKILL.md: design pass must use compose-design-context.js");
+    }
+  }
+
+  const sweepPath = path.join(skillsRoot, "sweep", "SKILL.md");
+  if (fs.existsSync(sweepPath)) {
+    const content = fs.readFileSync(sweepPath, "utf8");
+    if (!content.includes("prepare-sweep-context.js")) {
+      pushError(errors, "skills/sweep/SKILL.md: sweep setup must use prepare-sweep-context.js");
     }
   }
 
