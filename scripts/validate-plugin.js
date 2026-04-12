@@ -408,6 +408,15 @@ function assertTopLevelOrchestrationStateRules(errors) {
     if (!content.includes("prepare-sweep-context.js")) {
       pushError(errors, "skills/deep-build/SKILL.md: Phase 5 must use prepare-sweep-context.js for deterministic sweep setup");
     }
+    if (!content.includes('node "${CLAUDE_PLUGIN_ROOT}/scripts/status-report.js"')) {
+      pushError(errors, "skills/deep-build/SKILL.md: Phase 8 finalization should use status-report.js");
+    }
+    if (!content.includes("Do **not** use ad hoc shell inspection for finalization context")) {
+      pushError(errors, "skills/deep-build/SKILL.md: Phase 8 finalization must forbid ad hoc shell inspection");
+    }
+    if (!content.includes("no `git log` / git-history inspection")) {
+      pushError(errors, "skills/deep-build/SKILL.md: Phase 8 finalization must forbid git log based report inference");
+    }
   }
 
   if (fs.existsSync(reviewPath)) {

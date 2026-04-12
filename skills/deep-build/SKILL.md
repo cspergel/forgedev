@@ -383,7 +383,25 @@ This phase follows the **exact same logic as sweep Phase 6** (Task 9). All statu
 
 1. Run final integration check
 2. **(Sprint 9, MEDIUM/LARGE only)** Run `node "${CLAUDE_PLUGIN_ROOT}/scripts/compile-wiki.js"` to update the wiki with sweep findings. This is needed because sweep's Phase 7 compile-wiki is skipped when called from deep-build (sweep.md line 26). Without this step, the wiki would only reflect pre-sweep state.
-3. Generate deep-build report at `.forgeplan/deep-build-report.md`:
+3. Before writing the report, gather project/finalization state with:
+   ```bash
+   node "${CLAUDE_PLUGIN_ROOT}/scripts/status-report.js"
+   ```
+   Use ForgePlan artifacts as the source of truth:
+   - `.forgeplan/state.json`
+   - `.forgeplan/manifest.yaml`
+   - final `integrate-check.js` output
+   - latest sweep report
+   - wiki compile result
+
+   Do **not** use ad hoc shell inspection for finalization context:
+   - no `node -e`
+   - no `python -c`
+   - no `cat ... | python3 -c ...`
+   - no `git log` / git-history inspection to infer run timing or report fields
+
+   Finalization should be driven by ForgePlan artifacts, not repo archaeology.
+4. Generate deep-build report at `.forgeplan/deep-build-report.md`:
 
 The report must capture **pipeline decisions**, not just outcomes. Whenever a phase is skipped, downgraded, or uses a default, record the reason. This includes at minimum:
 - research behavior (baseline-only vs stack-specific topics, or no artifacts found)
@@ -448,8 +466,8 @@ The report must capture **pipeline decisions**, not just outcomes. Whenever a ph
 [Final integration check output]
 ```
 
-3. **If Phase Advancement will run** (build_phase < max_phase): keep `sweep_state.current_phase` at `"integrate"` and `sweep_state.operation` at `"deep-building"` until promotion completes (do NOT clear sweep_state yet — crash recovery needs the breadcrumb, and `integrate` is already a valid resumable phase). Before changing `build_phase`, write `sweep_state.phase_advancement = { from_build_phase: [N], to_build_phase: [N+1], checkpoint: "pre_increment", promoted_nodes: [list], backup_dir: ".forgeplan/phase-advance-backup/" }` and persist backups of the manifest and promoted-node specs in that backup directory. **If NOT advancing** (build_phase >= max_phase or single-phase): clear `sweep_state` to null.
-4. Present results only if NO phase advancement will run. If advancement WILL run, present a transition notice instead:
+5. **If Phase Advancement will run** (build_phase < max_phase): keep `sweep_state.current_phase` at `"integrate"` and `sweep_state.operation` at `"deep-building"` until promotion completes (do NOT clear sweep_state yet — crash recovery needs the breadcrumb, and `integrate` is already a valid resumable phase). Before changing `build_phase`, write `sweep_state.phase_advancement = { from_build_phase: [N], to_build_phase: [N+1], checkpoint: "pre_increment", promoted_nodes: [list], backup_dir: ".forgeplan/phase-advance-backup/" }` and persist backups of the manifest and promoted-node specs in that backup directory. **If NOT advancing** (build_phase >= max_phase or single-phase): clear `sweep_state` to null.
+6. Present results only if NO phase advancement will run. If advancement WILL run, present a transition notice instead:
 
 ```
 === Phase [N] Certified ===
