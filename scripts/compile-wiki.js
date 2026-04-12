@@ -43,6 +43,29 @@ const VERBOSE = process.argv.includes("--verbose");
 
 function log(msg) { process.stderr.write(msg + "\n"); }
 function debug(msg) { if (VERBOSE) log("  [debug] " + msg); }
+function passRank(pass) {
+  if (pass === "review") return Number.MAX_SAFE_INTEGER;
+  const numeric = Number(pass);
+  return Number.isFinite(numeric) ? numeric : 0;
+}
+function summarizeHotspots(findings) {
+  const counts = new Map();
+  for (const finding of findings) {
+    if (!finding.file) continue;
+    counts.set(finding.file, (counts.get(finding.file) || 0) + 1);
+  }
+  return [...counts.entries()]
+    .map(([file, count]) => ({ file, count }))
+    .sort((a, b) => b.count - a.count || a.file.localeCompare(b.file));
+}
+function detectEntrypoints(files) {
+  const patterns = [
+    /(?:^|\/)(main|app|server|router|routes|service|controller)\.[jt]sx?$/i,
+    /(?:^|\/)(page|layout|route)\.[jt]sx?$/i,
+    /(?:^|\/)middleware\.[jt]s$/i,
+  ];
+  return files.filter((filePath) => patterns.some((pattern) => pattern.test(filePath))).slice(0, 5);
+}
 
 async function main() {
   const startTime = Date.now();
@@ -103,6 +126,8 @@ async function main() {
   const allDecisions = [];
   const allConstraints = [];
   const allPatterns = [];
+  const nodeSummaries = [];
+  const projectFindingRefs = [];
   const pages = {}; // filename -> content
   let nodeCount = 0, ruleCount = 0, patternCount = 0, decisionCount = 0;
 
@@ -189,12 +214,14 @@ async function main() {
             if (cells.length >= 3) {
               // Check if finding references this node's files
               const rowText = cells.join(" ");
-              if (files.some(nf => rowText.includes(nf)) || rowText.toLowerCase().includes(nodeId)) {
+              const matchedFile = files.find(nf => rowText.includes(nf)) || null;
+              if (matchedFile || rowText.toLowerCase().includes(nodeId)) {
                 pastFindings.push({
                   pass: passNum,
                   agent: cells[1] || "-",
                   finding: cells[2] || "-",
                   resolution: cells[3] || "-",
+                  file: matchedFile,
                 });
               }
             }
@@ -210,10 +237,27 @@ async function main() {
       for (const row of tableRows.slice(2)) { // skip header + separator
         const cells = row.split("|").map(c => c.trim()).filter(Boolean);
         if (cells.length >= 3) {
-          pastFindings.push({ pass: "review", agent: "reviewer", finding: cells[0], resolution: cells[1] || "-" });
+          const findingText = cells[0] || "-";
+          const matchedFile = files.find(nf => findingText.includes(nf)) || null;
+          pastFindings.push({ pass: "review", agent: "reviewer", finding: findingText, resolution: cells[1] || "-", file: matchedFile });
         }
       }
     }
+    pastFindings.sort((a, b) => passRank(b.pass) - passRank(a.pass));
+    const hotspotFiles = summarizeHotspots(pastFindings);
+    projectFindingRefs.push(...pastFindings);
+
+    const operationalSummary = {
+      status: state.nodes && state.nodes[nodeId] ? state.nodes[nodeId].status : "unknown",
+      nodeType: node.type || spec.type || "unknown",
+      fileCount: files.length,
+      testFileCount: files.filter(wb.isTestFile).length,
+      dependencyCount: Array.isArray(node.depends_on) ? node.depends_on.length : 0,
+      connectionCount: Array.isArray(node.connects_to) ? node.connects_to.length : 0,
+      entrypoints: detectEntrypoints(files),
+      hotspotFiles: hotspotFiles.slice(0, 3).map((entry) => entry.file),
+      recentFindings: pastFindings.slice(0, 3).map((f) => `${f.pass}/${f.agent}: ${f.finding}`),
+    };
 
     // Build cross-references
     const crossRefs = [];
@@ -237,9 +281,15 @@ async function main() {
     }
 
     // 2f: Generate node page
-    pages[`nodes/${nodeId}.md`] = wb.buildNodePage(nodeId, spec, decisions, pastFindings, crossRefs);
+    pages[`nodes/${nodeId}.md`] = wb.buildNodePage(nodeId, spec, decisions, pastFindings, crossRefs, operationalSummary);
     nodeCount++;
     decisionCount += decisions.length;
+    nodeSummaries.push({
+      nodeId,
+      status: operationalSummary.status,
+      findingCount: pastFindings.length,
+      hotspotFiles: operationalSummary.hotspotFiles,
+    });
 
     // Collect file contents for pattern inference
     allPatterns.push(...wb.inferPatterns(fileContents));
@@ -274,11 +324,17 @@ async function main() {
   const finalPatterns = Object.values(uniquePatterns);
   patternCount = finalPatterns.length;
   ruleCount = allConstraints.length;
+  const topHotspots = summarizeHotspots(projectFindingRefs).slice(0, 8);
 
   // Step 3: Generate cross-cutting pages
   pages["decisions.md"] = wb.buildDecisionsPage(allDecisions);
   pages["rules.md"] = wb.buildRulesPage(allConstraints, finalPatterns);
-  pages["index.md"] = wb.buildIndexPage(manifest, fpDir);
+  pages["index.md"] = wb.buildIndexPage(manifest, fpDir, {
+    wikiLastCompiled: state.wiki_last_compiled || null,
+    wikiIsStale: Boolean(state.wiki_last_compiled && state.last_updated && state.wiki_last_compiled < state.last_updated),
+    topHotspots,
+    nodeSummaries: nodeSummaries.sort((a, b) => b.findingCount - a.findingCount || a.nodeId.localeCompare(b.nodeId)),
+  });
 
   // Step 4: Reconcile vs manifest
   const nodesDir = path.join(wikiDir, "nodes");

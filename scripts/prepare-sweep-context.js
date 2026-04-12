@@ -71,6 +71,9 @@ function main() {
   const wikiNodePages = fs.existsSync(wikiNodeDir)
     ? fs.readdirSync(wikiNodeDir).map((name) => path.join(wikiNodeDir, name)).sort()
     : [];
+  const wikiIndex = fs.existsSync(path.join(wikiDir, "index.md")) ? path.join(wikiDir, "index.md") : null;
+  const wikiLastCompiled = state.wiki_last_compiled || null;
+  const wikiIsStale = Boolean(wikiLastCompiled && state.last_updated && wikiLastCompiled < state.last_updated);
 
   const result = {
     operation: sweepState.operation || null,
@@ -78,9 +81,12 @@ function main() {
     pass_number: sweepState.pass_number || 1,
     tier,
     latest_sweep_report: latestSweepReport,
+    wiki_index: wikiIndex,
     wiki_decisions: fs.existsSync(path.join(wikiDir, "decisions.md")) ? path.join(wikiDir, "decisions.md") : null,
     wiki_rules: fs.existsSync(path.join(wikiDir, "rules.md")) ? path.join(wikiDir, "rules.md") : null,
     wiki_node_pages: wikiNodePages,
+    wiki_last_compiled: wikiLastCompiled,
+    wiki_is_stale: wikiIsStale,
     agent_prompts: agentPrompts,
     shared_types: fs.existsSync(path.join(cwd, "src", "shared", "types", "index.ts"))
       ? path.join(cwd, "src", "shared", "types", "index.ts")

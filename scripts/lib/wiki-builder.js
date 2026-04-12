@@ -23,10 +23,10 @@ const CATCH_RETHROW_REGEX = /catch\s*\([^)]*\)\s*\{[^}]*throw\s/gs;
  * Strips characters that could break table structure or inject markdown formatting.
  */
 function sanitizeForMarkdown(text) {
-  return text
-    .replace(/\|/g, "-")     // pipes break markdown tables
-    .replace(/\n/g, " ")     // newlines break table rows
-    .replace(/<[^>]*>/g, "") // strip HTML tags
+  return String(text || "")
+    .replace(/\|/g, "-")
+    .replace(/\n/g, " ")
+    .replace(/<[^>]*>/g, "")
     .trim();
 }
 
@@ -45,14 +45,11 @@ function extractDecisionMarkers(fileContents, filePath) {
     const match = /@forgeplan-decision:\s*(D-\S+-\d+-\S+)\s*--\s*([^\n]+)/.exec(lines[i]);
     if (match) {
       const rawDesc = match[2].trim();
-      // Split on "Why:" or "because" to separate choice from rationale
-      // e.g., "Database sessions. Why: need server-side revocation"
-      // e.g., "Use bcrypt because it has adaptive cost factor"
       let choice = rawDesc;
       let why = "";
       const whyMatch = rawDesc.match(/^(.+?)\s*(?:Why:\s*|because\s+)(.+)$/i);
       if (whyMatch) {
-        choice = whyMatch[1].replace(/\.\s*$/, ""); // trim trailing period
+        choice = whyMatch[1].replace(/\.\s*$/, "");
         why = whyMatch[2];
       }
       decisions.push({
@@ -70,7 +67,7 @@ function extractDecisionMarkers(fileContents, filePath) {
 // --- Pattern Inference (V1: regex-only, no AST) ---
 
 function isTestFile(filePath) {
-  return TEST_FILE_PATTERNS.some(p => p.test(filePath));
+  return TEST_FILE_PATTERNS.some((p) => p.test(filePath));
 }
 
 /**
@@ -79,10 +76,9 @@ function isTestFile(filePath) {
  * @returns {Array<{name: string, type: string, files: string[], description: string}>}
  */
 function inferPatterns(allFiles) {
-  const sourceFiles = allFiles.filter(f => !isTestFile(f.path));
+  const sourceFiles = allFiles.filter((f) => !isTestFile(f.path));
   const patterns = [];
 
-  // 1. Import clustering: files sharing 3+ identical imports
   const fileImports = {};
   for (const f of sourceFiles) {
     const imports = new Set();
@@ -93,12 +89,12 @@ function inferPatterns(allFiles) {
     }
     if (imports.size > 0) fileImports[f.path] = [...imports].sort();
   }
-  // Group files by shared import sets (3+ shared imports)
+
   const importClusters = {};
   const filePaths = Object.keys(fileImports);
   for (let i = 0; i < filePaths.length; i++) {
     for (let j = i + 1; j < filePaths.length; j++) {
-      const shared = fileImports[filePaths[i]].filter(imp => fileImports[filePaths[j]].includes(imp));
+      const shared = fileImports[filePaths[i]].filter((imp) => fileImports[filePaths[j]].includes(imp));
       if (shared.length >= 3) {
         const key = shared.join(",");
         if (!importClusters[key]) importClusters[key] = { imports: shared, files: new Set() };
@@ -107,9 +103,9 @@ function inferPatterns(allFiles) {
       }
     }
   }
-  for (const [key, cluster] of Object.entries(importClusters)) {
+  for (const cluster of Object.values(importClusters)) {
     if (cluster.files.size >= 3) {
-      const slug = cluster.imports.slice(0, 3).map(i => path.basename(i, path.extname(i))).join("-");
+      const slug = cluster.imports.slice(0, 3).map((i) => path.basename(i, path.extname(i))).join("-");
       patterns.push({
         name: `import-cluster-${slug}`,
         type: "import-cluster",
@@ -119,11 +115,10 @@ function inferPatterns(allFiles) {
     }
   }
 
-  // 2. Middleware signatures: files with (req, res, next) patterns
-  const middlewareFiles = sourceFiles.filter(f => {
-    MIDDLEWARE_REGEX.lastIndex = 0; // Reset before each test (global regex is stateful)
+  const middlewareFiles = sourceFiles.filter((f) => {
+    MIDDLEWARE_REGEX.lastIndex = 0;
     return MIDDLEWARE_REGEX.test(f.content);
-  }).map(f => f.path);
+  }).map((f) => f.path);
   if (middlewareFiles.length >= 3) {
     patterns.push({
       name: "middleware-pattern",
@@ -133,7 +128,6 @@ function inferPatterns(allFiles) {
     });
   }
 
-  // 3. Error handling shapes: classify catch blocks
   const errorShapes = { "next-error": [], "json-response": [], "rethrow": [] };
   for (const f of sourceFiles) {
     if (CATCH_NEXT_REGEX.test(f.content)) errorShapes["next-error"].push(f.path);
@@ -162,16 +156,41 @@ function inferPatterns(allFiles) {
 /**
  * Build a node wiki page (novel info only — no manifest/spec/state duplication).
  * @param {string} nodeId
- * @param {object} spec - Parsed spec YAML for this node
- * @param {Array} decisions - Decision markers found in this node's files
- * @param {Array} pastFindings - Findings from sweeps/reviews for this node
- * @param {Array} crossRefs - Cross-references to other nodes
- * @returns {string} Markdown page content
+ * @param {object} spec
+ * @param {Array} decisions
+ * @param {Array} pastFindings
+ * @param {Array} crossRefs
+ * @param {object} operationalSummary
+ * @returns {string}
  */
-function buildNodePage(nodeId, spec, decisions, pastFindings, crossRefs) {
+function buildNodePage(nodeId, spec, decisions, pastFindings, crossRefs, operationalSummary = {}) {
   const lines = [`# Node: ${nodeId}`, ""];
 
-  // Decisions section
+  lines.push("## Operational Summary");
+  const summaryLines = [];
+  if (operationalSummary.status) summaryLines.push(`- **Status:** ${sanitizeForMarkdown(operationalSummary.status)}`);
+  if (operationalSummary.nodeType) summaryLines.push(`- **Node type:** ${sanitizeForMarkdown(operationalSummary.nodeType)}`);
+  if (typeof operationalSummary.fileCount === "number") summaryLines.push(`- **Tracked files:** ${operationalSummary.fileCount}`);
+  if (typeof operationalSummary.testFileCount === "number") summaryLines.push(`- **Test files:** ${operationalSummary.testFileCount}`);
+  if (typeof operationalSummary.dependencyCount === "number" || typeof operationalSummary.connectionCount === "number") {
+    summaryLines.push(`- **Dependencies:** ${operationalSummary.dependencyCount || 0} | **Connections:** ${operationalSummary.connectionCount || 0}`);
+  }
+  if (Array.isArray(operationalSummary.entrypoints) && operationalSummary.entrypoints.length > 0) {
+    summaryLines.push(`- **Key entrypoints:** ${operationalSummary.entrypoints.map(sanitizeForMarkdown).join(", ")}`);
+  }
+  if (Array.isArray(operationalSummary.hotspotFiles) && operationalSummary.hotspotFiles.length > 0) {
+    summaryLines.push(`- **Hot files:** ${operationalSummary.hotspotFiles.map(sanitizeForMarkdown).join(", ")}`);
+  }
+  if (Array.isArray(operationalSummary.recentFindings) && operationalSummary.recentFindings.length > 0) {
+    summaryLines.push(`- **Recent issues:** ${operationalSummary.recentFindings.map(sanitizeForMarkdown).join(" | ")}`);
+  }
+  if (summaryLines.length === 0) {
+    lines.push("_No operational summary available yet._");
+  } else {
+    lines.push(...summaryLines);
+  }
+  lines.push("");
+
   lines.push("## Decisions (from @forgeplan-decision markers)");
   if (decisions.length === 0) {
     lines.push("_No decisions recorded yet._");
@@ -184,16 +203,17 @@ function buildNodePage(nodeId, spec, decisions, pastFindings, crossRefs) {
   }
   lines.push("");
 
-  // Past Findings section (re-derived from sweeps/reviews — true regeneration)
   lines.push("## Past Findings");
+  if (pastFindings.length > 10) {
+    lines.push(`_Showing latest 10 of ${pastFindings.length} findings._`);
+  }
   lines.push("| Pass | Agent | Finding | Resolution |");
   lines.push("|------|-------|---------|------------|");
-  for (const f of pastFindings) {
+  for (const f of pastFindings.slice(0, 10)) {
     lines.push(`| ${sanitizeForMarkdown(String(f.pass || "-"))} | ${sanitizeForMarkdown(f.agent || "-")} | ${sanitizeForMarkdown(f.finding || "-")} | ${sanitizeForMarkdown(f.resolution || "-")} |`);
   }
   lines.push("");
 
-  // Cross-References section
   lines.push("## Cross-References");
   if (crossRefs.length === 0) {
     lines.push("_No cross-references yet._");
@@ -207,11 +227,6 @@ function buildNodePage(nodeId, spec, decisions, pastFindings, crossRefs) {
   return lines.join("\n");
 }
 
-/**
- * Build the cross-cutting decisions.md page.
- * @param {Array<{id, choice, why, nodes: string[], files: string[], status: string}>} allDecisions
- * @returns {string} Markdown page content
- */
 function buildDecisionsPage(allDecisions) {
   const lines = ["# Architectural Decisions", ""];
   if (allDecisions.length === 0) {
@@ -222,20 +237,14 @@ function buildDecisionsPage(allDecisions) {
     lines.push(`## ${d.id}`);
     lines.push(`**Nodes:** ${(d.nodes || []).join(", ") || "unknown"}`);
     lines.push(`**Choice:** ${sanitizeForMarkdown(d.choice || d.description || "")}`);
-    lines.push(`**Why:** ${d.why ? sanitizeForMarkdown(d.why) : "\u2014"}`);
-    lines.push(`**Files:** ${(d.files || []).map(f => `[${f}]`).join(", ")}`);
+    lines.push(`**Why:** ${d.why ? sanitizeForMarkdown(d.why) : "-"}`);
+    lines.push(`**Files:** ${(d.files || []).map((f) => `[${f}]`).join(", ")}`);
     lines.push(`**Status:** ${d.status || "Active"}`);
     lines.push("");
   }
   return lines.join("\n");
 }
 
-/**
- * Build the rules.md page from spec constraints + inferred patterns.
- * @param {Array<{slug: string, constraint: string, source: string}>} specConstraints
- * @param {Array<{name, type, files, description}>} inferredPatterns
- * @returns {string} Markdown page content
- */
 function buildRulesPage(specConstraints, inferredPatterns) {
   const lines = ["# Rules & Patterns", ""];
 
@@ -244,7 +253,7 @@ function buildRulesPage(specConstraints, inferredPatterns) {
     lines.push("_No spec constraints found._");
   } else {
     for (const r of specConstraints) {
-      lines.push(`- **${r.slug}**: ${r.constraint} \u2014 Source: ${r.source}`);
+      lines.push(`- **${r.slug}**: ${r.constraint} - Source: ${r.source}`);
     }
   }
   lines.push("");
@@ -254,7 +263,7 @@ function buildRulesPage(specConstraints, inferredPatterns) {
     lines.push("_No patterns detected yet (need 3+ files sharing a structure)._");
   } else {
     for (const p of inferredPatterns) {
-      lines.push(`- **${p.name}** (${p.type}): ${p.description} \u2014 Files: ${p.files.join(", ")}`);
+      lines.push(`- **${p.name}** (${p.type}): ${p.description} - Files: ${p.files.join(", ")}`);
     }
   }
   lines.push("");
@@ -262,17 +271,11 @@ function buildRulesPage(specConstraints, inferredPatterns) {
   return lines.join("\n");
 }
 
-/**
- * Build the wiki index.md page.
- * @param {object} manifest - Parsed manifest
- * @param {string} forgePlanDir - Path to .forgeplan directory (to check for discovery-index.md)
- * @returns {string} Markdown page content
- */
-function buildIndexPage(manifest, forgePlanDir) {
+function buildIndexPage(manifest, forgePlanDir, options = {}) {
   const project = manifest.project || {};
   const nodeIds = Object.keys(manifest.nodes || {});
   const lines = [
-    `# ${project.name || "Project"} \u2014 Knowledge Base`,
+    `# ${project.name || "Project"} - Knowledge Base`,
     "",
     `**Tier:** ${project.complexity_tier || "unknown"}`,
     `**Tech Stack:** ${JSON.stringify(project.tech_stack || {})}`,
@@ -280,10 +283,37 @@ function buildIndexPage(manifest, forgePlanDir) {
     "",
   ];
 
-  // Incorporate discovery-index.md if it exists (from large-document discovery)
-  const discoveryIndexPath = forgePlanDir
-    ? path.join(forgePlanDir, "wiki", "discovery-index.md")
-    : null;
+  if (options.wikiLastCompiled) {
+    lines.push(`**Last Compiled:** ${options.wikiLastCompiled}`);
+  }
+  if (typeof options.wikiIsStale === "boolean") {
+    lines.push(`**Freshness:** ${options.wikiIsStale ? "stale" : "fresh"}`);
+  }
+  if (options.wikiLastCompiled || typeof options.wikiIsStale === "boolean") {
+    lines.push("");
+  }
+
+  if (Array.isArray(options.topHotspots) && options.topHotspots.length > 0) {
+    lines.push("## Hotspots");
+    for (const hotspot of options.topHotspots) {
+      lines.push(`- ${sanitizeForMarkdown(hotspot.file)} (${hotspot.count} findings)`);
+    }
+    lines.push("");
+  }
+
+  if (Array.isArray(options.nodeSummaries) && options.nodeSummaries.length > 0) {
+    lines.push("## Node Health");
+    for (const summary of options.nodeSummaries.slice(0, 8)) {
+      lines.push(
+        `- **${sanitizeForMarkdown(summary.nodeId)}**: ${sanitizeForMarkdown(summary.status || "unknown")}` +
+        ` | findings: ${summary.findingCount || 0}` +
+        ` | hot files: ${(summary.hotspotFiles || []).slice(0, 2).map(sanitizeForMarkdown).join(", ") || "none"}`
+      );
+    }
+    lines.push("");
+  }
+
+  const discoveryIndexPath = forgePlanDir ? path.join(forgePlanDir, "wiki", "discovery-index.md") : null;
   if (discoveryIndexPath && fs.existsSync(discoveryIndexPath)) {
     lines.push("## Discovery Context");
     lines.push(fs.readFileSync(discoveryIndexPath, "utf-8").trim());
@@ -291,8 +321,8 @@ function buildIndexPage(manifest, forgePlanDir) {
   }
 
   lines.push("## Pages");
-  lines.push("- [decisions.md](decisions.md) \u2014 Architectural decisions");
-  lines.push("- [rules.md](rules.md) \u2014 Conventions and patterns");
+  lines.push("- [decisions.md](decisions.md) - Architectural decisions");
+  lines.push("- [rules.md](rules.md) - Conventions and patterns");
   lines.push("");
   lines.push("### Node Pages");
   for (const id of nodeIds) {
@@ -309,7 +339,6 @@ module.exports = {
   buildDecisionsPage,
   buildRulesPage,
   buildIndexPage,
-  // Exported for PostToolUse to use instead of duplicating regex/functions
   DECISION_REGEX,
   sanitizeForMarkdown,
   isTestFile,

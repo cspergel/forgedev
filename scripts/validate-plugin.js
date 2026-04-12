@@ -580,6 +580,48 @@ function assertCrossModelConflictPolicy(errors) {
   }
 }
 
+function assertWikiKnowledgeContract(errors) {
+  const wikiBuilderPath = path.join(repoRoot, "scripts", "lib", "wiki-builder.js");
+  const compileWikiPath = path.join(repoRoot, "scripts", "compile-wiki.js");
+  const prepareSweepContextPath = path.join(repoRoot, "scripts", "prepare-sweep-context.js");
+
+  if (fs.existsSync(wikiBuilderPath)) {
+    const content = fs.readFileSync(wikiBuilderPath, "utf8");
+    if (!content.includes("## Operational Summary")) {
+      pushError(errors, "scripts/lib/wiki-builder.js: node pages should include an Operational Summary section");
+    }
+    if (!content.includes("## Hotspots")) {
+      pushError(errors, "scripts/lib/wiki-builder.js: wiki index should surface project hotspots");
+    }
+    if (!content.includes("## Node Health")) {
+      pushError(errors, "scripts/lib/wiki-builder.js: wiki index should summarize node health");
+    }
+  }
+
+  if (fs.existsSync(compileWikiPath)) {
+    const content = fs.readFileSync(compileWikiPath, "utf8");
+    if (!content.includes("const operationalSummary")) {
+      pushError(errors, "scripts/compile-wiki.js: wiki compiler should derive per-node operational summaries");
+    }
+    if (!content.includes("topHotspots")) {
+      pushError(errors, "scripts/compile-wiki.js: wiki compiler should derive project-level hotspots");
+    }
+  }
+
+  if (fs.existsSync(prepareSweepContextPath)) {
+    const content = fs.readFileSync(prepareSweepContextPath, "utf8");
+    if (!content.includes("wiki_index")) {
+      pushError(errors, "scripts/prepare-sweep-context.js: sweep context should expose wiki_index");
+    }
+    if (!content.includes("wiki_last_compiled")) {
+      pushError(errors, "scripts/prepare-sweep-context.js: sweep context should expose wiki_last_compiled");
+    }
+    if (!content.includes("wiki_is_stale")) {
+      pushError(errors, "scripts/prepare-sweep-context.js: sweep context should expose wiki_is_stale");
+    }
+  }
+}
+
 const errors = [];
 
 let pluginManifest;
@@ -720,6 +762,7 @@ assertStateTransitionBashAllowlist(errors);
 assertTopLevelOrchestrationStateRules(errors);
 assertDesignLibraryContract(errors);
 assertCrossModelConflictPolicy(errors);
+assertWikiKnowledgeContract(errors);
 
 if (errors.length > 0) {
   console.error("Plugin validation failed:");
