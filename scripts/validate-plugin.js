@@ -542,6 +542,21 @@ function assertDesignLibraryContract(errors) {
     if (!content.includes(".forgeplan/sweeps/.gitkeep")) {
       pushError(errors, "skills/sweep/SKILL.md: sweep setup should direct missing sweeps/ creation through Write");
     }
+    if (!content.includes("If ANY required state update fails, do **not** continue with parallel fix mode")) {
+      pushError(errors, "skills/sweep/SKILL.md: parallel fix mode must forbid continuing after failed state setup");
+    }
+    if (!content.includes("the state annotation isn't critical")) {
+      pushError(errors, "skills/sweep/SKILL.md: parallel fix mode must explicitly reject the 'state annotation is not critical' shortcut");
+    }
+    if (!content.includes("If ANY worktree creation fails, abort parallel fix mode and fall back to sequential mode")) {
+      pushError(errors, "skills/sweep/SKILL.md: parallel fix mode must require successful worktree creation before dispatch");
+    }
+    if (!content.includes("Do **not** dispatch parallel fix agents in the main working tree")) {
+      pushError(errors, "skills/sweep/SKILL.md: parallel fix mode must forbid main-tree parallel dispatch");
+    }
+    if (!content.includes("Agents must NOT write to `.forgeplan/state.json`")) {
+      pushError(errors, "skills/sweep/SKILL.md: parallel fix agents must be forbidden from mutating state.json directly");
+    }
   }
 
   if (fs.existsSync(preToolUsePath)) {

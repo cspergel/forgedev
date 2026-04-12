@@ -248,19 +248,24 @@ When multiple nodes need fixes and their file_scopes don't overlap, fix agents c
    - Set `nodes.[node-id].previous_status` to current status
    - Set `nodes.[node-id].status` to `"sweeping"`
    - Write state.json (all state updates are serialized in the main tree BEFORE parallel dispatch)
+   - If ANY required state update fails, do **not** continue with parallel fix mode. Fall back to sequential mode or halt with recovery preserved.
+   - The state setup is mandatory, not advisory. Do **not** say or assume "the state annotation isn't critical."
 2. **Copy dependency graph into worktrees:** If `.forgeplan/dependency-graph.json` exists, copy it to each worktree's `.forgeplan/` directory after creation. Fix agents in worktrees need the blast-radius context, and `blast-radius.js fix-context` reads from `process.cwd()/.forgeplan/`. Without this copy, parallel fix agents lose blast-radius context.
 3. For each node, create an isolated worktree:
    ```bash
    node "${CLAUDE_PLUGIN_ROOT}/scripts/worktree-manager.js" create [node-id]
    ```
-3. Set `sweep_state.fixing_node` to null (multiple nodes fixing simultaneously — use per-agent context, not global state).
-4. Dispatch fix agents in parallel (Agent tool, single message, N calls) — each agent works in its worktree path instead of the main working directory. **Agents must NOT write to `.forgeplan/state.json`** — they only modify source code within the node's file_scope. State updates happen after merge.
-5. After all parallel agents complete, merge each worktree back sequentially:
+   - If ANY worktree creation fails, abort parallel fix mode and fall back to sequential mode. Do not dispatch partial parallel batches in the main tree.
+4. Set `sweep_state.fixing_node` to null (multiple nodes fixing simultaneously — use per-agent context, not global state).
+5. Dispatch fix agents in parallel (Agent tool, single message, N calls) — each agent works in its worktree path instead of the main working directory. **Agents must NOT write to `.forgeplan/state.json`** — they only modify source code within the node's file_scope. State updates happen after merge.
+   - Do **not** dispatch parallel fix agents in the main working tree.
+   - Do **not** let fix agents reset `active_node`, overwrite `sweep_state`, or hand-edit `.forgeplan/state.json`.
+6. After all parallel agents complete, merge each worktree back sequentially:
    ```bash
    node "${CLAUDE_PLUGIN_ROOT}/scripts/worktree-manager.js" merge [node-id]
    ```
-6. **After each successful merge**, update state.json: restore `nodes.[node-id].previous_status`, set `sweep_state.fixing_node` to null, move findings from pending to resolved.
-7. If a merge conflict occurs (exit code 1), handle the conflicted node:
+7. **After each successful merge**, update state.json: restore `nodes.[node-id].previous_status`, set `sweep_state.fixing_node` to null, move findings from pending to resolved.
+8. If a merge conflict occurs (exit code 1), handle the conflicted node:
    a. **Abort the failed merge** in the main working tree: run `git merge --abort`
    b. **Clean up the conflicted worktree**: run `node "${CLAUDE_PLUGIN_ROOT}/scripts/worktree-manager.js" cleanup` for that node
    c. **Enter sequential fix** for this node. The node is already in `"sweeping"` status with `previous_status` saved from step 1 — do NOT re-save those. Execute:
@@ -274,7 +279,7 @@ When multiple nodes need fixes and their file_scopes don't overlap, fix agents c
       - Clear `active_node` to null
       - Set `sweep_state.fixing_node` to null
       - Move findings from `pending` to `resolved`
-8. After all merges, clean up: `node "${CLAUDE_PLUGIN_ROOT}/scripts/worktree-manager.js" cleanup`
+9. After all merges, clean up: `node "${CLAUDE_PLUGIN_ROOT}/scripts/worktree-manager.js" cleanup`
 
 **When NOT to parallelize:** If nodes share file_scope (e.g., SMALL tier with `src/**`), or if findings in one node reference files owned by another node, fall back to sequential mode. When in doubt, use sequential.
 
