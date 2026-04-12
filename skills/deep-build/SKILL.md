@@ -332,6 +332,26 @@ This phase sits between sweep (Phase 5) and cross-model (Phase 7) because runtim
 
 If cross-model is skipped (SMALL tier or unconfigured MEDIUM tier), note it in the final report.
 
+Before running the bridge, enforce the tier/config requirement with:
+```bash
+node "${CLAUDE_PLUGIN_ROOT}/scripts/deep-build-cross-model-gate.js"
+```
+- If it returns `status: "ready"`: proceed normally.
+- If it returns `status: "skipped"`: this is acceptable only for SMALL tier or optional MEDIUM-tier skip.
+- If it returns `status: "degraded_allowed"`: the user has explicitly chosen to allow a LARGE-tier skip via `review.allow_large_tier_skip: true` in `.forgeplan/config.yaml`. Continue, but treat the result as degraded certification in Phase 8.
+- If it returns `status: "prompt_required"`: do **not** silently continue. Prompt the user:
+  ```
+  LARGE-tier deep-build normally requires cross-model verification, but no alternate model is configured.
+
+  Choose one:
+  1. Run /forgeplan:configure now to set up Codex/Gemini/OpenAI cross-model review
+  2. Intentionally continue without cross-model as degraded certification
+     (set `review.allow_large_tier_skip: true` in .forgeplan/config.yaml, then resume)
+  3. Abort this deep-build for now
+  ```
+  Preserve `sweep_state` and wait for the user's decision.
+- Do **not** silently continue to Phase 8 when the gate reports LARGE-tier cross-model is required but not configured.
+
 This phase follows the **exact same logic as sweep Phase 6** (Task 9). All status handling, phase transitions, and error paths apply identically. The deep-build orchestrator executes this inline rather than delegating to `/forgeplan:sweep`.
 
 1. Set the phase with:
@@ -344,7 +364,7 @@ This phase follows the **exact same logic as sweep Phase 6** (Task 9). All statu
    ```
 3. Check the result `status` field — handle ALL statuses exactly as sweep Phase 6:
 
-   **If `status: "skipped"`:** Log warning ("no alternate model configured"), set `consecutive_clean_passes` to 2, proceed to Phase 8 (finalize). Note in report that cross-model was not performed.
+   **If `status: "skipped"`:** This is only acceptable when the cross-model gate above reported SMALL-tier skip or optional MEDIUM-tier skip. Log warning ("no alternate model configured"), set `consecutive_clean_passes` to 2, proceed to Phase 8 (finalize). Note in report that cross-model was not performed.
 
    **If `status: "error"`:** Reset `consecutive_clean_passes` to 0. Do NOT increment `pass_number`. Track consecutive error count. On second consecutive error: set `halted_from_phase` to `"cross-check"`, set `current_phase` to `"halted"`, present error to user. Otherwise: retry immediately.
 
@@ -385,12 +405,21 @@ This phase follows the **exact same logic as sweep Phase 6** (Task 9). All statu
 2. **(Sprint 9, MEDIUM/LARGE only)** Run `node "${CLAUDE_PLUGIN_ROOT}/scripts/compile-wiki.js"` to update the wiki with sweep findings. This is needed because sweep's Phase 7 compile-wiki is skipped when called from deep-build (sweep.md line 26). Without this step, the wiki would only reflect pre-sweep state.
 3. Before writing the report, gather project/finalization state with:
    ```bash
+   node "${CLAUDE_PLUGIN_ROOT}/scripts/deep-build-finalize-context.js"
+   ```
+   and also gather project status with:
+   ```bash
    node "${CLAUDE_PLUGIN_ROOT}/scripts/status-report.js"
+   ```
+   and gather the deterministic verification/readiness contract with:
+   ```bash
+   node "${CLAUDE_PLUGIN_ROOT}/scripts/deep-build-verification-contract.js"
    ```
    Use ForgePlan artifacts as the source of truth:
    - `.forgeplan/state.json`
    - `.forgeplan/manifest.yaml`
    - final `integrate-check.js` output
+   - latest `verify-runnable.json`, `runtime-verify.json`, and `cross-model-check.json` artifacts when present
    - latest sweep report
    - wiki compile result
 
@@ -401,6 +430,8 @@ This phase follows the **exact same logic as sweep Phase 6** (Task 9). All statu
    - no `git log` / git-history inspection to infer run timing or report fields
 
    Finalization should be driven by ForgePlan artifacts, not repo archaeology.
+   Builder models, node completion counts, cross-model configuration state, and latest sweep/cross-check artifacts should come from `deep-build-finalize-context.js`, not from model recall.
+   Readiness language must come from `deep-build-verification-contract.js`, not from model inference.
 4. Generate deep-build report at `.forgeplan/deep-build-report.md`:
 
 The report must capture **pipeline decisions**, not just outcomes. Whenever a phase is skipped, downgraded, or uses a default, record the reason. This includes at minimum:
@@ -410,6 +441,16 @@ The report must capture **pipeline decisions**, not just outcomes. Whenever a ph
 - wiki behavior (compiled vs skipped, and why)
 - builder model decisions per node (from `state.json` `selected_builder_model` fields when available)
 - runtime verification / cross-model / design-pass skips and their reasons
+
+Report accuracy requirements:
+- The `Build Models` table must match the actual `selected_builder_model` and `selected_builder_model_reason` values from state.
+- The summary node counts must match the actual terminal node statuses from state.
+- If any node remains `built` (not reviewed), the report must say so explicitly instead of claiming all nodes are reviewed.
+- If LARGE-tier cross-model verification was not configured, the report must label the result as a degraded/non-certified completion or halted run — not as normal cross-model-certified success.
+- If LARGE-tier cross-model was intentionally skipped via `review.allow_large_tier_skip: true`, the report must say that explicitly and present the run as degraded certification, not full certification.
+- The report must state what deterministic verification actually ran: verify-runnable, integrate-check, runtime verification, and cross-model verification.
+- Do **not** claim "full test suite clean", "ready to ship", or "fully certified" unless `deep-build-verification-contract.js` says full certification is allowed.
+- If `deep-build-verification-contract.js` reports `manual-testing-ready`, the report must explicitly say the project is ready only for targeted manual testing and is **not** fully certified.
 
 ```markdown
 # Deep Build Report
@@ -422,6 +463,7 @@ The report must capture **pipeline decisions**, not just outcomes. Whenever a ph
 - Wall-clock time: [duration]
 - Final integration: [PASS/FAIL]
 - Cross-model consecutive clean passes: [N]
+- Readiness: [full-certification / degraded-certification / manual-testing-ready / not-ready]
 
 ## Pipeline Decisions
 - Research: [baseline prior-art only / stack-specific topics also run / no research artifacts found] — [reason]
@@ -437,6 +479,14 @@ The report must capture **pipeline decisions**, not just outcomes. Whenever a ph
 |------|-------|--------|
 | data-store | sonnet | tier-default |
 | cli | opus | models.builder_override.cli |
+
+## Verification Coverage
+- verify-runnable: [pass / warnings / fail / missing]
+- integrate-check: [PASS / PASS_WITH_WARNINGS / FAIL / missing]
+- runtime verification: [pass / skip / fail / missing]
+- cross-model verification: [clean / findings / skipped / missing]
+- Allowed claim level: [full certification / degraded certification / targeted manual testing only / not ready]
+- Caveats: [blockers or gaps from deep-build-verification-contract.js]
 
 ## Findings Timeline
 | Pass | Model | Found | Resolved | Category |
@@ -479,12 +529,16 @@ If no advancement is pending, present:
 
 ```
 === Deep Build Complete ===
-All [N] nodes built, reviewed, and cross-model certified.
+[If full certification] All [N] nodes built, reviewed, and cross-model certified.
+[If degraded LARGE-tier skip] All [N] nodes built and sweep-clean, but cross-model verification was intentionally skipped (degraded certification).
+[If manual-testing-ready only] Deterministic runnable/integration gates passed, so the project is ready for targeted manual testing, but this run is not fully certified.
 [total] findings found and resolved across [passes] passes.
-Cross-model certified clean on [N] consecutive passes.
+[If full certification] Cross-model certified clean on [N] consecutive passes.
+[If degraded LARGE-tier skip] Cross-model certification was not performed.
+[If manual-testing-ready only] Report: this run proved runnable/manual-testing readiness only.
 Report: .forgeplan/deep-build-report.md
 
-Your project is ready:
+Next:
   → /forgeplan:status          Full project overview
   → /forgeplan:measure         Verify quality metrics
   → /forgeplan:revise [node]   Make changes

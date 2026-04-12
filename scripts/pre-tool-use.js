@@ -635,6 +635,9 @@ function evaluateBash(toolInput, cwd) {
     nodeScriptPattern("compact-context.js"),      // our own compaction context script
     nodeScriptPattern("compile-wiki.js"),         // Sprint 9: wiki knowledge compilation
     nodeScriptPattern("prepare-sweep-context.js"), // deterministic sweep context assembly
+    nodeScriptPattern("deep-build-finalize-context.js"), // deterministic deep-build report/finalization context
+    nodeScriptPattern("deep-build-verification-contract.js"), // deterministic deep-build readiness/certification contract
+    nodeScriptPattern("deep-build-cross-model-gate.js"), // deterministic LARGE-tier cross-model requirement gate
     nodeScriptPattern("compose-design-context.js"), // design context composition for frontend builds/design pass
     nodeScriptPattern("list-design-profiles.js"), // design profile catalog inspection
     nodeScriptPattern("verify-cross-phase.js"),   // Sprint 10B: cross-phase implementation verification

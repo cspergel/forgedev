@@ -26,6 +26,17 @@ const yaml = require(path.join(__dirname, "..", "node_modules", "js-yaml"));
 
 const currentRunPids = [];
 
+function persistArtifact(fileName, payload) {
+  try {
+    if (!fs.existsSync(forgePlanDir)) return;
+    fs.writeFileSync(
+      path.join(forgePlanDir, fileName),
+      JSON.stringify(payload, null, 2),
+      "utf-8"
+    );
+  } catch {}
+}
+
 function sleepSync(ms) {
   try {
     const buf = new SharedArrayBuffer(4);
@@ -559,6 +570,7 @@ async function main() {
     },
   };
 
+  persistArtifact("verify-runnable.json", output);
   console.log(JSON.stringify(output, null, 2));
   process.exit(status === "pass" || status === "warnings" ? 0 : status === "environment_error" ? 2 : 1);
 }

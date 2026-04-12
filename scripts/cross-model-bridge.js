@@ -21,6 +21,17 @@ const {
   extractOpenAiResponsesText,
 } = require(path.join(__dirname, "cross-model-review.js"));
 
+function persistArtifact(forgePlanDir, fileName, payload) {
+  try {
+    if (!fs.existsSync(forgePlanDir)) return;
+    fs.writeFileSync(
+      path.join(forgePlanDir, fileName),
+      JSON.stringify(payload, null, 2),
+      "utf-8"
+    );
+  } catch {}
+}
+
 async function main() {
   const sweepReportPath = process.argv[2];
   const configPath =
@@ -38,10 +49,17 @@ async function main() {
   const mode = reviewConfig.mode;
 
   if (mode === "native") {
-    console.log(JSON.stringify({
+    const payload = {
       status: "skipped",
       message: "Cross-model review not configured. Set review.mode in config.yaml.",
-    }));
+      mode,
+      provider: reviewConfig.provider || "unknown",
+      report_path: null,
+      findings_count: 0,
+      findings: [],
+    };
+    persistArtifact(forgePlanDir, "cross-model-check.json", payload);
+    console.log(JSON.stringify(payload, null, 2));
     process.exit(0);
   }
 
@@ -190,14 +208,16 @@ async function main() {
     finalStatus = "findings";
   }
 
-  console.log(JSON.stringify({
+  const payload = {
     status: finalStatus,
     mode,
     provider: reviewConfig.provider || "unknown",
     report_path: reportPath,
     findings_count: findings.length,
     findings,
-  }, null, 2));
+  };
+  persistArtifact(forgePlanDir, "cross-model-check.json", payload);
+  console.log(JSON.stringify(payload, null, 2));
 }
 
 function collectAllNodeFiles(cwd, forgePlanDir, manifest) {

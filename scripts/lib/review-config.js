@@ -31,6 +31,7 @@ function resolveReviewConfig(config) {
     provider,
     model,
     timeout,
+    allow_large_tier_skip: raw.allow_large_tier_skip === true,
     mcp_server: mcpServer,
     cli_command: cliCommand,
     cli_args: cliArgs,

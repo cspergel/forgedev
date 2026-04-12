@@ -302,6 +302,15 @@ function assertStateTransitionBashAllowlist(errors) {
   if (!content.includes("prepare-sweep-context.js")) {
     pushError(errors, "scripts/pre-tool-use.js: Bash allowlist must include prepare-sweep-context.js");
   }
+  if (!content.includes("deep-build-finalize-context.js")) {
+    pushError(errors, "scripts/pre-tool-use.js: Bash allowlist must include deep-build-finalize-context.js");
+  }
+  if (!content.includes("deep-build-verification-contract.js")) {
+    pushError(errors, "scripts/pre-tool-use.js: Bash allowlist must include deep-build-verification-contract.js");
+  }
+  if (!content.includes("deep-build-cross-model-gate.js")) {
+    pushError(errors, "scripts/pre-tool-use.js: Bash allowlist must include deep-build-cross-model-gate.js");
+  }
   if (!content.includes("start-sweep-fix")) {
     pushError(errors, "scripts/pre-tool-use.js: Bash allowlist must include state-transition.js start-sweep-fix");
   }
@@ -408,14 +417,44 @@ function assertTopLevelOrchestrationStateRules(errors) {
     if (!content.includes("prepare-sweep-context.js")) {
       pushError(errors, "skills/deep-build/SKILL.md: Phase 5 must use prepare-sweep-context.js for deterministic sweep setup");
     }
+    if (!content.includes("deep-build-cross-model-gate.js")) {
+      pushError(errors, "skills/deep-build/SKILL.md: Phase 7 must enforce cross-model requirements with deep-build-cross-model-gate.js");
+    }
+    if (!content.includes("Do **not** silently continue to Phase 8")) {
+      pushError(errors, "skills/deep-build/SKILL.md: Phase 7 must forbid silently skipping required LARGE-tier cross-model review");
+    }
+    if (!content.includes("review.allow_large_tier_skip: true")) {
+      pushError(errors, "skills/deep-build/SKILL.md: Phase 7 must document the explicit degraded-skip opt-in for LARGE tier");
+    }
     if (!content.includes('node "${CLAUDE_PLUGIN_ROOT}/scripts/status-report.js"')) {
       pushError(errors, "skills/deep-build/SKILL.md: Phase 8 finalization should use status-report.js");
+    }
+    if (!content.includes('node "${CLAUDE_PLUGIN_ROOT}/scripts/deep-build-finalize-context.js"')) {
+      pushError(errors, "skills/deep-build/SKILL.md: Phase 8 finalization should use deep-build-finalize-context.js");
+    }
+    if (!content.includes('node "${CLAUDE_PLUGIN_ROOT}/scripts/deep-build-verification-contract.js"')) {
+      pushError(errors, "skills/deep-build/SKILL.md: Phase 8 finalization should use deep-build-verification-contract.js");
     }
     if (!content.includes("Do **not** use ad hoc shell inspection for finalization context")) {
       pushError(errors, "skills/deep-build/SKILL.md: Phase 8 finalization must forbid ad hoc shell inspection");
     }
     if (!content.includes("no `git log` / git-history inspection")) {
       pushError(errors, "skills/deep-build/SKILL.md: Phase 8 finalization must forbid git log based report inference");
+    }
+    if (!content.includes("The `Build Models` table must match the actual `selected_builder_model`")) {
+      pushError(errors, "skills/deep-build/SKILL.md: Phase 8 report generation must require actual builder-model data from state");
+    }
+    if (!content.includes("manual-testing-ready")) {
+      pushError(errors, "skills/deep-build/SKILL.md: Phase 8 finalization must distinguish manual-testing-ready from certified completion");
+    }
+    if (!content.includes("Readiness language must come from `deep-build-verification-contract.js`")) {
+      pushError(errors, "skills/deep-build/SKILL.md: Phase 8 finalization must source readiness language from deep-build-verification-contract.js");
+    }
+    if (!content.includes('Do **not** claim "full test suite clean", "ready to ship", or "fully certified"')) {
+      pushError(errors, "skills/deep-build/SKILL.md: Phase 8 finalization must forbid overclaiming readiness beyond deterministic evidence");
+    }
+    if (!content.includes("degraded certification")) {
+      pushError(errors, "skills/deep-build/SKILL.md: Phase 7/8 must distinguish degraded certification from full certification");
     }
   }
 

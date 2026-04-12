@@ -23,6 +23,23 @@ const { spawn, execSync } = require("child_process");
 const cwd = process.cwd();
 const forgePlanDir = path.join(cwd, ".forgeplan");
 
+function persistArtifact(fileName, payload) {
+  try {
+    if (!fs.existsSync(forgePlanDir)) return;
+    fs.writeFileSync(
+      path.join(forgePlanDir, fileName),
+      JSON.stringify(payload, null, 2),
+      "utf-8"
+    );
+  } catch {}
+}
+
+function emitResult(payload, exitCode) {
+  persistArtifact("runtime-verify.json", payload);
+  console.log(JSON.stringify(payload, null, 2));
+  process.exit(exitCode);
+}
+
 // Synchronous sleep that works in all Node.js environments.
 // Atomics.wait requires SharedArrayBuffer which may throw in some configs.
 function sleepSync(ms) {
@@ -539,7 +556,7 @@ async function main() {
   const tier = parseTier();
 
   if (tier === "SMALL") {
-    console.log(JSON.stringify({
+    emitResult({
       status: "skip",
       tier: "SMALL",
       message: "Phase B skipped for SMALL tier — Phase A verification is sufficient.",
@@ -547,8 +564,7 @@ async function main() {
       endpoints_tested: 0,
       endpoints_passed: 0,
       findings: [],
-    }, null, 2));
-    process.exit(0);
+    }, 0);
   }
 
   let techStack = {};
@@ -565,7 +581,7 @@ async function main() {
     // Use the classified error type: "environment" for port/config issues, "code" for boot regressions
     const status = server.errorType === "environment" ? "environment_error" : "fail";
     const exitCode = server.errorType === "environment" ? 2 : 1;
-    console.log(JSON.stringify({
+    emitResult({
       status,
       tier,
       message: server.error,
@@ -583,8 +599,7 @@ async function main() {
         line: "",
         fix: "Fix the startup error — check server entry point and dependencies",
       }] : [],
-    }, null, 2));
-    process.exit(exitCode);
+    }, exitCode);
   }
 
   const baseUrl = detectBaseUrl(server.serverOutput, techStack);
@@ -695,12 +710,19 @@ async function main() {
   // LOW/informational findings (e.g., "public endpoint — verify intentional") are advisories, not failures.
   const actionableFindings = findings.filter(f => f.severity === "HIGH" || f.severity === "MEDIUM");
   const status = actionableFindings.length === 0 ? "pass" : "fail";
-  console.log(JSON.stringify({ status, tier, level_reached: levelReached, endpoints_tested: endpointsTested,
-    endpoints_passed: endpointsPassed, findings }, null, 2));
-  process.exit(status === "pass" ? 0 : 1);
+  emitResult({ status, tier, level_reached: levelReached, endpoints_tested: endpointsTested,
+    endpoints_passed: endpointsPassed, findings }, status === "pass" ? 0 : 1);
 }
 
 main().catch((err) => {
-  console.error(`runtime-verify failed: ${err.message}`);
-  process.exit(2);
+  emitResult({
+    status: "environment_error",
+    tier: parseTier(),
+    message: `runtime-verify failed: ${err.message}`,
+    errorType: "environment",
+    level_reached: 0,
+    endpoints_tested: 0,
+    endpoints_passed: 0,
+    findings: [],
+  }, 2);
 });
