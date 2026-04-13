@@ -308,6 +308,9 @@ function assertStateTransitionBashAllowlist(errors) {
   if (!content.includes("prepare-sweep-context.js")) {
     pushError(errors, "scripts/pre-tool-use.js: Bash allowlist must include prepare-sweep-context.js");
   }
+  if (!content.includes("iso-now.js")) {
+    pushError(errors, "scripts/pre-tool-use.js: Bash allowlist must include iso-now.js");
+  }
   if (!content.includes("load-sweep-findings.js")) {
     pushError(errors, "scripts/pre-tool-use.js: Bash allowlist must include load-sweep-findings.js");
   }
@@ -431,6 +434,9 @@ function assertTopLevelOrchestrationStateRules(errors) {
     }
     if (!content.includes("prepare-sweep-context.js")) {
       pushError(errors, "skills/deep-build/SKILL.md: Phase 5 must use prepare-sweep-context.js for deterministic sweep setup");
+    }
+    if (!content.includes("iso-now.js")) {
+      pushError(errors, "skills/deep-build/SKILL.md: Phase 5 should use iso-now.js for deterministic sweep artifact timestamps");
     }
     if (!content.includes("load-sweep-findings.js")) {
       pushError(errors, "skills/deep-build/SKILL.md: Phase 5 should load sweep findings with load-sweep-findings.js");
@@ -675,6 +681,12 @@ function assertDesignLibraryContract(errors) {
     const content = fs.readFileSync(sweepPath, "utf8");
     if (!content.includes("prepare-sweep-context.js")) {
       pushError(errors, "skills/sweep/SKILL.md: sweep setup must use prepare-sweep-context.js");
+    }
+    if (!content.includes("iso-now.js")) {
+      pushError(errors, "skills/sweep/SKILL.md: sweep report generation should use iso-now.js for deterministic timestamps");
+    }
+    if (!content.includes("Do **not** call `date`")) {
+      pushError(errors, "skills/sweep/SKILL.md: sweep report generation must forbid ad hoc shell timestamps");
     }
     if (!content.includes("do **not** use mutating Bash like `mkdir -p`")) {
       pushError(errors, "skills/sweep/SKILL.md: sweep setup must forbid mutating Bash mkdir during active sweep");

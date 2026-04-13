@@ -215,6 +215,14 @@ Each agent returns findings in the structured FINDING format or CLEAN.
 5. Group findings by node
 6. **Filter low-confidence findings:** Discard any finding with `confidence < 75`. Log: "Filtered [N] low-confidence findings (below 75)." This reduces noise and prevents the fix cycle from chasing uncertain issues. Findings with confidence 75+ proceed to Phase 4.
 7. Write the sweep report to `.forgeplan/sweeps/sweep-[ISO-timestamp].md`:
+   Before naming the report file, get the timestamp deterministically with:
+   ```bash
+   node "${CLAUDE_PLUGIN_ROOT}/scripts/iso-now.js"
+   ```
+   Use:
+   - `compact` for the filename suffix (`sweep-[compact].md`)
+   - `iso` for the report header timestamp
+   Do **not** call `date`, `python -c`, or `node -e` just to generate timestamps during an active sweep.
    ```markdown
    # Sweep Report — Pass [N]
 

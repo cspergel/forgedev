@@ -297,6 +297,11 @@ Before dispatching sweep agents, assemble deterministic sweep context with:
 node "${CLAUDE_PLUGIN_ROOT}/scripts/prepare-sweep-context.js"
 ```
 Use that helper output to read the exact sweep-agent prompt files and existing wiki/report artifacts. Do **not** search heuristically for sweep setup context or enumerate `.forgeplan/wiki/nodes/` ad hoc when the helper already provides the exact paths.
+If you need a timestamp for sweep artifacts during this phase, use:
+```bash
+node "${CLAUDE_PLUGIN_ROOT}/scripts/iso-now.js"
+```
+Do **not** call `date`, `python -c`, or `node -e` just to generate timestamps during active deep-build sweep orchestration.
 
 Do **not** invoke `Skill(forgeplan:sweep)` or try to delegate this phase through the command skill. `sweep` has `disable-model-invocation: true`.
 Read `${CLAUDE_PLUGIN_ROOT}/skills/sweep/SKILL.md` and execute the sweep workflow inline:

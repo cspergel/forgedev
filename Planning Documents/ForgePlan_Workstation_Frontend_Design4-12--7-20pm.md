@@ -698,7 +698,7 @@ PreviewStore:
   previews: Map<nodeId, PreviewData>  // Phantom preview components
 ```
 
-The stores subscribe to Tauri events. When the backend emits `manifest_updated`, the CanvasStore transforms the manifest into React Flow nodes and edges. The canvas re-renders. The user sees the change.
+The stores subscribe to Electron IPC events. When the backend emits `manifest_updated`, the CanvasStore transforms the manifest into React Flow nodes and edges. The canvas re-renders. The user sees the change.
 
 ## 11.4 The Core Engine is Headless
 
@@ -979,3 +979,235 @@ Advanced
 Nothing in Settings is required to start a project. Defaults work out of the box for any user with at least one configured provider.
 
 ---
+
+# 19. Web Playground — The Acquisition Funnel
+
+## 19.1 Why Lead with the Web
+
+Asking someone to download a 200 MB desktop app from a product they've never heard of is a high-friction ask. Asking them to click a URL and describe their app idea is zero friction.
+
+The web playground is the first ten minutes of ForgePlan running in a browser. Same React Flow canvas. Same chat panel. Same phantom previews. Same node materialization animations. The user describes their idea, watches the architecture build, and walks away convinced. The web playground converts "curious" to "I need this." Builds happen in the desktop app.
+
+## 19.2 What Runs in the Browser
+
+The web playground covers discovery and design — everything before the build:
+
+- Discovery conversation with the Interviewer/Architect
+- Real-time node materialization on the canvas
+- Phantom previews for frontend nodes
+- Complexity tier assessment
+- Research phase (package vetting, license checks)
+- Design review gate
+- Plan generation and plan review gate
+- Downloadable `.forgeplan/` directory at the end — the complete blueprint ready to build
+
+The web playground does NOT run builds. No file generation, no `npm install`, no test execution, no dev server spawning. That's compute-heavy work that belongs on the user's machine. The web playground is cheap to serve (a few Interviewer/Architect calls per session, ~$0.50-1.00 in API costs) and easy to give away free.
+
+## 19.3 The Handoff
+
+When the user finishes discovery and design in the web playground, they've confirmed their architecture, the design review passed, and the plan is ready. They see two options:
+
+1. **Download ForgePlan + Build** — downloads the desktop app with the `.forgeplan/` directory pre-loaded. They open it, click "Build All," and the greenfield pipeline runs locally with their own keys.
+2. **Download Blueprint** — downloads just the `.forgeplan/` directory. They open it in the desktop app they already have, or run `npx forgeplan deep-build` from the CLI.
+
+Either way, the architecture transfers instantly. No re-describing. No re-configuring. The manifest, specs, research results, phantom previews, wiki, and design review reports are all in the `.forgeplan/` directory.
+
+This is NOT how Lovable works. Lovable is a vending machine — insert prompt, receive app. ForgePlan's web playground is a design studio — describe your idea, understand the architecture, approve the blueprint, then take it to the workshop (desktop app) to build it with governance at every step.
+
+## 19.4 What the Desktop App Adds
+
+The desktop app is the full product. Everything the web playground does, plus:
+
+- Full greenfield build pipeline (build → verify → review → sweep → certify)
+- BYOK with user's own API keys (no credits needed)
+- Full context panel depth (all 8 tabs)
+- Tier 3 code editing with Monaco + LSP
+- CLI access alongside the visual canvas
+- Local file system integration
+- Offline capability
+- Phased builds for LARGE projects
+- Repo ingestion
+- Deep-build overnight runs
+
+## 19.5 Shared Frontend Components
+
+The web playground and desktop app share the same React components. The canvas, chat panel, node components, edge components, phantom previews, and breadcrumbs are identical. The only difference is the backend: the web playground hits a server API for the discovery/research agents; the desktop app talks to the Electron main process for everything including builds. Building the web playground first gives you 70% of the desktop app's frontend for free.
+
+## 19.6 Implementation
+
+The web playground is a Next.js or Vite app deployed on Vercel. The core engine's Interviewer, Architect, and Researcher agents run server-side (lightweight — just conversation and manifest generation). No file system access, no process spawning, no sandbox needed. Dead simple to scale.
+
+The same `forgeplan-core` npm package powers all three interfaces:
+- **Web playground:** discovery/design agents only, server-side, outputs `.forgeplan/` directory as a download
+- **Desktop app:** full pipeline including builds, runs in Electron main process
+- **CLI:** full pipeline, runs from terminal
+
+Three interfaces, one engine, one `.forgeplan/` directory format.
+
+---
+
+# 20. Voice Input — Talk to the Canvas
+
+## 20.1 How It Works
+
+During discovery, a microphone button appears in the chat panel. The user presses it, speaks naturally, and releases. The audio is transcribed and fed to the Interviewer agent as if the user had typed it. The canvas updates identically regardless of whether input was typed or spoken.
+
+## 20.2 Implementation (Simple Path — Ship First)
+
+The browser's `MediaRecorder` API captures audio. The audio is sent to a cloud transcription service (Whisper API via OpenAI, or Deepgram for lower latency). The transcription text is injected into the chat input and sent to the agent. Total implementation: a microphone button component, a recording hook, and a transcription API call. A few hours of work.
+
+Works on both web playground (browser-native) and desktop app (Electron has full browser APIs).
+
+## 20.3 Future: Local Transcription (Privacy-First)
+
+For enterprise users who can't send voice data to the cloud, bundle a local Whisper model. This adds ~500 MB for model weights and requires GPU for real-time performance. Not worth the complexity at launch. Add it when enterprise customers ask for it.
+
+## 20.4 Voice in the Visibility Matrix
+
+Voice input is a Tier 1 feature — it appears during the first five minutes. The microphone button is visible in the chat panel alongside the text input. No configuration required. The user sees it and either uses it or ignores it.
+
+---
+
+# 21. GitHub Action — Continuous Architectural Governance
+
+## 21.1 What It Does
+
+A GitHub Action that runs `/forgeplan:sweep` on every pull request. The PR gets a comment:
+
+```
+✅ ForgePlan Sweep: 0 findings. All 23 acceptance criteria verified.
+```
+
+Or:
+
+```
+⚠️ ForgePlan Sweep: 2 findings
+CRITICAL: Auth middleware missing on /api/admin route
+WARNING: Document type used without shared model import in src/api/handlers.ts
+```
+
+## 21.2 Why It Matters
+
+This makes ForgePlan useful for teams that may never use the desktop app or web playground for building. They use their existing tools (Cursor, VS Code, Claude Code) for development, and ForgePlan as a CI/CD quality gate. The `.forgeplan/` directory lives in their repo. Every PR gets architecturally validated.
+
+This is also a retention mechanism: the `.forgeplan/` directory stays alive and maintained in codebases that might otherwise drift. And it's a new distribution channel — developers discover ForgePlan through the GitHub Action, then try the web playground for their next project.
+
+## 21.3 Implementation
+
+The GitHub Action is a thin wrapper around the CLI:
+
+```yaml
+# .github/workflows/forgeplan-sweep.yml
+name: ForgePlan Sweep
+on: [pull_request]
+jobs:
+  sweep:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+      - run: npx forgeplan sweep --ci --output json > results.json
+      - uses: forgeplan/action-comment@v1
+        with:
+          results: results.json
+```
+
+The `--ci` flag runs the sweep in non-interactive mode. The `--output json` flag produces structured results. The action-comment step posts the results as a PR comment. One day of engineering, if that.
+
+## 21.4 Revenue
+
+Per-repo pricing: $10/repo/month for continuous ForgePlan sweep on every PR. Separate revenue line from the web playground and desktop app. Teams pay for the quality gate, not the build tool.
+
+---
+
+# 22. Revenue Model
+
+## 22.1 Model C: Platform + Compute (User Chooses)
+
+Two paths to the same product. The user picks the one that fits their workflow:
+
+**Path A — Buy Credits (non-technical users, quick builds):**
+User buys credits. ForgePlan proxies all API calls. The user never configures API keys, never picks a model, never thinks about providers. They describe their idea, click build, and credits are deducted based on project complexity.
+
+| Tier | Approximate Credit Cost |
+|---|---|
+| SMALL greenfield (3 nodes) | 50 credits |
+| MEDIUM greenfield (5-7 nodes) | 200 credits |
+| LARGE greenfield (10+ nodes) | 500 credits |
+| Single sweep pass | 30 credits |
+| Single node build | 20-40 credits |
+
+Credit pricing TBD based on actual compute costs after launch. Target: 30-40% markup over raw API costs.
+
+**Path B — BYOK (developers, power users):**
+User brings their own API keys. ForgePlan charges nothing for compute — the user pays their provider directly. The platform is free or charges a small monthly fee for the orchestration, agents, enforcement, canvas, and review panel.
+
+## 22.2 Pricing Tiers
+
+| Tier | Price | Includes | Target |
+|---|---|---|---|
+| **Free** | $0 | Unlimited discovery + design on web playground. Download your `.forgeplan/` blueprint. BYOK builds on desktop app (you pay your provider). | Try it, get hooked, design for free |
+| **Starter** | $29/mo | 5 builds/month (credits included), 3 sweep agents, desktop app | Solo builders, freelancers |
+| **Pro** | $59/mo | Unlimited builds, 5 sweep agents, cross-model verification, voice input, phased builds, ingestion | Serious builders, small teams |
+| **Team** | $99/seat/mo | Everything in Pro, shared templates, GitHub Action, collaboration features | Agencies, startups |
+| **BYOK** | Free platform | Bring your own keys. Full feature access. You pay your provider, not us. | Developers who already have API keys |
+
+The free tier is the web playground. Discovery and design are free forever — because they cost almost nothing to serve (~$0.50 per session in API costs) and they're the hook that converts users. Builds are where the compute concentrates, and builds happen on the desktop app — either via credits (Starter/Pro) or BYOK (free platform).
+
+## 22.3 The GitHub Action as Separate Revenue
+
+$10/repo/month for continuous sweep on every PR. Independent of the main subscription. Teams that use Cursor or VS Code for building can still use ForgePlan as a quality gate.
+
+## 22.4 Template Marketplace (Post-Traction)
+
+Free templates for community growth. Premium templates ($5-20 one-time) for production-ready architectures. Revenue share with template authors. Deferred until the marketplace has volume — not a launch feature.
+
+## 22.5 Pricing Philosophy
+
+Discovery and design are free. Builds are where the value — and the cost — concentrates. The web playground gives away the experience that hooks users (watching their architecture materialize costs almost nothing to serve). The desktop app charges for the experience that delivers value (building certified codebases costs real compute).
+
+BYOK users pay nothing to ForgePlan because they pay their provider directly. This removes the pricing objection entirely for developers. Credit users pay ForgePlan because they don't want to manage API keys. Both get the same product. The revenue model flexes around the user, not the other way around.
+
+The first design session on the web playground is the most important moment. It converts "curious" to "convinced" with zero financial commitment. The user downloads the desktop app already knowing what ForgePlan does because they experienced it in their browser.
+
+## 22.6 Pricing Caveat
+
+All pricing is preliminary. Final pricing requires data from the first hundred builds: actual compute costs per tier, average builds per user per month, conversion rates from free to paid. Ship first. Measure. Then price correctly.
+
+---
+
+# 23. Go-to-Market Sequencing
+
+Everything ships in order of user acquisition impact, not engineering complexity.
+
+**Phase 1 — Ship (Weeks 1-3):**
+- Model-agnostic core engine extraction + token efficiency improvements
+- Web playground with discovery + design pipeline (server-side Interviewer/Architect/Researcher only — no builds)
+- Voice input on the web playground (cloud transcription)
+- Free discovery. Download blueprint. Build locally.
+- The URL someone clicks from a tweet → describe idea → watch architecture build → download blueprint → build in desktop app
+
+**Phase 2 — Expand (Weeks 4-5):**
+- Desktop app (Electron, same frontend, adds offline + BYOK + full depth)
+- CLI (`npx forgeplan greenfield`)
+- GitHub Action for continuous sweep on PRs
+- Plugin stays alive as Claude Code free tier
+
+**Phase 3 — Grow (Month 2-3):**
+- Template gallery (export/import `.forgeplan/` directories, community sharing)
+- Build analytics (convergence trends, token usage, quality metrics over time)
+- "Built with ForgePlan" certification badge
+
+**Phase 4 — Platform (Month 4+):**
+- Premium templates with revenue share
+- Team collaboration features
+- Enterprise features (SSO, audit logs, self-hosted)
+- Local voice transcription for privacy-sensitive customers
+
+At every phase, the web playground is the front door. The desktop app is the power tool. The CLI is the developer interface. The GitHub Action is the enterprise wedge. All four read and write the same `.forgeplan/` directory.
+
+---
+
+**Architecture down. Code forward. Governance always.**
+
+**END OF DOCUMENT**
