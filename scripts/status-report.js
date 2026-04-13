@@ -155,6 +155,22 @@ function main() {
     },
   });
 
+  const manualLaunch = determineManualLaunchPlan({
+    cwd,
+    manifest,
+    state,
+    summary: {
+      total: nodeIds.length,
+      completed,
+      completedWithFindings,
+      builtAwaitingReview,
+      revisedNeedsRebuild,
+      specced,
+      inProgress,
+      pending: nodeIds.length - completed - builtAwaitingReview - revisedNeedsRebuild - specced - inProgress,
+    },
+  });
+
   console.log(JSON.stringify({
     type: "status_report",
     project: manifest.project || {},
@@ -183,6 +199,7 @@ function main() {
     phase: phaseInfo,
     nextSteps: suggestedNextSteps,
     autonomyHandoff,
+    manualLaunch,
   }, null, 2));
 }
 
@@ -194,6 +211,101 @@ function loadSpec(forgePlanDir, nodeId) {
   } catch {
     return null;
   }
+}
+
+function candidateDirsFromManifest(manifest, nodeType) {
+  const candidates = new Set();
+  const nodes = manifest && manifest.nodes ? Object.values(manifest.nodes) : [];
+  for (const node of nodes) {
+    if (!node || typeof node !== "object") continue;
+    if (nodeType && node.type !== nodeType) continue;
+    const scope = String(node.file_scope || "");
+    const match = scope.match(/^([^/{]+)\//);
+    if (match) candidates.add(match[1]);
+  }
+  return Array.from(candidates);
+}
+
+function findFrontendWorkspace(cwd, manifest) {
+  const candidates = [
+    ".",
+    ...candidateDirsFromManifest(manifest, "frontend"),
+    "frontend",
+    "web",
+    "client",
+    "ui",
+    "app",
+  ];
+
+  for (const candidate of Array.from(new Set(candidates))) {
+    const absolute = candidate === "." ? cwd : path.join(cwd, candidate);
+    if (fs.existsSync(path.join(absolute, "package.json"))) {
+      return { relative: candidate, absolute };
+    }
+  }
+
+  return null;
+}
+
+function detectBackendLaunch(cwd) {
+  const candidates = [
+    { file: "main.py", command: "uvicorn main:app --reload" },
+    { file: "app.py", command: "uvicorn app:app --reload" },
+  ];
+
+  for (const candidate of candidates) {
+    if (fs.existsSync(path.join(cwd, candidate.file))) {
+      return candidate.command;
+    }
+  }
+
+  return null;
+}
+
+function determineManualLaunchPlan({ cwd, manifest, state, summary }) {
+  if (state.active_node || (state.sweep_state && state.sweep_state.operation)) {
+    return { available: false, description: null, steps: [] };
+  }
+
+  if (summary.completed !== summary.total) {
+    return { available: false, description: null, steps: [] };
+  }
+
+  const steps = [];
+  const backendCommand = detectBackendLaunch(cwd);
+  const frontendWorkspace = findFrontendWorkspace(cwd, manifest);
+
+  if (backendCommand) {
+    steps.push({
+      command: backendCommand,
+      description: "Launch the backend locally.",
+    });
+  }
+
+  if (frontendWorkspace) {
+    const command = frontendWorkspace.relative === "."
+      ? "npm run dev"
+      : `cd ${frontendWorkspace.relative} && npm run dev`;
+    steps.push({
+      command,
+      description: `Launch the frontend from ${frontendWorkspace.relative === "." ? "the repo root" : frontendWorkspace.relative}.`,
+    });
+  }
+
+  if (!steps.length) {
+    return { available: false, description: null, steps: [] };
+  }
+
+  steps.push({
+    command: "Manual smoke test",
+    description: "Sign in, click through the primary flows, and confirm the app behaves coherently end-to-end.",
+  });
+
+  return {
+    available: true,
+    description: "Launch the app locally and run a manual smoke test now that the governed build/review flow is complete.",
+    steps,
+  };
 }
 
 function buildDependencyGraph(nodes, nodeIds) {

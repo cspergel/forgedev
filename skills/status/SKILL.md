@@ -67,4 +67,13 @@ Autonomous option:
 
 If `autonomyHandoff.available` is false, omit the autonomous section.
 
+If `manualLaunch.available` is true, also present:
+
+```text
+Manual launch and test:
+- [command] - [description]
+```
+
+Use the `manualLaunch.steps` array as the source of truth. This section is specifically for local app launch and smoke-test guidance once the governed build/review flow is complete.
+
 Do **not** improvise or infer a different next-step list when `status-report.js` already returned one.

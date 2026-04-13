@@ -909,6 +909,9 @@ function assertStatusContract(errors) {
     if (!content.includes("autonomyHandoff")) {
       pushError(errors, "skills/status/SKILL.md: status output should surface the autonomyHandoff section when available");
     }
+    if (!content.includes("manualLaunch")) {
+      pushError(errors, "skills/status/SKILL.md: status output should surface manualLaunch instructions when available");
+    }
   }
 
   if (fs.existsSync(statusReportPath)) {
@@ -919,11 +922,17 @@ function assertStatusContract(errors) {
     if (!content.includes("autonomyHandoff")) {
       pushError(errors, "scripts/status-report.js: status report should emit autonomyHandoff");
     }
+    if (!content.includes("manualLaunch")) {
+      pushError(errors, "scripts/status-report.js: status report should emit manualLaunch instructions when available");
+    }
     if (!content.includes("determineSuggestedNextSteps")) {
       pushError(errors, "scripts/status-report.js: status report should compute deterministic suggested next steps");
     }
     if (!content.includes("determineAutonomyHandoff")) {
       pushError(errors, "scripts/status-report.js: status report should compute deterministic autonomous handoff guidance");
+    }
+    if (!content.includes("determineManualLaunchPlan")) {
+      pushError(errors, "scripts/status-report.js: status report should compute deterministic manual launch/test guidance");
     }
   }
 }
