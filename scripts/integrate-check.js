@@ -213,6 +213,21 @@ function anyFileContains(files, pattern) {
   return files.some((file) => fileContainsPattern(file, pattern));
 }
 
+function persistReport(manifestPath, report) {
+  try {
+    const forgePlanDir = path.dirname(manifestPath);
+    if (path.basename(forgePlanDir) !== ".forgeplan") {
+      return null;
+    }
+
+    const reportPath = path.join(forgePlanDir, "integrate-check.json");
+    fs.writeFileSync(reportPath, JSON.stringify(report, null, 2) + "\n", "utf8");
+    return reportPath;
+  } catch {
+    return null;
+  }
+}
+
 function main() {
   const cwd = process.cwd();
   const manifestPath =
@@ -808,8 +823,7 @@ function main() {
   const unknown = results.filter((r) => r.status === "UNKNOWN").length;
 
   const verdict = failed > 0 ? "FAIL" : (pending > 0 || unknown > 0) ? "INCOMPLETE" : warned > 0 ? "PASS_WITH_WARNINGS" : "PASS";
-
-  console.log(JSON.stringify({
+  const report = {
     type: "integration_report",
     total: results.length,
     passed,
@@ -818,7 +832,14 @@ function main() {
     warned,
     verdict,
     interfaces: results,
-  }, null, 2));
+  };
+
+  const reportPath = persistReport(manifestPath, report);
+  if (reportPath) {
+    report.artifact_path = path.relative(cwd, reportPath);
+  }
+
+  console.log(JSON.stringify(report, null, 2));
 
   process.exit(verdict === "FAIL" || verdict === "INCOMPLETE" ? 1 : 0);
 }

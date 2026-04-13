@@ -484,6 +484,11 @@ This gate catches 30-50% of fix regressions at script cost instead of sweep cost
 ```bash
 node "${CLAUDE_PLUGIN_ROOT}/scripts/integrate-check.js"
 ```
+   If the raw integration output is noisy or truncated, summarize it with:
+   ```bash
+   node "${CLAUDE_PLUGIN_ROOT}/scripts/summarize-integrate-check.js" --stdin
+   ```
+   Treat the JSON result and optional summary as the source of truth for this phase. Do **not** run ad hoc shell inspection, `node -e`, `python -c`, `date`, or checkpoint git commands just to re-count warnings, re-read phase, or decide what happens next.
 3. Map the result:
 - `passed = (verdict === "PASS" || verdict === "PASS_WITH_WARNINGS")`
 - `failures = interfaces.filter(i => i.status === "FAIL")`
@@ -498,6 +503,7 @@ node "${CLAUDE_PLUGIN_ROOT}/scripts/integrate-check.js"
    - **If findings were fixed in this pass** (i.e., `sweep_state.findings.resolved` grew during this pass — compare resolved count before Phase 4 to after): increment `pass_number`, set `current_phase` to `"claude-sweep"`, and loop back to Phase 2 for re-verification. The fix cycle may have introduced new issues — re-sweeping catches them.
    - **If NO findings were fixed** (pass was clean from Phase 3 step 11, which sent us to Phase 5 directly): set `current_phase` to `"finalizing"` and proceed to Phase 7.
 7. If integration passes and `--cross-check` flag: proceed to Phase 6.
+8. Once the Phase 5 verdict is known, continue immediately using the rules above. Do **not** pause in active sweep to run `git add`, `git commit`, `git tag`, `git status`, timestamp helpers, or extra shell/state probes. During an active sweep, checkpoint commits are post-run/manual-only.
 
 ### Phase 6: Cross-model verification (if --cross-check flag or auto in deep-build)
 
@@ -558,7 +564,9 @@ node "${CLAUDE_PLUGIN_ROOT}/scripts/cross-model-bridge.js" ".forgeplan/sweeps/sw
 4. **Compile wiki** (Sprint 9, MEDIUM/LARGE only, skip for SMALL):
    Run `node "${CLAUDE_PLUGIN_ROOT}/scripts/compile-wiki.js"` to update the knowledge base with findings from this sweep. This refreshes wiki pages for the next session.
 5. Clear `sweep_state` to null
-6. Present results to user:
+6. During finalization, do **not** run ad hoc shell inspection (`node -e`, `python -c`, `date`, custom `cat ... | ...` snippets) or any git mutation commands. The only required operations here are report writing, optional wiki compile, deterministic worktree cleanup, and clearing sweep state.
+7. If you want to mention repository cleanliness or suggest a checkpoint commit, present that as a post-run manual option after the sweep is complete. Do **not** attempt it inside the active sweep.
+8. Present results to user:
    ```
    === Sweep Complete ===
    Passes: [N]

@@ -584,16 +584,11 @@ Next:
   → /forgeplan:guide           Get guidance anytime
 ```
 
-## Per-Pass Git Commits (Recommended)
+## Git Commits (Post-Run Optional)
 
-After each completed fix cycle, create a git commit:
-```bash
-git add -A
-git commit -m "forgeplan: sweep pass [N] — [resolved] findings resolved"
-git tag forgeplan-sweep-pass-[N]
-```
+Do **not** attempt `git add`, `git commit`, or `git tag` during an active deep-build or sweep. Those operations are outside the live control-plane loop and may be blocked by active-operation guards.
 
-This makes "abort to pre-sweep state" trivially safe via git reset.
+If the user wants checkpoint commits, suggest them only after the deep-build has finished or after the user has explicitly exited the active sweep/deep-build session.
 
 ## Phase Advancement (Sprint 10B)
 

@@ -492,6 +492,9 @@ function assertTopLevelOrchestrationStateRules(errors) {
     if (!content.includes("must_avoid_sweep_clean_language")) {
       pushError(errors, "skills/deep-build/SKILL.md: Phase 8 report generation must use sweep.reporting_guidance to avoid overclaiming closure");
     }
+    if (!content.includes("Do **not** attempt `git add`, `git commit`, or `git tag` during an active deep-build or sweep")) {
+      pushError(errors, "skills/deep-build/SKILL.md: deep-build should forbid in-run git commits during active sweep/deep-build operations");
+    }
     if (!content.includes("manual-testing-ready")) {
       pushError(errors, "skills/deep-build/SKILL.md: Phase 8 finalization must distinguish manual-testing-ready from certified completion");
     }
@@ -721,6 +724,18 @@ function assertDesignLibraryContract(errors) {
     if (!content.includes('Do **not** call `start-sweep-fix` while `sweep_state.current_phase` is still `"claude-sweep"`')) {
       pushError(errors, "skills/sweep/SKILL.md: Phase 3/4 boundary must forbid start-sweep-fix during claude-sweep");
     }
+    if (!content.includes('summarize-integrate-check.js" --stdin')) {
+      pushError(errors, "skills/sweep/SKILL.md: Phase 5 should use summarize-integrate-check.js when integration output needs deterministic summarization");
+    }
+    if (!content.includes("Do **not** run ad hoc shell inspection, `node -e`, `python -c`, `date`, or checkpoint git commands")) {
+      pushError(errors, "skills/sweep/SKILL.md: Phase 5 must forbid ad hoc shell/git sidecars after integration verdicts");
+    }
+    if (!content.includes("checkpoint commits are post-run/manual-only")) {
+      pushError(errors, "skills/sweep/SKILL.md: Phase 5 should explicitly defer checkpoint commits until after the sweep completes");
+    }
+    if (!content.includes("The only required operations here are report writing, optional wiki compile, deterministic worktree cleanup, and clearing sweep state")) {
+      pushError(errors, "skills/sweep/SKILL.md: Phase 7 must limit finalization to deterministic cleanup/report operations");
+    }
   }
 
   if (fs.existsSync(preToolUsePath)) {
@@ -772,6 +787,19 @@ function assertCrossModelConflictPolicy(errors) {
     if (!content.includes("SPEC CONFLICT")) {
       pushError(errors, "scripts/cross-model-review.js: review prompt must distinguish spec conflicts from implementation failures");
     }
+  }
+}
+
+function assertIntegrateArtifactPersistence(errors) {
+  const integrateCheckPath = path.join(repoRoot, "scripts", "integrate-check.js");
+  if (!fs.existsSync(integrateCheckPath)) return;
+
+  const content = fs.readFileSync(integrateCheckPath, "utf8");
+  if (!content.includes('integrate-check.json')) {
+    pushError(errors, "scripts/integrate-check.js: should persist .forgeplan/integrate-check.json for later verification/finalization phases");
+  }
+  if (!content.includes("persistReport(manifestPath, report)")) {
+    pushError(errors, "scripts/integrate-check.js: should persist the integration report before printing it");
   }
 }
 
@@ -1071,6 +1099,7 @@ assertStateTransitionBashAllowlist(errors);
 assertTopLevelOrchestrationStateRules(errors);
 assertDesignLibraryContract(errors);
 assertCrossModelConflictPolicy(errors);
+assertIntegrateArtifactPersistence(errors);
 assertWikiKnowledgeContract(errors);
 assertRuntimeVerifyWorkspaceContract(errors);
 assertStatusContract(errors);

@@ -51,6 +51,7 @@ The solution is progressive disclosure — the same principle already built into
 - Review agent attribution → findings are summarized by default; expand to see which agent found what
 - Confidence scores → internal to the engine; the user sees findings, not numbers
 - Sweep agent names → the user sees "3 findings fixed" not "Adversary found 1, Contractualist found 2"
+- Impact overlay → canvas toolbar toggle; shows blast radius of selected node across the whole graph on demand
 
 **What power users discover over weeks:**
 - Terminal access inside node detail view (Tier 3 zoom depth)
@@ -77,8 +78,42 @@ The solution is progressive disclosure — the same principle already built into
 - The architecture canvas — their entire application as a visual knowledge graph
 - Breadcrumbs — where they are in the conceptual hierarchy
 - Node status colors — instant understanding of what's done, what's in progress, what's broken
+- **Architecture health score** — a subtle ambient indicator in the breadcrumb bar (a small arc or ring): the ratio of nodes that are built + reviewed + swept + verified. Not a number, not a percentage — just a visual pulse. Full green ring = everything's clean. Partial amber = work in progress. Empty = just started. Computed deterministically from `state.json`. No tokens. Always accurate.
 
 The principle: every pixel on screen answers the question "how does my application work?" not "what files does my application have?" And the corollary: **every pixel earns its place by being relevant right now, not by being available just in case.**
+
+## 1.5 Feature Screening: The Four-Gate Test
+
+Every proposed addition to ForgePlan Workstation — whether a new UI element, a new interaction pattern, a new integration, or a new agent capability — must pass all four gates before it is added to the product. This is the standing evaluation framework. One gate failure = don't ship it.
+
+**Gate 1: UX — Does it reduce friction for the user at their current stage?**
+The user is either in discovery, planning, building, reviewing, debugging, or evolving. Does this feature make the user's current job easier, faster, or clearer? If it only makes sense to a power user who knows all the internals, it belongs in Tier 5/6 at best — not in the default experience.
+
+**Gate 2: Workflow — Does it advance the end goal?**
+The end goal is: *architecture-down, governed code, delivered faster.* Does this feature help the user move from idea to working, reviewed, swept, verified codebase more confidently? If it's a nice visual flourish that doesn't improve the pipeline outcome, it doesn't pass this gate.
+
+**Gate 3: Framework coherence — Does it fit architecture-down, code-forward, governance-always?**
+Does this feature reinforce the mental model that the architecture is primary and code lives inside it? Does it preserve the progressive disclosure hierarchy? Does it strengthen governance (specs → enforcement → review → sweep) or work around it? Features that encourage skipping the governance layer, blurring architectural boundaries, or treating the file tree as the primary navigation fail this gate.
+
+**Gate 4: Token efficiency — Is it a free win or does it demand new compute?**
+The best features are pure UI improvements on data the system already produces. `blast-radius.js` already computes the impact graph — the Impact Overlay toggle just visualizes it. The manifest already knows node status — status colors are free. The guide system already knows what's next — contextual chat chips just surface it. These are zero-token UX wins. Features that require new LLM calls, new agent dispatches, or new backend operations must justify that cost against the user value they return. "Is this visualizing data we already have, or asking the system to do more work?" If the latter — it needs a strong case.
+
+**The real filter: cost-to-value ratio.**
+The gates are the default lens, not an absolute veto. What actually matters is whether the benefit is proportionate to the cost. A feature that is nearly free to implement but delivers outsized value for the user — clarity, speed, confidence, workflow improvement — ships. A feature that costs significant compute or complexity but only marginally improves the experience doesn't. The questions to ask:
+
+- Is the cost low? (UI-only, no new agent calls, reuses existing data) → low bar to clear
+- Is the benefit high? (meaningfully helps user understand, navigate, or move faster) → gets more latitude
+- Is it low cost AND high benefit? → obvious yes, ship it
+- Is it high cost AND low benefit? → obvious no
+- Is it high cost AND high benefit? → needs explicit justification — document why the trade-off is worth it
+
+**The default answer is still no** for anything that adds complexity without clear proportionate return. But "low cost, big help" is always worth doing.
+
+**Examples of proportionate trade-offs:**
+- Zero tokens, major UX improvement (canvas animations, keyboard shortcuts, resizable panels) → ship without debate
+- Small token cost (one cheap summarization call) that saves the user a confusing wall of raw output → worth it
+- Research step that adds tokens upfront but prevents 3 rounds of sweep fixes downstream → net efficiency win, ship it
+- New agent dispatch that surfaces a finding the user would have discovered anyway after an hour of debugging → not worth it
 
 ---
 
@@ -185,6 +220,9 @@ The user has built multiple projects. They understand the system and want more c
 | Phased build controls (for LARGE projects) | Bounce counter values |
 | `/forgeplan:split` for node decomposition | |
 | Settings panel (model assignments, API keys, tier override) | |
+| Impact overlay toggle (blast radius visualization on canvas) | |
+| Canvas layout optimizer (play/pause force-directed layout) | |
+| Cmd+K global node search with type badges | |
 
 **The feeling:** "I understand how the system works and I can tune it. I know which agents catch which issues. I can configure the models for my workflow."
 
@@ -259,6 +297,13 @@ Each node is a rounded card on the canvas representing a functional unit of the 
 
 The pulse animations are slow and subtle — breathing, not flashing. The user should feel calm watching their system build, not anxious.
 
+**Spec quality score badge:** A small circular indicator in the top-right corner of every node card. Color and fill show spec completeness at a glance — determined entirely from the spec file, zero LLM calls:
+- **Gray empty ring** — no spec yet
+- **Amber partial ring** — spec exists but gaps detected (missing failure modes, undefined interfaces, incomplete ACs)
+- **Green full ring** — spec complete: all ACs defined, failure modes covered, interfaces documented, constraints listed
+
+Hovering the badge shows a mini-breakdown: "ACs: 8/8 ✓ · Interfaces: 3/3 ✓ · Failure modes: missing · Constraints: ✓". This gamifies spec quality without adding process — gaps are visible the moment you look at the canvas. A node with a gray ring is obviously incomplete. A project where every node has a green ring is obviously ready to build.
+
 **Node type differentiation:**
 
 Nodes are color-coded by type so the architecture's structure is immediately legible at a glance:
@@ -287,19 +332,38 @@ Connections between nodes are not generic lines. They are typed, directional arr
 
 **On hover:** The connection expands to show the contract summary — what data shape is expected, what the endpoint is, whether the types match. This is the interface contract from the spec, rendered visually.
 
+**Hover-to-explain:** Below the contract summary on hover, a plain-English sentence explains the relationship in human terms: "Auth provides a JWT token that the API validates on every protected request. If Auth changes its token format, the API middleware will break." This reads directly from the manifest and spec — zero new LLM calls. It makes the dependency graph legible to anyone, including non-engineers reading the architecture.
+
 **On click:** The connection opens a detail panel showing the full interface contract, both sides' implementations, and any mismatches. If the connection is red, the panel explains what's broken in plain language: "The frontend calls GET /api/clients but the API only has GET /api/users. The endpoint name doesn't match."
+
+**"What would break?" on right-click:** Right-clicking any connection adds a "What would break if this changed?" option. The answer is computed deterministically from `blast-radius.js` and the manifest — no agent call required. The result surfaces inline in the context panel: a list of nodes that depend on this contract, with the specific interface point that would be affected. Fast, precise, free.
 
 ## 2.4 Canvas Interactions
 
-**Pan and zoom:** Standard canvas interactions. Scroll to zoom, drag to pan. Pinch-to-zoom on trackpad.
+**Pan and zoom:** Standard canvas interactions. Scroll to zoom, drag to pan. Pinch-to-zoom on trackpad. Keyboard shortcuts: `+`/`-` to zoom in/out, `0` to fit all nodes on screen.
 
 **Select a node:** Single click highlights the node and shows its summary in the context panel (right side).
+
+**Focus selected node:** A "Focus" button appears on the selected node's action bar. Clicking it re-centers and smoothly pans the viewport to that node. Solves the "I scrolled away and can't find my node" problem without requiring a zoom-to-fit.
 
 **Expand a node:** Double-click or click the expand icon to zoom into the node's interior. The canvas smoothly transitions from the high-level view into a detailed view of that node's components. Breadcrumbs update.
 
 **Multi-select:** Drag to select multiple nodes. Useful for bulk operations: "build these three nodes" or "review this group."
 
-**Right-click context menu:** Build, review, revise, view spec, view code, view conversation history. The available actions depend on the node's state.
+**Right-click context menu:** Build, review, revise, view spec, view code, view conversation history, **"What would break if this changed?"**. The available actions depend on the node's state. "What would break?" is always available — it reads from `blast-radius.js` deterministically and returns the answer instantly.
+
+**Cmd/Ctrl + K — Global Node Search:** Opens a floating search input from anywhere on the canvas. As the user types, matching nodes appear instantly (max 10 results) with color-coded type badges (frontend, backend, database, auth, shared-model). Arrow keys navigate results; Enter jumps to the node and centers it. Escape closes. This is the fastest way to navigate a large architecture without scrolling around looking for a node.
+
+**Layout button (play/pause):** A small button in the bottom-right canvas toolbar runs the force-directed layout optimizer. Click Play → the canvas animates as nodes find optimal positions based on their dependency relationships. Click Pause to freeze the layout at any point. A subtle "Layout optimizing..." indicator pulses while active. Useful when nodes have shifted after many edits and the canvas feels cluttered. The layout suggestion is non-destructive — the user can undo if they preferred the previous arrangement.
+
+**Impact Overlay toggle:** A toggle button in the canvas toolbar (lightning bolt icon). When a node is selected and the toggle is ON, the canvas enters impact mode: the selected node stays fully visible, nodes in its blast radius (direct consumers and dependencies) highlight in amber, nodes two hops away highlight in light yellow, and all unrelated nodes dim. The highlighting is live — powered by `blast-radius.js` and the manifest dependency graph. Hovering a highlighted node shows a tooltip: "This node calls Auth's JWT validation" or "Frontend-Dashboard reads from this API endpoint." Click the toggle again or deselect the node to return to normal view. This gives the canvas a use case beyond "pretty diagram" — it becomes a live impact analysis tool during revise, debugging, and spec changes.
+
+**Keyboard shortcuts:**
+- `Cmd/Ctrl + K` — global node search
+- `Escape` — close context panel / exit search / deselect node
+- `Space` — fit all nodes on screen
+- `+` / `-` — zoom in/out
+- `F` — focus selected node (same as Focus button)
 
 ---
 
@@ -343,6 +407,8 @@ The context panel slides in from the right side of the canvas when the user sele
 
 **When nothing is selected, the panel is hidden. The canvas gets the full viewport.** This is the default state. The user is never greeted by an empty panel waiting to be filled. The panel earns its screen space by having something relevant to show.
 
+**Resizable:** The panel can be dragged wider or narrower by grabbing its left edge. Min width 380px, max 900px. Width preference persists across sessions (localStorage / Electron store). Power users who live in the code view will make it wider; users in discovery who mostly want the canvas will make it narrower. Default is 420px.
+
 ## 4.2 Panel Modes — Tabs Appear When They Have Content
 
 The context panel shows tabs based on what's relevant to this node at this moment. **Not all tabs exist at all times.** A node that's just been specced shows only Spec. A node that's been built and reviewed shows Spec, Build, Review, and Code. The wiki tab only exists after there's wiki content. The research tab only exists after research has run. The sweep tab only exists after the node has been swept.
@@ -374,6 +440,8 @@ The five review panel agents (Adversary, Contractualist, Pathfinder, Structurali
 
 **Code View (available for any built node):**
 Monaco editor showing the node's generated code. Anchor comments are highlighted — `@forgeplan-spec: AC1` gets a colored sidebar annotation linking it to the acceptance criterion. Read-only by default. Tier 3 users can toggle to edit mode. Connected to the shared LSP instance for code intelligence (go-to-definition, find references, diagnostics).
+
+When clicking into a code reference from a review finding or sweep result, the editor doesn't just jump to the exact flagged line — it shows **50 lines of buffered context above and below**, then auto-scrolls and highlights the relevant range. This keeps the finding legible without stripping away the surrounding code logic. Clicking a referenced function or variable animates a brief glow on that symbol before the highlight settles — a small detail that makes navigation feel precise rather than mechanical.
 
 **Conversation History (available for any node):**
 The full design rationale: why this node was created, what alternatives were considered, what decisions were made during discovery, what the user said that led to this architecture.
@@ -447,13 +515,49 @@ During discovery, a chat panel appears at the bottom of the canvas (not the righ
 
 The Interviewer uses Socratic questioning — one question at a time, detecting ambiguity, surfacing assumptions. The conversation feels like talking to a collaborator, not filling out a form: "What kind of users will access this system?" "Does the accountant need to see all clients or just their assigned ones?" "Should document uploads be stored locally or in cloud storage?"
 
+**Quick suggestion buttons:** When the chat panel first opens (or when the user hasn't typed in a few seconds), four clickable prompt chips appear above the input:
+- "What should I build next?" → surfaces the `/forgeplan:guide` recommendation
+- "What's blocking?" → shows nodes with unresolved dependencies or failed verification
+- "What did sweep find?" → opens the sweep findings summary
+- "Explain the architecture" → the Architect narrates the current manifest in plain English
+
+These are one-click entry points that surface the system's most powerful features without requiring the user to know any commands exist. The chips update contextually — after a build completes, they shift to "Review what was built," "Start next node," "See what changed," and "Run sweep." The chips are not a shortcut menu; they're intelligent suggestions about what's relevant right now.
+
 For projects started from a document (`--from`), the Translator agent analyzes the document and proposes an architecture. Nodes appear on the canvas all at once, with the Translator's analysis in the context panel showing how each document section mapped to each node.
 
-### Real-Time Canvas Updates
+### Real-Time Canvas Materialization
 
-As the conversation progresses, nodes appear on the canvas with smooth animation. A new node doesn't just pop in — it slides in from the edge, finds its position in the layout, and connections draw themselves to existing nodes. The layout algorithm repositions existing nodes to accommodate the new one gracefully.
+**This is the most important animation in the product.** Every user's first impression is determined by this moment: they describe their idea, and the canvas comes alive in response. The architecture does not appear all at once after the conversation ends. It builds itself word by word, sentence by sentence, as the Architect understands the idea. The canvas is the live feedback channel for the conversation.
 
-When a node is modified through conversation, it briefly highlights (a subtle flash) to draw the user's attention to what changed. If a connection is added, the line draws itself with a quick animation.
+**The materialization sequence for each new node:**
+
+1. **Ghost phase** — As the Architect begins processing a new concept from the conversation, a faint, translucent placeholder node appears on the canvas in an estimated position. It pulses softly with a low-opacity shimmer — the visual signal that "something is forming here." The user can see the architecture taking shape before the Architect has even finished deciding what to call it.
+
+2. **Name crystallization** — The node's name types itself onto the card character by character, as if being written in real time. It doesn't appear complete — it builds. "Auth" → "Auth S" → "Auth Service." This mirrors the Architect's actual reasoning and makes the canvas feel alive, not pre-computed.
+
+3. **Type and role settle** — Once the name resolves, the node's type badge fades in (frontend / backend / database / auth / integration / shared-model) and the node card reaches its final shape with a gentle settle animation.
+
+4. **Layout breathing** — Existing nodes on the canvas gently shift to make room. Not a jarring reflow — a smooth, organic repositioning, as if the canvas is breathing and making space. New nodes find their natural position in the dependency graph without displacing what the user has already been looking at.
+
+5. **Connections draw themselves** — As the Architect identifies relationships between nodes, connection lines animate from source to target: a line extends from one node, finds the other, and locks in. If a shared model is identified (e.g., a User model referenced by both Auth and the frontend), a second line draws to it. The dependency graph assembles itself in front of the user.
+
+6. **Phantom preview materializes** — For frontend nodes, a low-fidelity phantom preview thumbnail fades in alongside the node almost immediately after the node name settles. It starts as a rough wireframe — a rectangle with placeholder blocks suggesting layout. As the conversation adds more context ("it needs a sidebar" / "there's a data table"), the phantom preview updates in the background and re-renders. The user sees their UI taking shape at the same time they're describing it.
+
+**Modification ripple:** When an existing node is updated due to conversation — a new field added to a shared model, an interface changed, a constraint added — the node emits a brief ripple outward from its center (a ring expanding and fading). Any connected nodes that are also affected ripple in sequence, one hop at a time. The user sees the change propagate visually before any code is written.
+
+**Connection modification:** If a connection type changes (data → event, sync → async), the line briefly highlights and re-draws itself with the new visual encoding. If a connection is removed, the line fades and retracts to one end before disappearing.
+
+**The emotional effect:** The user describes their idea in natural language, and within seconds they are looking at a live architecture diagram that is building itself in response. Nodes are appearing. Connections are forming. A wireframe of their login page is materializing. The idea is no longer abstract — it has taken visual shape. This is the moment the product wins the user. Everything else — review panels, sweep agents, verification gates — is proof that the product can deliver on what the canvas just promised.
+
+**Implementation note:** This requires the Architect's output to be streamed in structured increments — each identified node, connection, and shared model emitted as a discrete event that the frontend can act on immediately. The frontend subscribes to these events via Electron IPC and renders each one as it arrives. No waiting for the full response before rendering. Streaming architecture output is a first-class product requirement, not a nice-to-have.
+
+### Predictive Node Suggestions
+
+As the conversation progresses and the architecture takes shape, the system recognizes patterns from the manifest's tech stack and the nodes already on the canvas. When a well-known combination appears — Auth + API + Database with no background job node — a ghost suggestion appears on the canvas: a translucent node labeled "Background Jobs?" with a subtle "+" icon and a one-line tooltip: "Most projects with this stack need a worker for emails and scheduled tasks."
+
+The user can click to accept (the node solidifies and enters the canvas) or dismiss (the ghost fades). No required interaction — if the user ignores it, it stays as a gentle suggestion without blocking anything.
+
+These suggestions are deterministic pattern-matching against a curated list of common stack combinations — not an LLM call. Fast, cheap, often useful. The system learns from every blueprint in the marketplace to improve suggestion quality over time.
 
 ### Complexity Tier Display
 
@@ -511,6 +615,16 @@ When the user initiates a build (clicking "Build" on a node, or running deep-bui
 
 During deep-build or greenfield (full autonomous mode), the user can watch the entire system build itself. Nodes light up in dependency order. Reviews happen. Sweeps run. Cross-model verification cycles show as a subtle oscillation between model indicators. The user can go get coffee and come back to an architecture where every node is green and the codebase is certified.
 
+## 7.1b One-Click Deploy
+
+When all nodes are green — built, reviewed, swept, and verified — a **Deploy** button appears in the canvas toolbar. One click. The manifest already knows the tech stack, the project structure, the environment shape. ForgePlan generates the deploy config and pushes to the user's connected provider (Vercel, Railway, Fly.io, Render). The user never touches a `yml` file.
+
+This is the complete "idea to deployed app" story: describe your idea → watch the architecture build → approve the review gates → click Deploy. No context switching. No separate DevOps pipeline. The canvas is the control plane start to finish.
+
+**Provider connection** is set up once in Settings (OAuth or deploy token). After that, deploy is genuinely one click. The deploy status streams back to the canvas — a thin progress bar at the top, then nodes gain a small cloud icon when their services are live. The first time a user sees their app URL appear on screen thirty seconds after clicking Deploy, that's the moment they tell someone else about ForgePlan.
+
+What tools like Lovable and Bolt have done is show that deploy-from-AI is a category. ForgePlan's version is more granular, more governed, and more trustworthy — because the architecture was reviewed and swept before a single line hit production. The user isn't just deploying AI-generated code. They're deploying certified architecture.
+
 ## 7.2 Phased Build Visualization
 
 For LARGE projects with phased builds, the canvas shows build phases as visual layers. Phase 1 nodes are fully opaque and interactive. Phase 2+ nodes are ghosted — visible but dimmed, with a "Phase 2" badge, locked from building.
@@ -539,6 +653,17 @@ If any verification fails, the node shows a yellow warning icon instead of going
 For frontend nodes, the phantom preview in the context panel updates as the build progresses. The wireframe login page gains real form fields. The placeholder dashboard gets actual data table components. The user sees their application becoming real, component by component.
 
 When the node build completes, the preview is the actual running application for that node. The wireframe has fully dissolved into working UI.
+
+## 7.6 Session Replay
+
+Every discovery + build session is timestamped and stored in `.forgeplan/`. Session replay renders this history as an animated time-lapse: the canvas starts blank, nodes materialize in the order they were identified, connections draw themselves, build animations play through, nodes turn green one by one. A full session that took 45 minutes to run replays in 20-30 seconds.
+
+**Why it matters:**
+- **Marketing:** A screen recording of session replay is the most compelling demo asset imaginable. "From blank canvas to deployed app" compressed into 30 seconds. No staged demo, no curated screenshots — it's the real build.
+- **Onboarding:** A new team member joining an existing project can watch the session replay and understand in 30 seconds how the architecture was designed, in what order, and why certain decisions were made.
+- **Personal satisfaction:** Watching your own project build itself is genuinely rewarding. It's the montage at the end of the film.
+
+Export as MP4 or GIF. Zero LLM cost — pure frontend animation from existing `.forgeplan/` timestamps.
 
 ---
 
@@ -580,6 +705,20 @@ The user sees the blast radius of their change before they commit to it. "If I a
 When the user confirms a revise, the canvas shows the propagation in real time. The revised node rebuilds (amber pulse). When it completes, the first ring of affected nodes start rebuilding. Then the second ring. The user watches the change ripple outward through the architecture like a wave. Each node that successfully updates turns green. Any node that fails turns red.
 
 This is the change propagation test made visual. It's also the most compelling demo moment for the product — a thirty-second screen recording of a change rippling through an architecture is worth more than any landing page copy.
+
+## 9.3 Architecture Timeline Scrubber
+
+Every build, review, sweep, and revision is timestamped and stored in `.forgeplan/`. The timeline scrubber surfaces this history as a navigable visual record. A thin horizontal scrubber sits at the bottom of the canvas — collapsed by default, expanded on hover or when the user clicks "History" in the breadcrumb bar.
+
+Dragging the scrubber backward replays the architecture's evolution: nodes that didn't exist yet fade out, completed nodes revert to their earlier states, connections that were added later disappear. The user can scrub to any point in the project's history and see exactly what the architecture looked like at that moment — which nodes were built, which were pending, which had findings.
+
+**Use cases:**
+- **Onboarding new team members** — "here's how we designed this system over 3 weeks, here's why the auth node got split into two"
+- **Post-mortem debugging** — "the bug appeared after this revision, let me scrub to just before it and see what changed"
+- **Demo / marketing** — record the session and watch a blank canvas grow into a complete certified architecture in 30 seconds. The most compelling product video imaginable, generated automatically from the build history.
+- **Architecture retrospective** — zoom out and see how scope changed, which nodes grew most, where the most revisions happened
+
+Zero LLM cost — reads entirely from existing `.forgeplan/` timestamps and state snapshots.
 
 ---
 
@@ -1205,6 +1344,54 @@ Everything ships in order of user acquisition impact, not engineering complexity
 - Local voice transcription for privacy-sensitive customers
 
 At every phase, the web playground is the front door. The desktop app is the power tool. The CLI is the developer interface. The GitHub Action is the enterprise wedge. All four read and write the same `.forgeplan/` directory.
+
+---
+
+# 24. Long-Term Vision Features
+
+These features are confirmed as directionally correct but deliberately deferred. They require the core product to be established and proven before they make sense to build. They are documented here so they shape architectural decisions now — even if they don't ship for many months.
+
+## 24.1 Team Mode / Collaborative Architecture
+
+Multiple users working on the same `.forgeplan/` project simultaneously. One person specs the auth node while another builds the database node. The manifest is a flat-file structure that git can already merge — the collaboration model extends naturally from what's already there.
+
+Conflict resolution when two people modify the same spec. Presence indicators on nodes (a small avatar showing who's viewing or editing). Comments on spec decisions. The architectural canvas becomes a shared space, not a solo tool.
+
+**Why deferred:** Requires real-time sync infrastructure (WebSockets or CRDT-based sync), user identity, and session management — a significant platform investment. Ship the solo product first. Prove it works. Then add collaboration.
+
+## 24.2 Live Production Monitoring on the Canvas
+
+Post-deploy, the canvas becomes an operational dashboard. Error rates, latency, and crash counts stream back from the deployed app and appear as health indicators on the nodes responsible. The auth node turns amber when login latency spikes. The API node turns red when the error rate exceeds a threshold. A connection turns yellow when it's timing out.
+
+The user never needs a separate monitoring dashboard. Their architecture IS their dashboard. The same canvas they used to build the app is the canvas they use to watch it run.
+
+**Why it matters:** This transforms ForgePlan from a build tool into a permanent interface for the application. Users have no reason to ever leave — the canvas is useful every day, not just during development.
+
+**Why deferred:** Requires webhook/metric ingestion, deploy provider integrations for log streaming, and a persistent backend for the monitoring layer. Post-launch feature once deploy integrations are stable.
+
+## 24.3 Architecture Audit as a Service
+
+Point ForgePlan at any existing repo — not just ForgePlan-governed ones. The system reverse-engineers a manifest, identifies nodes, maps dependencies, runs a sweep, and produces a report: here are the architectural problems, the spec coverage gaps, the security issues found, the missing contracts between layers.
+
+Sells as a standalone one-time report. No ongoing subscription required. Enterprise lead-gen — teams that get the report are primed to adopt ForgePlan for their next project.
+
+**Why deferred:** Requires a robust ingest pipeline that handles arbitrary repos without `.forgeplan/` context. Sprint 10B's `/forgeplan:ingest` is the foundation. Needs hardening for production-scale real-world codebases.
+
+## 24.4 Cross-Project Dependencies
+
+When a team or organization has multiple ForgePlan projects that share services — a central auth service, a notification service, a shared component library — the canvas shows cross-project connections. A change to the auth service manifest surfaces a warning in every downstream project that depends on it.
+
+The `.forgeplan/` format is already designed for this — shared models and interface contracts are explicit. Cross-project dependency tracking is a graph query over multiple manifests.
+
+**Why deferred:** Requires a registry or discovery layer for projects to find each other. Enterprise and agency feature — most solo builders don't need it yet.
+
+## 24.5 Autonomous Evolution Mode
+
+The user describes a new feature or change in plain chat ("add Stripe payments," "add a mobile app version," "add multi-tenant support"). The system figures out which nodes need to change, which new nodes to add, proposes the architecture changes as ghost nodes and connection modifications, runs the review gate, builds the changes, and verifies — all autonomously. The user approves at the review gate and watches it happen.
+
+**Why it's not as novel as it sounds:** This is largely what `/forgeplan:revise` + `/forgeplan:deep-build` already do, just with a more freeform natural-language entry point. The governance pipeline is identical. The main addition is the "figure out what needs to change" step from a free-form description rather than a structured revise command. The architecture-down, governance-always model remains completely intact.
+
+**Why deferred:** The "figure out what needs to change" step requires strong architectural reasoning from the model — it's the hardest part to get right reliably. Ship first, prove the governance pipeline, then make the entry point more freeform.
 
 ---
 
