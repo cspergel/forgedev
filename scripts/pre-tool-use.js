@@ -233,6 +233,7 @@ function evaluate(input) {
         relPath.startsWith(".forgeplan/specs/") ||
         relPath === ".forgeplan/config.yaml" ||
         relPath === ".forgeplan/manifest.yaml" ||
+        relPath === ".forgeplan/integrate-check.json" ||
         relPath === ".forgeplan/deep-build-report.md" ||
         relPath === ".forgeplan/state.json"
       ) {
@@ -305,7 +306,7 @@ function evaluate(input) {
       relPath === `.forgeplan/conversations/nodes/${activeNodeId_}.md` ||
       relPath === ".forgeplan/state.json" ||
       // Sweep-only paths: only allow during sweeping, not during normal builds
-      (activeStatus === "sweeping" && (relPath.startsWith(".forgeplan/sweeps/") || relPath.startsWith(".forgeplan/specs/") || relPath === ".forgeplan/config.yaml" || relPath === ".forgeplan/manifest.yaml" || relPath === ".forgeplan/deep-build-report.md"))
+      (activeStatus === "sweeping" && (relPath.startsWith(".forgeplan/sweeps/") || relPath.startsWith(".forgeplan/specs/") || relPath === ".forgeplan/config.yaml" || relPath === ".forgeplan/manifest.yaml" || relPath === ".forgeplan/integrate-check.json" || relPath === ".forgeplan/deep-build-report.md"))
     ) {
       return { block: false };
     }

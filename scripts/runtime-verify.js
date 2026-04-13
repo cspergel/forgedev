@@ -158,6 +158,11 @@ function findNodeWorkspaceDir(manifest) {
   return null;
 }
 
+function runtimeIncludesNode(runtime) {
+  const normalized = String(runtime || "").toLowerCase();
+  return !normalized || normalized === "node" || normalized.includes("node");
+}
+
 /**
  * Parse a contract string like "GET /api/documents -> { documents: Document[] }"
  * Returns { method, path, expectedFields } or null if unparseable
@@ -230,7 +235,8 @@ function detectBaseUrl(serverOutput, techStack, baseDir = cwd) {
 // Start the dev server and wait for ready
 async function startServer(techStack, manifest) {
   const runtime = (techStack && techStack.runtime) || "node";
-  const nodeWorkspace = (runtime === "node" || !runtime)
+  const usesNodeWorkspace = runtimeIncludesNode(runtime);
+  const nodeWorkspace = usesNodeWorkspace
     ? (findNodeWorkspaceDir(manifest) || { relative: ".", absolute: cwd })
     : { relative: ".", absolute: cwd };
   const serverCwd = nodeWorkspace.absolute;
@@ -241,19 +247,23 @@ async function startServer(techStack, manifest) {
     default: devCmd = "npm run dev";
   }
 
-  if (runtime === "node" || !runtime) {
+  if (usesNodeWorkspace) {
     try {
       const pkg = JSON.parse(fs.readFileSync(path.join(serverCwd, "package.json"), "utf-8"));
       if (!pkg.scripts || !pkg.scripts.dev) {
         return {
           error: `No 'dev' script in package.json (${nodeWorkspace.relative === "." ? "repo root" : nodeWorkspace.relative})`,
           errorType: "environment",
+          workspaceRelative: nodeWorkspace.relative,
+          workspaceDir: serverCwd,
         };
       }
     } catch {
       return {
         error: `Could not read package.json (${nodeWorkspace.relative === "." ? "repo root" : nodeWorkspace.relative})`,
         errorType: "environment",
+        workspaceRelative: nodeWorkspace.relative,
+        workspaceDir: serverCwd,
       };
     }
   }
@@ -385,7 +395,12 @@ async function startServer(techStack, manifest) {
     // Clean up temp .env
     if (createdTempEnv) { try { fs.unlinkSync(tempEnvPath); } catch {} }
     const errorType = /EADDRINUSE|address already in use/i.test(serverOutput) ? "environment" : "code";
-    return { error: `Server failed to start: ${serverOutput.substring(0, 300)}`, errorType };
+    return {
+      error: `Server failed to start: ${serverOutput.substring(0, 300)}`,
+      errorType,
+      workspaceRelative: nodeWorkspace.relative,
+      workspaceDir: serverCwd,
+    };
   }
 
   return {
@@ -651,6 +666,9 @@ async function main() {
       tier,
       message: server.error,
       errorType: server.errorType,
+      workspaceRelative: server.workspaceRelative || null,
+      workspaceDir: server.workspaceDir || null,
+      runtime: techStack.runtime || null,
       level_reached: 0,
       endpoints_tested: 0,
       endpoints_passed: 0,

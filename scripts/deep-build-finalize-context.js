@@ -55,6 +55,28 @@ function summarizeNodeStates(nodes) {
   return summary;
 }
 
+function summarizeManifestNodeStates(manifestNodes, stateNodes) {
+  const summary = {
+    manifest_total: 0,
+    reviewed: 0,
+    reviewed_with_findings: 0,
+    built: 0,
+    other: 0,
+  };
+
+  for (const nodeId of Object.keys(manifestNodes || {})) {
+    summary.manifest_total += 1;
+    const nodeState = stateNodes && stateNodes[nodeId] ? stateNodes[nodeId] : {};
+    const status = nodeState && nodeState.status ? nodeState.status : "pending";
+    if (status === "reviewed") summary.reviewed += 1;
+    else if (status === "reviewed-with-findings") summary.reviewed_with_findings += 1;
+    else if (status === "built") summary.built += 1;
+    else summary.other += 1;
+  }
+
+  return summary;
+}
+
 function classifyIntegrationWarning(item) {
   const detail = String(item && item.detail ? item.detail : "").toLowerCase();
   if (detail.includes("one-way dependency")) {
@@ -228,6 +250,7 @@ function buildSweepReportingGuidance(integrationSummary, sweepStateSummary) {
   return {
     may_describe_integration_warnings_as_all_informational: actionableWarnings === 0,
     must_mirror_runtime_artifact_first: true,
+    must_not_flatten_actionable_integration_warnings: actionableWarnings > 0,
     may_claim_all_node_scoped_findings_fixed:
       pendingCount === 0 && manualAttentionCount === 0 && nonFixedResolvedCount === 0,
     must_avoid_sweep_clean_language:
@@ -252,7 +275,20 @@ function main() {
   const config = loadConfig(configPath);
   const reviewConfig = resolveReviewConfig(config);
 
-  const nodeSummaries = Object.entries(state.nodes || {}).map(([id, nodeState]) => ({
+  const manifestNodeIds = Object.keys((manifest && manifest.nodes) || {});
+  const stateNodeEntries = Object.entries(state.nodes || {});
+  const nodeSummaries = manifestNodeIds.map((id) => {
+    const nodeState = (state.nodes || {})[id] || {};
+    return {
+      node_id: id,
+      status: nodeState.status || "pending",
+      selected_builder_model: nodeState.selected_builder_model || null,
+      selected_builder_model_reason: nodeState.selected_builder_model_reason || null,
+    };
+  });
+  const extraStateNodes = stateNodeEntries
+    .filter(([id]) => !manifestNodeIds.includes(id))
+    .map(([id, nodeState]) => ({
     node_id: id,
     status: nodeState.status || "pending",
     selected_builder_model: nodeState.selected_builder_model || null,
@@ -291,6 +327,9 @@ function main() {
     active_node: state.active_node || null,
     sweep_state: state.sweep_state || null,
     node_summary: summarizeNodeStates(state.nodes || {}),
+    manifest_node_summary: summarizeManifestNodeStates(manifest.nodes || {}, state.nodes || {}),
+    manifest_node_ids: manifestNodeIds,
+    extra_state_nodes: extraStateNodes,
     nodes: nodeSummaries,
     review_mode: reviewConfig.mode || "native",
     review_provider: reviewConfig.provider || null,
@@ -307,6 +346,9 @@ function main() {
       status: runtimeVerify.status || null,
       error_type: runtimeVerify.errorType || null,
       message: runtimeVerify.message || runtimeVerify.error || runtimeVerify.summary || null,
+      workspace_relative: runtimeVerify.workspaceRelative || null,
+      workspace_dir: runtimeVerify.workspaceDir || null,
+      runtime: runtimeVerify.runtime || null,
       level_reached: runtimeVerify.level_reached || 0,
       endpoints_tested: runtimeVerify.endpoints_tested || 0,
       endpoints_passed: runtimeVerify.endpoints_passed || 0,

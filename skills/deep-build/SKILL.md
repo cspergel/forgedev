@@ -479,13 +479,16 @@ The report must capture **pipeline decisions**, not just outcomes. Whenever a ph
 
 Report accuracy requirements:
 - The `Build Models` table must match the actual `selected_builder_model` and `selected_builder_model_reason` values from state.
-- The summary node counts must match the actual terminal node statuses from state.
+- The summary node counts must use `deep-build-finalize-context.js.manifest_node_summary` and `manifest_node_ids` as the source of truth for project nodes.
+- Do **not** inflate summary counts with stale or extra `state.nodes` entries that are not present in the manifest. If `extra_state_nodes` is non-empty, mention them only as stale-state anomalies or omit them; do not fold them into "Nodes: [N] built and reviewed".
 - If any node remains `built` (not reviewed), the report must say so explicitly instead of claiming all nodes are reviewed.
 - Use `deep-build-finalize-context.js.integration.warnings` as the source of truth for warning classification. If `actionable_count > 0`, do **not** describe final integration warnings as "all informational".
+- If `actionable_count > 0`, do **not** collapse them into "static-analysis limitations" or equivalent blanket language. You may say the warnings are structural/actionable and were pressure-tested by sweep agents, but they are still actionable warning classes.
 - If LARGE-tier cross-model verification was not configured, the report must label the result as a degraded/non-certified completion or halted run — not as normal cross-model-certified success.
 - If LARGE-tier cross-model was intentionally skipped via `review.allow_large_tier_skip: true`, the report must say that explicitly and present the run as degraded certification, not full certification.
 - The report must state what deterministic verification actually ran: verify-runnable, integrate-check, runtime verification, and cross-model verification.
 - Use `deep-build-finalize-context.js.runtime` as the source of truth for runtime verification status. Mirror the raw artifact `status` and `error_type` first. If you add a harness/workspace explanation, label it as an interpretation or likely cause rather than a deterministic fact.
+- If `deep-build-finalize-context.js.runtime.workspace_relative` is present, prefer that concrete workspace evidence over generic claims about project layout. Do **not** claim a specific unsupported runtime string or root-cause unless it is directly supported by the artifact fields/message.
 - Use `deep-build-finalize-context.js.sweep.reporting_guidance` as the source of truth for closure wording. If `must_avoid_sweep_clean_language` is true, do **not** say "sweep-clean", "all resolved", or equivalent. Say the node-scoped findings were addressed and then enumerate deferred/manual items separately.
 - Do **not** claim "full test suite clean", "ready to ship", or "fully certified" unless `deep-build-verification-contract.js` says full certification is allowed.
 - If `deep-build-verification-contract.js` reports `manual-testing-ready`, the report must explicitly say the project is ready only for targeted manual testing and is **not** fully certified.

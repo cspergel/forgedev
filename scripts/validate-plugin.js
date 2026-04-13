@@ -350,6 +350,9 @@ function assertStateTransitionBashAllowlist(errors) {
   if (!content.includes('relPath === ".forgeplan/config.yaml"')) {
     pushError(errors, "scripts/pre-tool-use.js: active sweep/deep-build operations must allow sanctioned .forgeplan/config.yaml writes");
   }
+  if (!content.includes('relPath === ".forgeplan/integrate-check.json"')) {
+    pushError(errors, "scripts/pre-tool-use.js: active sweep/deep-build operations must allow sanctioned .forgeplan/integrate-check.json writes");
+  }
 }
 
 function assertTopLevelOrchestrationStateRules(errors) {
@@ -483,11 +486,23 @@ function assertTopLevelOrchestrationStateRules(errors) {
     if (!content.includes("The `Build Models` table must match the actual `selected_builder_model`")) {
       pushError(errors, "skills/deep-build/SKILL.md: Phase 8 report generation must require actual builder-model data from state");
     }
+    if (!content.includes("manifest_node_summary")) {
+      pushError(errors, "skills/deep-build/SKILL.md: Phase 8 report generation must use manifest-scoped node counts from finalize context");
+    }
+    if (!content.includes("Do **not** inflate summary counts with stale or extra `state.nodes` entries")) {
+      pushError(errors, "skills/deep-build/SKILL.md: Phase 8 report generation must forbid inflating node counts with extra state-only entries");
+    }
     if (!content.includes("deep-build-finalize-context.js.integration.warnings")) {
       pushError(errors, "skills/deep-build/SKILL.md: Phase 8 report generation must source integration warning classification from deep-build-finalize-context.js.integration.warnings");
     }
+    if (!content.includes('do **not** collapse them into "static-analysis limitations"')) {
+      pushError(errors, "skills/deep-build/SKILL.md: Phase 8 report generation must forbid flattening actionable integration warnings into static-analysis language");
+    }
     if (!content.includes("Mirror the raw artifact `status` and `error_type` first")) {
       pushError(errors, "skills/deep-build/SKILL.md: Phase 8 report generation must mirror runtime artifact status/error_type before interpretation");
+    }
+    if (!content.includes("workspace_relative")) {
+      pushError(errors, "skills/deep-build/SKILL.md: Phase 8 report generation should use runtime workspace evidence when available");
     }
     if (!content.includes("must_avoid_sweep_clean_language")) {
       pushError(errors, "skills/deep-build/SKILL.md: Phase 8 report generation must use sweep.reporting_guidance to avoid overclaiming closure");
@@ -925,11 +940,17 @@ function assertRuntimeVerifyWorkspaceContract(errors) {
   if (!content.includes("findNodeWorkspaceDir")) {
     pushError(errors, "scripts/runtime-verify.js: should detect the active Node/frontend workspace before starting the dev server");
   }
+  if (!content.includes("runtimeIncludesNode")) {
+    pushError(errors, "scripts/runtime-verify.js: should treat composite runtimes containing node as Node workspace candidates");
+  }
   if (!content.includes("cwd: serverCwd")) {
     pushError(errors, "scripts/runtime-verify.js: should spawn the dev server from the resolved workspace directory");
   }
   if (!content.includes('package.json (${nodeWorkspace.relative === "." ? "repo root" : nodeWorkspace.relative})')) {
     pushError(errors, "scripts/runtime-verify.js: environment errors should identify which package.json location was checked");
+  }
+  if (!content.includes("workspaceRelative")) {
+    pushError(errors, "scripts/runtime-verify.js: runtime failure artifacts should include the workspaceRelative that was checked");
   }
 }
 
@@ -950,6 +971,18 @@ function assertDeepBuildFinalizeContextContract(errors) {
   }
   if (!content.includes("error_type")) {
     pushError(errors, "scripts/deep-build-finalize-context.js: should expose runtime error_type from runtime-verify.json");
+  }
+  if (!content.includes("manifest_node_summary")) {
+    pushError(errors, "scripts/deep-build-finalize-context.js: should expose manifest-scoped node counts for report accuracy");
+  }
+  if (!content.includes("extra_state_nodes")) {
+    pushError(errors, "scripts/deep-build-finalize-context.js: should expose extra state-only nodes separately from manifest nodes");
+  }
+  if (!content.includes("workspace_relative")) {
+    pushError(errors, "scripts/deep-build-finalize-context.js: should expose runtime workspace evidence from runtime-verify.json");
+  }
+  if (!content.includes("must_not_flatten_actionable_integration_warnings")) {
+    pushError(errors, "scripts/deep-build-finalize-context.js: should expose guardrails against flattening actionable integration warnings");
   }
   if (!content.includes("must_mirror_runtime_artifact_first")) {
     pushError(errors, "scripts/deep-build-finalize-context.js: should expose runtime-reporting guardrails");
